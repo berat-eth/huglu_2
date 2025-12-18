@@ -1,0 +1,179 @@
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import * as Font from 'expo-font';
+import { View, ActivityIndicator } from 'react-native';
+import { testProductDetail } from './src/utils/testAPI';
+import { testMaintenanceMode } from './src/utils/testMaintenance';
+
+// Screens
+import SplashScreen from './src/screens/SplashScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import ProductListScreen from './src/screens/ProductListScreen';
+import ProductDetailScreen from './src/screens/ProductDetailScreen';
+import CartScreen from './src/screens/CartScreen';
+import PaymentMethodScreen from './src/screens/PaymentMethodScreen';
+import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import WishlistScreen from './src/screens/WishlistScreen';
+import OrderTrackingScreen from './src/screens/OrderTrackingScreen';
+import OrderDetailScreen from './src/screens/OrderDetailScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import SearchScreen from './src/screens/SearchScreen';
+import CampaignsScreen from './src/screens/CampaignsScreen';
+import LiveChatScreen from './src/screens/LiveChatScreen';
+import LiveChatEntryScreen from './src/screens/LiveChatEntryScreen';
+import FAQScreen from './src/screens/FAQScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import PersonalInfoScreen from './src/screens/PersonalInfoScreen';
+import PhysicalStoresScreen from './src/screens/PhysicalStoresScreen';
+import WalletScreen from './src/screens/WalletScreen';
+import WalletTransferScreen from './src/screens/WalletTransferScreen';
+import FlashDealsScreen from './src/screens/FlashDealsScreen';
+import ReferralScreen from './src/screens/ReferralScreen';
+import ChatHistoryScreen from './src/screens/ChatHistoryScreen';
+import ShippingInformationScreen from './src/screens/ShippingInformationScreen';
+import MyAddressesScreen from './src/screens/MyAddressesScreen';
+import AddAddressScreen from './src/screens/AddAddressScreen';
+import ReturnRequestScreen from './src/screens/ReturnRequestScreen';
+import ReturnRequestsListScreen from './src/screens/ReturnRequestsListScreen';
+import InvoicesScreen from './src/screens/InvoicesScreen';
+import MaintenanceScreen from './src/screens/MaintenanceScreen';
+import UserLevelScreen from './src/screens/UserLevelScreen';
+import ProductCompareScreen from './src/screens/ProductCompareScreen';
+import CommunityFeedScreen from './src/screens/CommunityFeedScreen';
+import CreatePostScreen from './src/screens/CreatePostScreen';
+import CompassScreen from './src/screens/CompassScreen';
+
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const PRIMARY_COLOR = '#11d421';
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Shop') iconName = focused ? 'storefront' : 'storefront-outline';
+          else if (route.name === 'Wishlist') iconName = focused ? 'heart' : 'heart-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: PRIMARY_COLOR,
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Ana Sayfa' }} />
+      <Tab.Screen name="Shop" component={ProductListScreen} options={{ title: 'Mağaza' }} />
+      <Tab.Screen name="Wishlist" component={WishlistScreen} options={{ title: 'Favoriler' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+    </Tab.Navigator>
+  );
+}
+
+function App() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          ...Ionicons.font,
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.error('Error loading fonts:', error);
+        setFontsLoaded(true); // Continue anyway
+      }
+    }
+    loadFonts();
+    
+    // BAKIM MODU TEST - Bakım modu kontrolünü test et
+    setTimeout(() => {
+      testMaintenanceMode();
+    }, 2000);
+    
+    // API TEST - Ürün detay verisini kontrol et
+    // setTimeout(() => {
+    //   testProductDetail(556); // Test product ID
+    // }, 3000); // 3 saniye sonra çalıştır
+  }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#11d421' }}>
+        <ActivityIndicator size="large" color="#ffffff" />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      <StatusBar style="auto" />
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen 
+          name="Maintenance" 
+          component={MaintenanceScreen}
+          options={{ gestureEnabled: false }}
+        />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+        <Stack.Screen name="ProductCompare" component={ProductCompareScreen} />
+        <Stack.Screen name="CommunityFeed" component={CommunityFeedScreen} />
+        <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+        <Stack.Screen name="Compass" component={CompassScreen} />
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
+        <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
+        <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+        <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="Campaigns" component={CampaignsScreen} />
+        <Stack.Screen name="LiveChatEntry" component={LiveChatEntryScreen} />
+        <Stack.Screen name="LiveChat" component={LiveChatScreen} />
+        <Stack.Screen name="FAQ" component={FAQScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+        <Stack.Screen name="PhysicalStores" component={PhysicalStoresScreen} />
+        <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="WalletTransfer" component={WalletTransferScreen} />
+        <Stack.Screen name="UserLevel" component={UserLevelScreen} />
+        <Stack.Screen name="FlashDeals" component={FlashDealsScreen} />
+        <Stack.Screen name="Referral" component={ReferralScreen} />
+        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
+        <Stack.Screen name="ShippingInformation" component={ShippingInformationScreen} />
+        <Stack.Screen name="MyAddresses" component={MyAddressesScreen} />
+        <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+        <Stack.Screen name="ReturnRequest" component={ReturnRequestScreen} />
+        <Stack.Screen name="ReturnRequests" component={ReturnRequestsListScreen} />
+        <Stack.Screen name="Invoices" component={InvoicesScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+export default App;

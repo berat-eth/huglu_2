@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Product Detail Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "primary-dark": "#0ea61a", // Darker shade for text contrast if needed
+                        "background-light": "#f8fcf8",
+                        "background-dark": "#102212",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a2e1d",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar hiding for horizontal scroll areas */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-hidden mx-auto max-w-md shadow-2xl bg-background-light dark:bg-background-dark">
+<!-- Top App Bar -->
+<div class="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 pt-12 bg-gradient-to-b from-black/50 to-transparent">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex items-center gap-3">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto no-scrollbar pb-24">
+<!-- Image Carousel -->
+<div class="relative w-full h-[450px]">
+<div class="w-full h-full bg-gray-200" data-alt="Hiker wearing a green backpack on a mountain trail" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBRfIkI28fgpv8oVDhaibndnGBVZnkbh45riNTA_CAOA7mm-nMwIAcyQF6tpAR-FSrLrmNFx0lhtb_Tseaic8Wb7IgjIxSLcbjEvCMnHTxhL9ONmzUzsffZdHAMF7xdriJG0llLvY8LDrTgOCOx0JcliJzAoytCT9N2IwnZ_14bkU5WGrkREHsCMr3n3-MYVuixhh1Bvv7vNXY-atiT4iU0q32uKb7kBGMx3fTncl8mZsIH9AsgNQTMOGIGEKyMh1yti_nZgB5dQNg'); background-size: cover; background-position: center;"></div>
+<!-- Pagination Dots -->
+<div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+<div class="h-1.5 w-6 rounded-full bg-primary shadow-sm"></div>
+<div class="h-1.5 w-1.5 rounded-full bg-white/60 backdrop-blur-sm"></div>
+<div class="h-1.5 w-1.5 rounded-full bg-white/60 backdrop-blur-sm"></div>
+<div class="h-1.5 w-1.5 rounded-full bg-white/60 backdrop-blur-sm"></div>
+</div>
+</div>
+<!-- Content Container - Overlapping the image slightly for modern feel -->
+<div class="relative -mt-6 rounded-t-[32px] bg-background-light dark:bg-background-dark px-6 pt-8 pb-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+<!-- Title & Price Header -->
+<div class="flex flex-col gap-2 mb-6">
+<div class="flex items-start justify-between">
+<h1 class="text-[#0d1b0f] dark:text-white tracking-tight text-3xl font-bold leading-tight flex-1 mr-4">Summit Seeker 40L Backpack</h1>
+</div>
+<div class="flex items-center gap-4 mt-1">
+<h2 class="text-primary text-2xl font-bold tracking-tight">$129.99</h2>
+<div class="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-amber-400 text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[#0d1b0f] dark:text-gray-200 font-semibold">4.8</span>
+<span class="text-gray-500 dark:text-gray-400 text-sm">(120 Reviews)</span>
+</div>
+</div>
+</div>
+<!-- Variations Selection -->
+<div class="flex flex-col gap-5 mb-8">
+<!-- Color Selection -->
+<div>
+<p class="text-[#0d1b0f] dark:text-gray-200 font-semibold mb-3">Color</p>
+<div class="flex gap-3">
+<button class="size-8 rounded-full bg-primary ring-2 ring-offset-2 ring-primary ring-offset-background-light dark:ring-offset-background-dark cursor-pointer shadow-sm"></button>
+<button class="size-8 rounded-full bg-[#2c2c2c] cursor-pointer hover:opacity-80 transition-opacity shadow-sm"></button>
+<button class="size-8 rounded-full bg-[#aa3b3b] cursor-pointer hover:opacity-80 transition-opacity shadow-sm"></button>
+<button class="size-8 rounded-full bg-[#3b5aaa] cursor-pointer hover:opacity-80 transition-opacity shadow-sm"></button>
+</div>
+</div>
+<!-- Size Selection -->
+<div>
+<div class="flex justify-between items-center mb-3">
+<p class="text-[#0d1b0f] dark:text-gray-200 font-semibold">Size</p>
+<button class="text-primary text-sm font-medium">Size Guide</button>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 h-10 rounded-lg border border-primary bg-primary/10 text-primary-dark dark:text-primary font-bold text-sm flex items-center justify-center transition-all">40L</button>
+<button class="flex-1 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark text-[#0d1b0f] dark:text-gray-300 font-medium text-sm flex items-center justify-center hover:border-gray-300 transition-all">50L</button>
+<button class="flex-1 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark text-[#0d1b0f] dark:text-gray-300 font-medium text-sm flex items-center justify-center hover:border-gray-300 transition-all">60L</button>
+</div>
+</div>
+</div>
+<!-- Specs Grid -->
+<div class="grid grid-cols-3 gap-3 mb-8">
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="mb-1 p-2 rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">weight</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Weight</p>
+<p class="text-sm font-bold text-[#0d1b0f] dark:text-white">1.2 kg</p>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="mb-1 p-2 rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">water_drop</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Waterproof</p>
+<p class="text-sm font-bold text-[#0d1b0f] dark:text-white">IPX5</p>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="mb-1 p-2 rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">texture</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Material</p>
+<p class="text-sm font-bold text-[#0d1b0f] dark:text-white">Nylon</p>
+</div>
+</div>
+<!-- Description -->
+<div class="mb-8">
+<h3 class="text-[#0d1b0f] dark:text-white font-bold text-lg mb-2">Description</h3>
+<p class="text-gray-600 dark:text-gray-300 text-base leading-relaxed">
+                        Designed for the toughest trails, the Summit Seeker 40L features a specialized suspension system that distributes load evenly for all-day comfort. The ripstop nylon ensures durability against rocks and branches, while the... 
+                        <span class="text-primary font-bold cursor-pointer">Read More</span>
+</p>
+</div>
+<!-- Reviews Snapshot -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-[#0d1b0f] dark:text-white font-bold text-lg">Reviews (120)</h3>
+<button class="text-primary text-sm font-medium flex items-center">
+                            See All <span class="material-symbols-outlined text-sm ml-1">chevron_right</span>
+</button>
+</div>
+<!-- Single Review Card -->
+<div class="p-4 rounded-xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-gray-800 shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-gray-200 overflow-hidden" data-alt="Profile picture of reviewer Jane Doe" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBQcVl_TuqVjPzUGDmj6t3ghTMBwoVhflMI_SfhbdYH1ZbM-HsO7wAHzpj98dMdr-jkoBqPddZNftRprSbM75cZt02XZTWY8G1W0Zm92FfRwwLiEPCpRvUX0dvRwe6ZweeVZVRpfR_YKck-lyQe5gnEmWpbFqU3EdOHHckyIPrW1e9aXdYHYdzN8zIgaYa7YJtkr-o5uFu5-EvapONdLAoNbwHK1b7p9PB1yNMwj9YY4UreFXnZRZZYA2BHXzLap1KioeRkX7to0nM'); background-size: cover;"></div>
+<div>
+<p class="text-sm font-bold text-[#0d1b0f] dark:text-white">Jane D.</p>
+<div class="flex text-amber-400">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<span class="text-xs text-gray-400">2 days ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-300 text-sm mt-2">
+                            Absolutely love this backpack! Used it for a 3-day hike in the Rockies and it held up perfectly. The waterproofing is legit.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-white dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 z-10 mx-auto max-w-md">
+<div class="flex gap-4 items-center">
+<div class="flex flex-col">
+<span class="text-xs text-gray-500 dark:text-gray-400">Total Price</span>
+<span class="text-xl font-bold text-[#0d1b0f] dark:text-white">$129.99</span>
+</div>
+<button class="flex-1 h-12 bg-primary hover:bg-green-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-200 dark:shadow-none">
+<span class="material-symbols-outlined">shopping_bag</span>
+                    Add to Cart
+                </button>
+</div>
+</div>
+</div>
+</body></html>

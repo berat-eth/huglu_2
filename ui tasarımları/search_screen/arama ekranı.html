@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Search Screen - Outdoor Shop</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102212",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#0d1b0f] dark:text-[#e7f3e8] font-display min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
+<!-- Header with Search -->
+<div class="sticky top-0 z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10">
+<div class="flex items-center p-4 gap-3">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[#0d1b0f] dark:text-white">arrow_back</span>
+</button>
+<label class="flex flex-col flex-1 h-12">
+<div class="flex w-full flex-1 items-center rounded-xl bg-white dark:bg-[#1a2e1d] shadow-sm border border-gray-100 dark:border-white/5 transition-colors">
+<div class="flex items-center justify-center pl-4 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="flex w-full min-w-0 flex-1 bg-transparent border-none text-base text-[#0d1b0f] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-0 focus:outline-none h-full px-3 font-medium" placeholder="Search products..." value="" autofocus/>
+<button class="pr-4 text-gray-400 hover:text-primary">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+</label>
+</div>
+</div>
+
+<!-- Recent Searches -->
+<div class="flex flex-col px-4 pt-4 pb-2">
+<div class="flex justify-between items-center mb-3">
+<h2 class="text-[#0d1b0f] dark:text-white text-base font-bold">Recent Searches</h2>
+<button class="text-primary text-sm font-medium">Clear All</button>
+</div>
+<div class="flex flex-col gap-2">
+<button class="flex items-center gap-3 p-3 rounded-lg hover:bg-white dark:hover:bg-[#1a2e1d] transition-colors group">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary">history</span>
+<span class="flex-1 text-left text-[#0d1b0f] dark:text-white font-medium">Camping tent</span>
+<span class="material-symbols-outlined text-gray-300 text-[18px]">north_west</span>
+</button>
+<button class="flex items-center gap-3 p-3 rounded-lg hover:bg-white dark:hover:bg-[#1a2e1d] transition-colors group">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary">history</span>
+<span class="flex-1 text-left text-[#0d1b0f] dark:text-white font-medium">Hiking boots</span>
+<span class="material-symbols-outlined text-gray-300 text-[18px]">north_west</span>
+</button>
+<button class="flex items-center gap-3 p-3 rounded-lg hover:bg-white dark:hover:bg-[#1a2e1d] transition-colors group">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary">history</span>
+<span class="flex-1 text-left text-[#0d1b0f] dark:text-white font-medium">Backpack 40L</span>
+<span class="material-symbols-outlined text-gray-300 text-[18px]">north_west</span>
+</button>
+</div>
+</div>
+
+<!-- Popular Categories -->
+<div class="flex flex-col px-4 pt-6 pb-4">
+<h2 class="text-[#0d1b0f] dark:text-white text-base font-bold mb-3">Popular Categories</h2>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 hover:border-primary dark:hover:border-primary transition-all group">
+<div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">camping</span>
+</div>
+<span class="text-[#0d1b0f] dark:text-white font-semibold text-sm">Camping</span>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 hover:border-primary dark:hover:border-primary transition-all group">
+<div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">hiking</span>
+</div>
+<span class="text-[#0d1b0f] dark:text-white font-semibold text-sm">Hiking</span>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 hover:border-primary dark:hover:border-primary transition-all group">
+<div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">landscape</span>
+</div>
+<span class="text-[#0d1b0f] dark:text-white font-semibold text-sm">Climbing</span>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 hover:border-primary dark:hover:border-primary transition-all group">
+<div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">checkroom</span>
+</div>
+<span class="text-[#0d1b0f] dark:text-white font-semibold text-sm">Apparel</span>
+</button>
+</div>
+</div>
+
+<!-- Trending Searches -->
+<div class="flex flex-col px-4 pt-4 pb-24">
+<h2 class="text-[#0d1b0f] dark:text-white text-base font-bold mb-3">Trending Now</h2>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 text-[#0d1b0f] dark:text-white text-sm font-medium hover:border-primary hover:text-primary transition-all">
+🔥 Waterproof jackets
+</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 text-[#0d1b0f] dark:text-white text-sm font-medium hover:border-primary hover:text-primary transition-all">
+⛺ 4-season tents
+</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 text-[#0d1b0f] dark:text-white text-sm font-medium hover:border-primary hover:text-primary transition-all">
+🎒 Ultralight gear
+</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 text-[#0d1b0f] dark:text-white text-sm font-medium hover:border-primary hover:text-primary transition-all">
+🥾 Trail runners
+</button>
+<button class="px-4 py-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 text-[#0d1b0f] dark:text-white text-sm font-medium hover:border-primary hover:text-primary transition-all">
+🧗 Climbing ropes
+</button>
+</div>
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-[#102212]/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-50 pb-safe">
+<div class="flex justify-around items-center h-16 max-w-md mx-auto">
+<a class="flex flex-col items-center justify-center gap-1 w-16 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-size: 24px;">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 w-16 text-primary" href="#">
+<span class="material-symbols-outlined filled" style="font-size: 24px; font-variation-settings: 'FILL' 1;">search</span>
+<span class="text-[10px] font-bold">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 w-16 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-size: 24px;">favorite</span>
+<span class="text-[10px] font-medium">Wishlist</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 w-16 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-size: 24px;">person</span>
+<span class="text-[10px] font-medium">Account</span>
+</a>
+</div>
+</div>
+</body></html>

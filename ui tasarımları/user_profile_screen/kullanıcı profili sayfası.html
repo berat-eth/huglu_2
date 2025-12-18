@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>User Profile - Outdoor Shop</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102212",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a2e1d",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+        /* Custom scrollbar hiding for cleaner mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-50 antialiased selection:bg-primary selection:text-white pb-24">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center px-4 py-3 justify-between max-w-md mx-auto">
+<button class="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<!-- Just a back placeholder if needed, purely visual here -->
+<span class="material-symbols-outlined text-slate-800 dark:text-white">arrow_back</span>
+</button>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-8">My Profile</h2>
+</div>
+</header>
+<main class="max-w-md mx-auto w-full flex flex-col gap-6">
+<!-- Profile Header -->
+<section class="relative overflow-hidden pt-6 pb-2 px-4">
+<!-- Decorative background pattern (abstract topo map feel) -->
+<div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-10"></div>
+<div class="flex flex-col items-center gap-4">
+<div class="relative group cursor-pointer">
+<div class="h-28 w-28 rounded-full border-4 border-white dark:border-surface-dark shadow-lg overflow-hidden relative bg-slate-200">
+<img alt="Portrait of a smiling man with a beard outdoors" class="w-full h-full object-cover" data-alt="Portrait of a smiling man with a beard outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXxRsR6o0NrretAfPu1K-csk5UFZrZBKqeg1C_0dg_okLypEvaRNcXxhsuPW2Q_vuPjiSrfcajbeqSoS3xEXPIbfZZeYirFY4Yb7qKBTYktVJ-G__HmDEtr3_H8yXYaAwxVoo63UMhRlD4eLOgMyqW0Nt1N18gwdI9JFM4rWsZ__l1BIixovOyx6WsxUD4vylGR5br_Gt2_xOlSCXVHf2J4xnTxZTmaDi4qiIs09nyaOwAjQNOGDO_kZnC0uy2kADVc1voINPUNN0"/>
+</div>
+<div class="absolute bottom-1 right-1 bg-primary text-white rounded-full p-1.5 border-2 border-white dark:border-background-dark shadow-sm">
+<span class="material-symbols-outlined text-[16px] leading-none block">edit</span>
+</div>
+</div>
+<div class="flex flex-col items-center text-center">
+<h1 class="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">Alex Climber</h1>
+<div class="flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+<p class="text-primary font-semibold text-sm">Summit Club: 450 pts</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Member since 2021</p>
+</div>
+<button class="mt-2 flex items-center justify-center gap-2 w-full max-w-[200px] h-10 px-6 rounded-full bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95">
+<span class="material-symbols-outlined text-[18px]">settings_account_box</span>
+<span>Edit Profile</span>
+</button>
+</div>
+</section>
+<!-- Dashboard Grid (TextGrid) -->
+<section class="px-4">
+<div class="grid grid-cols-2 gap-3">
+<!-- Orders -->
+<button class="flex flex-col items-start gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm active:bg-slate-50 dark:active:bg-slate-800 transition-colors relative overflow-hidden group">
+<div class="bg-primary/10 dark:bg-primary/20 p-2.5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+<span class="material-symbols-outlined">package_2</span>
+</div>
+<div class="text-left">
+<h2 class="text-slate-900 dark:text-white text-sm font-bold leading-tight">My Orders</h2>
+<span class="text-xs text-slate-500 dark:text-slate-400">2 Active</span>
+</div>
+</button>
+<!-- Wishlist -->
+<button class="flex flex-col items-start gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm active:bg-slate-50 dark:active:bg-slate-800 transition-colors group">
+<div class="bg-primary/10 dark:bg-primary/20 p-2.5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+<span class="material-symbols-outlined">favorite</span>
+</div>
+<div class="text-left">
+<h2 class="text-slate-900 dark:text-white text-sm font-bold leading-tight">Wishlist</h2>
+<span class="text-xs text-slate-500 dark:text-slate-400">12 Items</span>
+</div>
+</button>
+<!-- Coupons -->
+<button class="flex flex-col items-start gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm active:bg-slate-50 dark:active:bg-slate-800 transition-colors group">
+<div class="bg-primary/10 dark:bg-primary/20 p-2.5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+<span class="material-symbols-outlined">local_activity</span>
+</div>
+<div class="text-left">
+<h2 class="text-slate-900 dark:text-white text-sm font-bold leading-tight">Coupons</h2>
+<span class="text-xs text-slate-500 dark:text-slate-400">3 Available</span>
+</div>
+</button>
+<!-- Support -->
+<button class="flex flex-col items-start gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm active:bg-slate-50 dark:active:bg-slate-800 transition-colors group">
+<div class="bg-primary/10 dark:bg-primary/20 p-2.5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+<span class="material-symbols-outlined">support_agent</span>
+</div>
+<div class="text-left">
+<h2 class="text-slate-900 dark:text-white text-sm font-bold leading-tight">Support</h2>
+<span class="text-xs text-slate-500 dark:text-slate-400">24/7 Help</span>
+</div>
+</button>
+</div>
+</section>
+<!-- Account Settings List Group -->
+<section class="flex flex-col px-4">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight mb-3">Account Settings</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+<!-- Personal Info -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">person</span>
+</div>
+<p class="text-slate-900 dark:text-white text-base font-medium flex-1 truncate">Personal Information</p>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[20px]">chevron_right</span>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-slate-100 dark:bg-slate-800 ml-16"></div>
+<!-- Addresses -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">location_on</span>
+</div>
+<p class="text-slate-900 dark:text-white text-base font-medium flex-1 truncate">Shipping Addresses</p>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[20px]">chevron_right</span>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-slate-100 dark:bg-slate-800 ml-16"></div>
+<!-- Payment -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">credit_card</span>
+</div>
+<p class="text-slate-900 dark:text-white text-base font-medium flex-1 truncate">Payment Methods</p>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- App Settings List Group -->
+<section class="flex flex-col px-4 pb-4">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight mb-3">App Settings</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+<!-- Notifications -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+</div>
+<div class="flex-1">
+<p class="text-slate-900 dark:text-white text-base font-medium truncate">Notifications</p>
+</div>
+<!-- iOS style toggle switch visual (non-functional) -->
+<div class="w-11 h-7 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-5 h-5 bg-white rounded-full shadow-sm"></div>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-slate-100 dark:bg-slate-800 ml-16"></div>
+<!-- Language -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">language</span>
+</div>
+<p class="text-slate-900 dark:text-white text-base font-medium flex-1 truncate">Language</p>
+<div class="flex items-center gap-2">
+<span class="text-sm text-slate-500 dark:text-slate-400">English (US)</span>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-slate-100 dark:bg-slate-800 ml-16"></div>
+<!-- About -->
+<div class="group flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800">
+<div class="flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 h-10 w-10">
+<span class="material-symbols-outlined text-[22px]">info</span>
+</div>
+<p class="text-slate-900 dark:text-white text-base font-medium flex-1 truncate">About Us &amp; Terms</p>
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<section class="px-4 pb-8 flex flex-col items-center gap-4">
+<button class="w-full py-3 rounded-xl border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/10 active:scale-[0.98] transition-transform">
+                Log Out
+             </button>
+<p class="text-xs text-slate-400 dark:text-slate-600 font-medium">Outdoor Shop App v4.2.0</p>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface-light dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 pb-safe z-40">
+<div class="flex justify-around items-center h-16 max-w-md mx-auto px-2">
+<!-- Home -->
+<button class="flex flex-col items-center justify-center w-full h-full text-slate-400 dark:text-slate-500 hover:text-primary transition-colors gap-1">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<!-- Shop -->
+<button class="flex flex-col items-center justify-center w-full h-full text-slate-400 dark:text-slate-500 hover:text-primary transition-colors gap-1">
+<span class="material-symbols-outlined">hiking</span>
+<span class="text-[10px] font-medium">Shop</span>
+</button>
+<!-- Cart (Center) -->
+<div class="relative -top-5">
+<button class="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[28px]">shopping_cart</span>
+</button>
+</div>
+<!-- Messages -->
+<button class="flex flex-col items-center justify-center w-full h-full text-slate-400 dark:text-slate-500 hover:text-primary transition-colors gap-1">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="text-[10px] font-medium">Inbox</span>
+</button>
+<!-- Profile (Active) -->
+<button class="flex flex-col items-center justify-center w-full h-full text-primary transition-colors gap-1">
+<span class="material-symbols-outlined fill-current">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</div>
+</nav>
+</body></html>

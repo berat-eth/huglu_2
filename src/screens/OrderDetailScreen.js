@@ -1,0 +1,678 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Clipboard } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { COLORS } from '../constants/colors';
+import { ordersAPI } from '../services/api';
+import ErrorModal from '../components/ErrorModal';
+import SuccessModal from '../components/SuccessModal';
+
+export default function OrderDetailScreen({ navigation, route }) {
+  const { orderId } = route.params || {};
+  const [loading, setLoading] = useState(true);
+  const [order, setOrder] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorTitle, setErrorTitle] = useState('Hata');
+
+  useEffect(() => {
+    loadOrderDetail();
+  }, [orderId]);
+
+  const loadOrderDetail = async () => {
+    try {
+      setLoading(true);
+      
+      if (!orderId) {
+        setErrorTitle('Hata');
+        setErrorMessage('Sipariş bulunamadı');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+
+      const response = await ordersAPI.getById(orderId);
+      
+      if (response.data?.success) {
+        const orderData = response.data.order || response.data.data;
+        console.log('📦 Sipariş detayı yüklendi:', JSON.stringify(orderData, null, 2));
+        setOrder(orderData);
+      } else {
+        const errorMsg = response.data?.message || 'Sipariş bulunamadı';
+        console.warn('⚠️ Sipariş detayı API başarısız yanıt döndü:', {
+          status: response.status,
+          message: errorMsg,
+          orderId,
+        });
+        setErrorTitle('Sipariş Bulunamadı');
+        setErrorMessage(`Sipariş #${orderId} bulunamadı. Lütfen siparişlerim sayfasından geçerli bir sipariş seçin.`);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('❌ Sipariş detayı yükleme hatası:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        orderId,
+      });
+      
+      const errorMsg = error.response?.status === 404 
+        ? `Sipariş #${orderId} bulunamadı. Bu sipariş silinmiş veya mevcut olmayabilir.`
+        : 'Sipariş detayları yüklenirken bir hata oluştu. Lütfen tekrar deneyin.';
+      
+      setErrorTitle(error.response?.status === 404 ? 'Sipariş Bulunamadı' : 'Hata');
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyTrackingNumber = () => {
+    if (order?.trackingNumber) {
+      Clipboard.setString(order.trackingNumber);
+      setShowSuccessModal(true);
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'checkmark-circle';
+      case 'active':
+        return 'ellipse';
+      case 'pending':
+        return 'ellipse-outline';
+      default:
+        return 'ellipse-outline';
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sipariş Takibi</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!order) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sipariş Takibi</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={COLORS.gray300} />
+          <Text style={styles.emptyTitle}>Sipariş Bulunamadı</Text>
+          <TouchableOpacity style={styles.backHomeButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backHomeText}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Sipariş Takibi</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Map Placeholder */}
+        <View style={styles.mapContainer}>
+          <View style={styles.mapOverlay} />
+          <View style={styles.mapGradient} />
+        </View>
+
+        {/* Delivery Status */}
+        <View style={styles.deliveryStatusContainer}>
+          <Text style={styles.deliveryTitle}>
+            {order.deliveryStatus || order.statusText || 'Kargoda'}{'\n'}
+            <Text style={styles.deliveryTime}>
+              {order.estimatedDelivery || order.estimatedDeliveryDate || 'Tahmini teslimat hesaplanıyor'}
+            </Text>
+          </Text>
+          <Text style={styles.latestUpdate}>
+            Son Güncelleme: {order.latestUpdate || order.lastUpdate || new Date(order.updatedAt || order.createdAt).toLocaleString('tr-TR')}
+          </Text>
+        </View>
+
+        {/* Product Card */}
+        <View style={styles.productSection}>
+          {order.items?.map((item) => {
+            const itemId = item.id || item._id || item.productId;
+            const itemName = item.name || item.productName || 'Ürün';
+            const itemImage = item.image || item.productImage || item.imageUrl;
+            const itemVariant = item.variant || item.selectedVariations || item.size || item.color;
+            const itemQuantity = item.quantity || 1;
+            
+            // Varyant string'ini oluştur
+            let variantText = '';
+            if (typeof itemVariant === 'string') {
+              variantText = itemVariant;
+            } else if (typeof itemVariant === 'object' && itemVariant !== null) {
+              const parts = [];
+              if (itemVariant.size) parts.push(`Beden: ${itemVariant.size}`);
+              if (itemVariant.color) parts.push(`Renk: ${itemVariant.color}`);
+              variantText = parts.join(' • ');
+            }
+            
+            return (
+              <View key={itemId} style={styles.productCard}>
+                <View style={styles.productImageContainer}>
+                  {itemImage ? (
+                    <Image
+                      source={{ uri: itemImage }}
+                      style={styles.productImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <Ionicons name="cube-outline" size={32} color={COLORS.gray400} />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{itemName}</Text>
+                  {variantText && <Text style={styles.productVariant}>{variantText}</Text>}
+                  <Text style={styles.productQuantity}>{itemQuantity} Adet</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Timeline */}
+        {order.timeline && order.timeline.length > 0 && (
+          <View style={styles.timelineSection}>
+            <Text style={styles.timelineHeader}>ZAMAN ÇİZELGESİ</Text>
+            <View style={styles.timelineContainer}>
+              {order.timeline.map((step, index) => {
+                const stepId = step.id || step._id || index;
+                const stepTitle = step.title || step.status || step.statusText || 'Durum';
+                const stepDate = step.date || step.timestamp || step.createdAt;
+                const stepStatus = step.status || 'pending';
+                
+                return (
+                  <View key={stepId} style={styles.timelineRow}>
+                    {/* Icon Column */}
+                    <View style={styles.timelineIconColumn}>
+                      <View
+                        style={[
+                          styles.timelineIconWrapper,
+                          stepStatus === 'completed' && styles.timelineIconCompleted,
+                          stepStatus === 'active' && styles.timelineIconActive,
+                          stepStatus === 'pending' && styles.timelineIconPending,
+                        ]}
+                      >
+                        <Ionicons
+                          name={getStatusIcon(stepStatus)}
+                          size={18}
+                          color={
+                            stepStatus === 'completed' || stepStatus === 'active'
+                              ? COLORS.white
+                              : COLORS.gray400
+                          }
+                        />
+                      </View>
+                      {index < order.timeline.length - 1 && (
+                        <View
+                          style={[
+                            styles.timelineLine,
+                            stepStatus === 'completed' && styles.timelineLineCompleted,
+                          ]}
+                        />
+                      )}
+                    </View>
+
+                    {/* Content Column */}
+                    <View style={styles.timelineContent}>
+                      <Text
+                        style={[
+                          styles.timelineTitle,
+                          stepStatus === 'active' && styles.timelineTitleActive,
+                          stepStatus === 'pending' && styles.timelineTitlePending,
+                        ]}
+                      >
+                        {stepTitle}
+                      </Text>
+                      <Text style={styles.timelineDate}>
+                        {stepDate ? new Date(stepDate).toLocaleString('tr-TR') : ''}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Shipping Details */}
+        <View style={styles.shippingSection}>
+          <Text style={styles.shippingHeader}>KARGO BİLGİLERİ</Text>
+          <View style={styles.shippingCard}>
+            <View style={styles.shippingRow}>
+              <Text style={styles.shippingLabel}>Sipariş No</Text>
+              <Text style={styles.shippingValue}>
+                {order.orderNumber || order.id || order._id || 'N/A'}
+              </Text>
+            </View>
+            <View style={styles.shippingDivider} />
+            <View style={styles.shippingRow}>
+              <Text style={styles.shippingLabel}>Kargo Firması</Text>
+              <View style={styles.carrierInfo}>
+                <Ionicons name="cube-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.shippingValue}>
+                  {order.carrier || order.shippingCarrier || 'DHL E-commerce'}
+                </Text>
+              </View>
+            </View>
+            {order.trackingNumber && (
+              <>
+                <View style={styles.shippingDivider} />
+                <View style={styles.shippingRow}>
+                  <Text style={styles.shippingLabel}>Takip No</Text>
+                  <TouchableOpacity style={styles.trackingButton} onPress={copyTrackingNumber}>
+                    <Text style={styles.trackingNumber}>{order.trackingNumber}</Text>
+                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsSection}>
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Faturayı Görüntüle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Sipariş ile ilgili sorun mu var?</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        onClose={() => {
+          setShowErrorModal(false);
+          navigation.goBack();
+        }}
+        title={errorTitle}
+        message={errorMessage}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Kopyalandı"
+        message="Takip numarası panoya kopyalandı"
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundLight,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    flex: 1,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  backHomeButton: {
+    marginTop: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+  },
+  backHomeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  mapContainer: {
+    width: '100%',
+    height: 200,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+    position: 'relative',
+  },
+  mapOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  mapGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: 'transparent',
+  },
+  deliveryStatusContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  deliveryTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    lineHeight: 36,
+  },
+  deliveryTime: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  latestUpdate: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.gray500,
+  },
+  productSection: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  productCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  productImageContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    marginBottom: 4,
+  },
+  productVariant: {
+    fontSize: 12,
+    color: COLORS.gray500,
+    marginBottom: 4,
+  },
+  productQuantity: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+  },
+  timelineSection: {
+    marginTop: 32,
+    paddingHorizontal: 20,
+  },
+  timelineHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(17, 212, 33, 0.6)',
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  timelineContainer: {
+    position: 'relative',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  timelineIconColumn: {
+    alignItems: 'center',
+    marginRight: 16,
+    position: 'relative',
+  },
+  timelineIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    zIndex: 10,
+  },
+  timelineIconCompleted: {
+    backgroundColor: COLORS.primary,
+  },
+  timelineIconActive: {
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  timelineIconPending: {
+    backgroundColor: COLORS.gray100,
+    opacity: 0.5,
+  },
+  timelineLine: {
+    position: 'absolute',
+    top: 32,
+    width: 2,
+    height: 40,
+    backgroundColor: 'rgba(17, 212, 33, 0.2)',
+  },
+  timelineLineCompleted: {
+    backgroundColor: COLORS.primary,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: 32,
+    paddingTop: 4,
+  },
+  timelineTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 4,
+  },
+  timelineTitleActive: {
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  timelineTitlePending: {
+    fontWeight: '500',
+    color: COLORS.gray400,
+  },
+  timelineDate: {
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  shippingSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+  },
+  shippingHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(17, 212, 33, 0.6)',
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  shippingCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  shippingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  shippingDivider: {
+    height: 1,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  shippingLabel: {
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  shippingValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  carrierInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  trackingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  trackingNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    fontFamily: 'monospace',
+  },
+  actionsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  primaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  secondaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'rgba(17, 212, 33, 0.8)',
+  },
+});

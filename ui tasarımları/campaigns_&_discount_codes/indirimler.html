@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Campaigns &amp; Discount Codes</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#11d421",
+              "background-light": "#f6f8f6",
+              "background-dark": "#102212",
+              "surface-light": "#ffffff",
+              "surface-dark": "#1a351e",
+              "text-main": "#0d1b0f",
+              "text-muted": "#5a7a5f",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.375rem", "md": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Custom Ticket/Coupon jagged edge effect (optional visual flair) */
+        .ticket-edge {
+            background-image: radial-gradient(circle at 0 50%, transparent 6px, #ffffff 7px);
+            background-position: -6px 0;
+            background-size: 100% 100%;
+        }
+        .dark .ticket-edge {
+             background-image: radial-gradient(circle at 0 50%, transparent 6px, #1a351e 7px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-white transition-colors duration-200">
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-md mx-auto overflow-hidden bg-background-light dark:bg-background-dark shadow-xl">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 flex items-center justify-between bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3 border-b border-gray-100 dark:border-white/5">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-text-main dark:text-white transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h2 class="text-lg font-bold leading-tight tracking-tight text-center flex-1">Rewards</h2>
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-text-main dark:text-white transition-colors relative">
+<span class="material-symbols-outlined text-[24px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background-light dark:ring-background-dark"></span>
+</button>
+</header>
+<!-- Main Content Scroll Area -->
+<main class="flex-1 overflow-y-auto no-scrollbar pb-24">
+<!-- Hero Carousel -->
+<section class="mt-4 px-4">
+<h3 class="sr-only">Featured Campaigns</h3>
+<div class="flex w-full overflow-x-auto no-scrollbar gap-4 pb-2 snap-x snap-mandatory">
+<!-- Card 1 -->
+<div class="relative min-w-[280px] w-[85%] h-48 rounded-2xl overflow-hidden snap-center group shadow-lg">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="People hiking in mountains during summer sunset" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAMU5cUK1O3ofbTvui5KWGktYdQhUm5iSiGH9A3szAekxllSi6fhZwb8nbwED2rBlIFsOA7vEmTWzTRCChyhqaTTcmlxygq-F7gdAFEoE1Y5yZHPwqAcFJuI-pNFoKLtFazrxOOTFvYN8JmWmzF5ipX9olg3-OpBMjuduXaEWb1kMs9n9Kco8AjMCQ0b6XuTDiCUJD6X7zn8uIYl2iDvaqTMf65SEXSulG5hGJwRbaMqiBbCC53JHTl2kGmLqXgMdhyaWLwwggDMbc");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-5 w-full">
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary text-white mb-2">Featured</span>
+<h4 class="text-white text-xl font-bold leading-tight mb-1">Summer Peak Sale</h4>
+<p class="text-gray-200 text-sm font-medium">Up to 50% off on all climbing gear</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="relative min-w-[280px] w-[85%] h-48 rounded-2xl overflow-hidden snap-center group shadow-lg">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Close up of waterproof hiking boots in rain" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD53yQJCSKIk2heiUpCVbL0vpoRPzfe9fgACBF4WVsNSR5AwTqk_zoccczO2WKLlrYFVf8YXnQIofgvz355DYFodaRGDWKCDZ6QmJrVqN8SBI0Dh_ksJq9j0h6MsL-rnA3qGHgS7ge4am6PHYjLHoiNLM1vsmKlTn2pqXuHmcrHExYP-AvO29z6N5BiYeaBAZSkrzRWE4HHwedfbEUskHRd86vbmZXP4H8vy5hsLzkVB9RgqS3Q19O8tlSdpUpQDpDHmMdxxdi6hBw");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-5 w-full">
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white text-black mb-2">New Season</span>
+<h4 class="text-white text-xl font-bold leading-tight mb-1">Waterproof Essentials</h4>
+<p class="text-gray-200 text-sm font-medium">Stay dry with our new GORE-TEX line</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Tabs / Segmented Control -->
+<section class="sticky top-0 z-40 bg-background-light dark:bg-background-dark pt-4 pb-2 px-4">
+<div class="flex p-1 bg-gray-200 dark:bg-white/10 rounded-lg">
+<button class="flex-1 py-2 rounded-md bg-white dark:bg-surface-dark shadow-sm text-sm font-bold text-text-main dark:text-white transition-all">
+                        All Offers
+                    </button>
+<button class="flex-1 py-2 rounded-md bg-transparent text-sm font-medium text-text-muted dark:text-gray-400 hover:text-text-main dark:hover:text-white transition-all">
+                        My Wallet
+                    </button>
+</div>
+</section>
+<!-- Active Promotions Headline -->
+<div class="px-4 py-3 flex items-center justify-between">
+<h3 class="text-lg font-bold text-text-main dark:text-white">Active Promotions</h3>
+<span class="text-xs font-semibold text-primary cursor-pointer">Filter</span>
+</div>
+<!-- Coupon Cards List -->
+<div class="flex flex-col gap-4 px-4">
+<!-- Card 1: Standard Discount -->
+<div class="relative flex flex-col sm:flex-row bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden">
+<!-- Left Color Bar -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+<div class="flex flex-1 p-4 gap-4">
+<div class="flex-1 flex flex-col justify-between gap-3">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] font-bold uppercase tracking-wide">Expiring Soon</span>
+</div>
+<h4 class="text-2xl font-extrabold text-text-main dark:text-white tracking-tight">20% OFF</h4>
+<p class="text-sm font-medium text-text-main dark:text-white mt-1">Hiking &amp; Trekking Gear</p>
+<p class="text-xs text-text-muted mt-1">Min. spend $50. Valid on full-price items.</p>
+</div>
+<div class="flex items-center gap-3 mt-1">
+<div class="relative flex-1 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-white/10 border-dashed rounded px-3 py-2 flex items-center justify-between">
+<span class="font-mono text-sm font-bold tracking-widest text-text-main dark:text-gray-200">HIKE20</span>
+</div>
+<button class="h-10 px-4 bg-primary hover:bg-green-600 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-1 active:scale-95 transform">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+<span>Copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2: Free Shipping -->
+<div class="relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500"></div>
+<div class="flex p-4 gap-4 items-center">
+<div class="size-16 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0 text-blue-500">
+<span class="material-symbols-outlined text-[32px]">local_shipping</span>
+</div>
+<div class="flex-1">
+<h4 class="text-lg font-bold text-text-main dark:text-white">Free Shipping</h4>
+<p class="text-sm text-text-muted">On all orders over $100</p>
+</div>
+<button class="h-9 px-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-lg transition-colors flex items-center gap-1">
+                            Apply
+                        </button>
+</div>
+</div>
+<!-- Card 3: Specific Product Image Card -->
+<div class="group relative flex overflow-hidden rounded-xl bg-surface-light dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-white/5">
+<div class="w-32 bg-gray-200 relative">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Merino wool socks on feet near campfire" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAbwy2iEToHJa6Aa4EJDPBTpaClNncac_lvi_Cu7beFoNd3MIeYC6rTIWCxHCLFpLmVl4SsNuCz4S-EirxpnbgVgLHBnsIwhLiCYkSILp9C2bZwVqL4PhjxlCe0vj5rqIWiEdds044EvQNpzAek58VrZ4bkYmXPTCqa0OWjFRMzVKc1sWZPk2_S64XPTHuuAX2xH81R6XcA4iWtR0foXTOfX5-gz1Ewfr2rox2dlswsR4OI_dTCcVhcH4dmDnQlGaNWGDC091y3vBg");'>
+</div>
+</div>
+<div class="flex flex-1 flex-col justify-between p-4">
+<div>
+<span class="text-xs font-bold text-primary mb-1 block">Member Exclusive</span>
+<h4 class="text-lg font-bold text-text-main dark:text-white leading-tight">Buy 1 Get 1 Free</h4>
+<p class="text-sm text-text-muted mt-1">Premium Merino Socks</p>
+</div>
+<div class="mt-4 flex justify-between items-end">
+<div class="text-xs text-text-muted">Expires in 12 days</div>
+<button class="text-sm font-bold text-primary hover:text-green-600 flex items-center gap-0.5">
+                                View Details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4: Welcome Bonus -->
+<div class="relative flex flex-col sm:flex-row bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden opacity-60">
+<!-- Left Color Bar -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gray-400"></div>
+<div class="flex flex-1 p-4 gap-4 items-center">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wide">Redeemed</span>
+</div>
+<h4 class="text-xl font-bold text-text-main dark:text-white line-through decoration-2 decoration-gray-400">10% Welcome Bonus</h4>
+<p class="text-xs text-text-muted mt-1">Already applied on last purchase.</p>
+</div>
+<div class="size-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-gray-400">check</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Spacer -->
+<div class="h-6"></div>
+</main>
+<!-- Floating Action Button / Bottom Bar Summary -->
+<div class="absolute bottom-6 left-4 right-4 z-50">
+<!-- Only visible if items in cart, purely illustrative here -->
+<div class="flex items-center justify-between bg-text-main dark:bg-white text-white dark:text-text-main p-4 rounded-xl shadow-2xl cursor-pointer hover:scale-[1.01] transition-transform">
+<div class="flex flex-col">
+<span class="text-xs font-medium opacity-80">Total Savings</span>
+<span class="text-lg font-bold">$0.00</span>
+</div>
+<div class="flex items-center gap-2 font-bold text-sm">
+                    Go to Checkout
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</div>
+</div>
+</div>
+</div>
+</body></html>

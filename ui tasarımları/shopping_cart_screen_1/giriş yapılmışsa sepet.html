@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Shopping Cart - Outdoor Shop</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102212",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1c3020",
+                        "text-main": "#0d1b0f",
+                        "text-secondary": "#4c9a52",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.375rem", "md": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="relative flex min-h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 overflow-x-hidden pb-32">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-20 flex items-center justify-between bg-background-light/90 dark:bg-background-dark/90 px-4 py-3 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-2xl text-text-main dark:text-white">arrow_back</span>
+</button>
+<h2 class="flex-1 text-center text-lg font-bold leading-tight tracking-[-0.015em] text-text-main dark:text-white">My Cart</h2>
+<button class="flex h-10 items-center justify-end px-2">
+<p class="text-primary text-base font-bold leading-normal tracking-[0.015em]">Edit</p>
+</button>
+</header>
+<!-- Progress Bar Section -->
+<div class="flex flex-col gap-3 px-4 py-6">
+<div class="flex gap-6 justify-between items-center">
+<p class="text-text-main dark:text-gray-200 text-base font-semibold leading-normal">$15 away from Free Shipping</p>
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+</div>
+<div class="h-2 w-full rounded-full bg-primary/20">
+<div class="h-2 rounded-full bg-primary transition-all duration-500" style="width: 85%;"></div>
+</div>
+<p class="text-text-secondary dark:text-primary/80 text-sm font-medium leading-normal">Add more items to save on delivery fees.</p>
+</div>
+<!-- Cart Items List -->
+<div class="flex flex-col gap-4 px-4">
+<!-- Item 1 -->
+<div class="group relative flex gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-3 shadow-sm border border-transparent dark:border-white/5 transition-all">
+<div class="relative shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+<div class="h-24 w-24 bg-center bg-no-repeat bg-cover" data-alt="Trekking poles on a rocky trail" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDOT7jfKC7uMixDFxYfANVCpaEzPBz3oQQhBRRERVO3LMGqIsaONpeiOMUQTyfplZk0iQZa0jF50LCIMKm4TkgQOq9wJJHog92g4eosfbb6NSacqmd3xZZmBKVpKBIapm9_Q5GvG5blK0VExWJ9EO9UukkII3GTu9mFAkZNCxOMkvqog7EQg3Jnp-ei5svuf3IBpxMyBnTrLljsVItF8sO-q9VhV2vRhpPiAu-gLrIubTeGhZ4ocEdKLx4YklylGuaguFSWEVUGDiM");'></div>
+</div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div>
+<div class="flex justify-between items-start">
+<p class="text-text-main dark:text-white text-base font-bold leading-tight line-clamp-2">Summit Trekking Pole</p>
+<button class="text-gray-400 hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<p class="text-text-secondary dark:text-gray-400 text-xs font-medium mt-1">Size: M • Color: Forest</p>
+</div>
+<div class="flex items-end justify-between mt-2">
+<p class="text-primary text-lg font-bold leading-normal">$45.00</p>
+<!-- Stepper -->
+<div class="flex items-center gap-3 bg-gray-50 dark:bg-black/20 rounded-lg p-1">
+<button class="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-white/10 text-text-main dark:text-white shadow-sm hover:bg-gray-100 dark:hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<span class="w-4 text-center text-sm font-bold text-text-main dark:text-white">1</span>
+<button class="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-white shadow-sm hover:bg-green-500 transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="group relative flex gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-3 shadow-sm border border-transparent dark:border-white/5 transition-all">
+<div class="relative shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+<div class="h-24 w-24 bg-center bg-no-repeat bg-cover" data-alt="Orange camping tent in a forest" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBSgI7X3vn96e8jqZrFwp-UpfaGs1iv9IZTMIRmbZPohtcqa7AoWVBEbP5t4mpKF7TaUDSWzIMoeXCzlzCytUFk1-pUc9rnz7h2FbaBjhJDZS_A4nLE5qfVMNMiP9-XriGKcwlHI1mxNi4c0Xm0N390R9bS8WxIrz28fhS1vio7DT9X-EwqY182HQKpzcije1e6rx808uJM0FltIfbvl67peagEXqgk-7sknHc7WhSlwlphoCfBp2EhF14tLqfem8Lbw76XaTIvMi8");'></div>
+</div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div>
+<div class="flex justify-between items-start">
+<p class="text-text-main dark:text-white text-base font-bold leading-tight line-clamp-2">Basecamp Dome Tent</p>
+<button class="text-gray-400 hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<p class="text-text-secondary dark:text-gray-400 text-xs font-medium mt-1">Size: 4-Person • Color: Orange</p>
+</div>
+<div class="flex items-end justify-between mt-2">
+<div class="flex flex-col">
+<p class="text-primary text-lg font-bold leading-normal">$210.00</p>
+<p class="text-xs text-gray-400 line-through decoration-gray-400">$240.00</p>
+</div>
+<!-- Stepper -->
+<div class="flex items-center gap-3 bg-gray-50 dark:bg-black/20 rounded-lg p-1">
+<button class="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-white/10 text-text-main dark:text-white shadow-sm hover:bg-gray-100 dark:hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<span class="w-4 text-center text-sm font-bold text-text-main dark:text-white">1</span>
+<button class="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-white shadow-sm hover:bg-green-500 transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Promo Code Section -->
+<div class="px-4 py-6">
+<label class="flex w-full flex-col gap-2">
+<span class="text-sm font-medium text-text-main dark:text-gray-300 ml-1">Promo Code</span>
+<div class="relative flex w-full items-center rounded-xl bg-surface-light dark:bg-surface-dark shadow-sm border border-gray-200 dark:border-white/10 focus-within:border-primary transition-colors">
+<div class="flex h-12 w-12 items-center justify-center text-text-secondary dark:text-gray-400">
+<span class="material-symbols-outlined">sell</span>
+</div>
+<input class="h-12 w-full flex-1 bg-transparent px-0 text-base font-medium text-text-main dark:text-white placeholder:text-gray-400 focus:outline-0 focus:ring-0 border-none" placeholder="Enter code" value=""/>
+<button class="mr-2 rounded-lg bg-gray-100 dark:bg-white/10 px-4 py-1.5 text-sm font-bold text-text-main dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                    Apply
+                </button>
+</div>
+</label>
+</div>
+<!-- Order Summary -->
+<div class="mx-4 mb-6 rounded-xl bg-surface-light dark:bg-surface-dark p-5 shadow-sm border border-transparent dark:border-white/5">
+<h3 class="mb-4 text-lg font-bold text-text-main dark:text-white">Order Info</h3>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+<span class="font-semibold text-text-main dark:text-gray-200">$255.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Shipping Cost</span>
+<span class="font-semibold text-primary">Free</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-600 dark:text-gray-400">Tax</span>
+<span class="font-semibold text-text-main dark:text-gray-200">$0.00</span>
+</div>
+<div class="my-2 h-px w-full bg-gray-200 dark:bg-gray-700"></div>
+<div class="flex justify-between items-center">
+<span class="text-base font-bold text-text-main dark:text-white">Total</span>
+<span class="text-xl font-bold text-text-main dark:text-white">$255.00</span>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-30 flex flex-col gap-3 border-t border-gray-200 dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 px-4 pt-4 pb-8 backdrop-blur-xl">
+<button class="group flex w-full items-center justify-between rounded-xl bg-primary px-4 py-4 transition-all hover:bg-green-500 active:scale-[0.99]">
+<span class="text-lg font-bold text-white">Checkout</span>
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold text-white">$255.00</span>
+<div class="flex size-6 items-center justify-center rounded-full bg-white/20">
+<span class="material-symbols-outlined text-white text-sm font-bold">arrow_forward</span>
+</div>
+</div>
+</button>
+<!-- Home Indicator spacing usually handled by safe area padding, but pb-8 adds visual buffer -->
+</div>
+</body></html>

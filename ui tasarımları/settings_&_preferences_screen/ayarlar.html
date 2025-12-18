@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings &amp; Preferences</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e66b",
+                        "primary-dark": "#0ea34e",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#112117",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a2c22",
+                        "text-main": "#0e1b13",
+                        "text-muted": "#6b877a",
+                        "border-light": "#e5e9e7",
+                        "border-dark": "#2a3d31",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Toggle Switch Style */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #19e66b;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #19e66b;
+        }
+        .toggle-checkbox:checked + .toggle-label:before {
+            transform: translateX(100%);
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased transition-colors duration-200">
+<!-- Main Container -->
+<div class="relative flex h-full w-full max-w-md mx-auto flex-col overflow-x-hidden min-h-screen pb-6">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark">
+<div class="flex items-center p-4 justify-between h-14">
+<button class="text-text-main dark:text-white flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span>
+</button>
+<h2 class="text-text-main dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Settings</h2>
+<div class="size-10"></div> <!-- Spacer for visual balance -->
+</div>
+</header>
+<!-- Content -->
+<main class="flex-1 flex flex-col gap-6 p-4">
+<!-- Profile Section -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-border-light dark:border-border-dark flex items-center gap-4">
+<div class="relative shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-full h-16 w-16 shadow-inner" data-alt="Profile picture of a smiling user in outdoor gear" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC86X05KdwVWFJ5So53K0hAy_9CofKAc91qN0COHqxIlLxeICP4Na3lgOqoHSbsKoLxvU__Vh2kAvx82_5gSvRWUAMc8tcPBkSYINwrq8GhQ_1cAk1e3a7M8C6x32VLs7aunpnYdKdBlyxiJGtQGnmOfVmqwBonSCL2It9ATfhHcc4MW21KR_WLYMTnStkbeSvQozt_1rE2srZIxawVFDohnBBuhRImFr6uWNzMTTJcHwpk9AvFZtc0z8tGfGWUuWNaJN9tBBPssbE");'>
+</div>
+<div class="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-surface-light dark:border-surface-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-white font-bold">edit</span>
+</div>
+</div>
+<div class="flex flex-col flex-1">
+<h3 class="text-text-main dark:text-white text-lg font-bold">Alex Climber</h3>
+<p class="text-text-muted dark:text-gray-400 text-sm">alex.climber@example.com</p>
+</div>
+<button class="text-primary-dark dark:text-primary font-medium text-sm hover:underline">Edit</button>
+</section>
+<!-- Shopping Preferences Group -->
+<div class="flex flex-col gap-2">
+<h3 class="text-text-muted dark:text-gray-400 text-xs font-bold uppercase tracking-wider px-2">Shopping Preferences</h3>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark overflow-hidden">
+<!-- My Sizes -->
+<button class="w-full flex items-center gap-4 p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left group">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">straighten</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">My Sizes</p>
+<p class="text-text-muted dark:text-gray-400 text-xs">M / 10.5 US</p>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+<!-- Favorite Activities -->
+<button class="w-full flex items-center gap-4 p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left group">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">hiking</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Favorite Activities</p>
+<p class="text-text-muted dark:text-gray-400 text-xs">Hiking, Climbing</p>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- App Settings Group -->
+<div class="flex flex-col gap-2">
+<h3 class="text-text-muted dark:text-gray-400 text-xs font-bold uppercase tracking-wider px-2">App Settings</h3>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark overflow-hidden">
+<!-- Notifications -->
+<div class="flex items-center gap-4 p-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10">
+<span class="material-symbols-outlined">notifications</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Push Notifications</p>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-primary transition-all duration-300 z-10" id="toggle-notif" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300" for="toggle-notif"></label>
+</div>
+</div>
+<!-- Location Services -->
+<div class="flex items-center gap-4 p-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10">
+<span class="material-symbols-outlined">location_on</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Location Services</p>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-primary transition-all duration-300 z-10" id="toggle-loc" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300" for="toggle-loc"></label>
+</div>
+</div>
+<!-- Theme/Dark Mode -->
+<button class="w-full flex items-center gap-4 p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left group">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Appearance</p>
+<p class="text-text-muted dark:text-gray-400 text-xs">System Default</p>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Privacy & Security -->
+<div class="flex flex-col gap-2">
+<h3 class="text-text-muted dark:text-gray-400 text-xs font-bold uppercase tracking-wider px-2">Privacy &amp; Security</h3>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark overflow-hidden">
+<!-- Change Password -->
+<button class="w-full flex items-center gap-4 p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left group">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Change Password</p>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+<!-- FaceID -->
+<div class="flex items-center gap-4 p-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary-dark dark:text-primary shrink-0 size-10">
+<span class="material-symbols-outlined">face</span>
+</div>
+<div class="flex-1">
+<p class="text-text-main dark:text-white text-base font-medium">Use FaceID</p>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-primary transition-all duration-300 z-10" id="toggle-faceid" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300" for="toggle-faceid"></label>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="pt-4 flex flex-col gap-4 items-center">
+<button class="w-full py-3.5 px-4 bg-surface-light dark:bg-surface-dark border border-red-200 dark:border-red-900/50 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+                    Log Out
+                </button>
+<p class="text-xs text-text-muted dark:text-gray-500">Version 1.0.2 • Build 8432</p>
+</div>
+</main>
+<!-- Bottom Tab Bar Mockup -->
+<nav class="sticky bottom-0 bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark px-6 py-3 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-text-muted dark:text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-text-muted dark:text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+<span class="text-[10px] font-medium">Explore</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-text-muted dark:text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="text-[10px] font-medium">Cart</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary dark:text-primary hover:text-primary transition-colors">
+<span class="material-symbols-outlined fill-current">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</button>
+</nav>
+</div>
+</body></html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Summit &amp; Sage - Splash Screen</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e66b",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#112117",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased overflow-hidden select-none">
+<div class="relative flex h-screen w-full flex-col justify-between items-center bg-background-light dark:bg-background-dark overflow-hidden">
+<!-- Background Elements: Subtle Glow and Texture -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[100px] pointer-events-none"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[100px] pointer-events-none"></div>
+<!-- Optional Topographic Texture Overlay (Simulated with SVG pattern) -->
+<div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
+</div>
+<!-- Spacer for vertical centering logic -->
+<div class="flex-1"></div>
+<!-- Central Brand Content -->
+<div class="z-10 flex flex-col items-center justify-center w-full px-8 max-w-sm">
+<!-- Logo Container -->
+<div class="mb-8 flex items-center justify-center p-6 bg-white dark:bg-white/5 rounded-3xl shadow-xl shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
+<!-- Using an abstract mountain shape for the logo -->
+<div class="w-20 h-20 bg-contain bg-center bg-no-repeat" data-alt="Abstract minimalist green mountain peak logo icon" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAdvYpEkGRj6r5BaZEOTu4_TiJhtHliiumKDdZ8xl5YMhsz6jh4iWU8MDJycyIUkVKqXj6dcN9jhxrtP5o-BcRG7X5w-jXOum-egZNjCWP_mI8Nf_XC5HomXLe3hKZlBYqgsfN_x6t6NwjvAvnZJ0w0I3wjz3qp1iaK2X8z7urW31MCjafT9_z8SRlYLiiQQokd67sdyv7YmKr3LoPzeV4AnyKL_7EJvIONJu1JXawfFw5hlrdK71F7AGA7cHcfI3iyNRGS8gva5ng'); mask-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'black\'&gt;&lt;path d=\'M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.8 9 10 9 10l-6 8h22L14 6z\'/&gt;&lt;/svg&gt;'); -webkit-mask-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'black\'&gt;&lt;path d=\'M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.8 9 10 9 10l-6 8h22L14 6z\'/&gt;&lt;/svg&gt;'); mask-size: contain; -webkit-mask-size: contain; background-color: #19e66b;">
+</div>
+</div>
+<!-- Brand Typography -->
+<div class="flex flex-col items-center gap-2 mb-10">
+<h1 class="text-3xl md:text-4xl font-bold tracking-tight text-[#0e1b13] dark:text-white text-center">
+                    Summit &amp; Sage
+                </h1>
+<p class="text-base font-normal tracking-wide text-[#4e976b] text-center">
+                    Gear for the Wild
+                </p>
+</div>
+<!-- Loading Indicator -->
+<div class="w-full max-w-[160px] flex flex-col items-center gap-3">
+<div class="h-1.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+<div class="h-full rounded-full bg-primary w-[35%]"></div>
+</div>
+</div>
+</div>
+<!-- Spacer -->
+<div class="flex-1"></div>
+<!-- Footer / Meta Info -->
+<div class="z-10 pb-8 flex flex-col items-center">
+<p class="text-[#4e976b] dark:text-primary/70 text-xs font-medium tracking-widest uppercase opacity-80">v1.0.2</p>
+</div>
+</div>
+</body></html>

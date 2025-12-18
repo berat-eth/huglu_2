@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>In-App Notifications - Outdoor Shop</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e66b",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#112117",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased text-slate-900 dark:text-white overflow-hidden">
+<div class="relative h-full min-h-screen w-full flex flex-col max-w-md mx-auto shadow-2xl overflow-hidden bg-background-light dark:bg-background-dark">
+<!-- Top Bar -->
+<header class="flex-none px-5 py-4 pt-6 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm sticky top-0 z-20">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-2xl font-bold tracking-tight">Notifications</h2>
+<button class="text-sm font-bold text-primary hover:opacity-80 transition-opacity">
+                    Mark all read
+                </button>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-5 px-5">
+<button class="flex-shrink-0 px-5 py-2 rounded-full bg-primary text-black text-sm font-semibold shadow-sm shadow-primary/20">
+                    All
+                </button>
+<button class="flex-shrink-0 px-5 py-2 rounded-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-600 dark:text-slate-300 text-sm font-medium hover:border-primary/50 transition-colors">
+                    Orders
+                </button>
+<button class="flex-shrink-0 px-5 py-2 rounded-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-600 dark:text-slate-300 text-sm font-medium hover:border-primary/50 transition-colors">
+                    Offers
+                </button>
+<button class="flex-shrink-0 px-5 py-2 rounded-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-600 dark:text-slate-300 text-sm font-medium hover:border-primary/50 transition-colors">
+                    Account
+                </button>
+</div>
+</header>
+<!-- Notification List -->
+<main class="flex-1 overflow-y-auto pb-24 scroll-smooth">
+<div class="px-4 space-y-3 pt-2">
+<!-- New / Unread Section Header -->
+<div class="px-1 pt-2 pb-1">
+<p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">New</p>
+</div>
+<!-- Notification Item 1: Order Update (Unread) -->
+<div class="group relative flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a2c22] shadow-sm border border-transparent hover:border-primary/30 transition-all cursor-pointer">
+<!-- Unread Dot -->
+<div class="absolute top-4 right-4 w-2.5 h-2.5 bg-primary rounded-full ring-4 ring-white dark:ring-[#1a2c22]"></div>
+<!-- Icon -->
+<div class="flex-shrink-0 relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/10">
+<div class="absolute inset-0 bg-cover bg-center opacity-90" data-alt="Red hiking boots on a yellow background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBakGFpFbJPHP0YtS4YfNFPWRNO9udb-9PNlxEjjjzY0DYO1Z1o9f-dhjNXFvemHiKSxwAJhzrj3Zx73GRN8tLiuJCkwkYFRbFwMghH_Q-Z1AmvbNsvj52BRCRbQYrvv1gafgRjf-EHwGJU-oZfvtZQglYZLIxId8323CtRiNgRlttDlkuBZw7ytcEFaiDnceJjTw-TKrxhpp9jj2ZiC3H0Jr6XIbyN33oNo2U8b6b0qQRhrNFLEYFvJ9DzEJZkLBzdSAfFjCYx_Fw');"></div>
+<div class="absolute inset-0 bg-black/10"></div>
+<div class="absolute bottom-0 right-0 p-1 bg-primary rounded-tl-lg">
+<span class="material-symbols-outlined text-white text-[10px] leading-none block">local_shipping</span>
+</div>
+</div>
+<!-- Content -->
+<div class="flex-1 pr-4">
+<div class="flex justify-between items-start">
+<h3 class="text-[15px] font-bold text-slate-900 dark:text-white leading-tight mb-1">Your package has shipped! 📦</h3>
+</div>
+<p class="text-[13px] text-slate-500 dark:text-slate-300 leading-normal mb-2">Hiking boots order #12345 is on its way. Track your shipment now.</p>
+<p class="text-xs text-primary font-semibold">2h ago</p>
+</div>
+</div>
+<!-- Notification Item 2: Promo (Unread) -->
+<div class="group relative flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a2c22] shadow-sm border border-transparent hover:border-primary/30 transition-all cursor-pointer">
+<!-- Unread Dot -->
+<div class="absolute top-4 right-4 w-2.5 h-2.5 bg-primary rounded-full ring-4 ring-white dark:ring-[#1a2c22]"></div>
+<!-- Icon -->
+<div class="flex-shrink-0 relative w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-orange-100 dark:bg-orange-500/10 text-orange-500 dark:text-orange-400">
+<span class="material-symbols-outlined text-[28px]">bolt</span>
+</div>
+<!-- Content -->
+<div class="flex-1 pr-4">
+<h3 class="text-[15px] font-bold text-slate-900 dark:text-white leading-tight mb-1">Flash Sale Alert ⚡️</h3>
+<p class="text-[13px] text-slate-500 dark:text-slate-300 leading-normal mb-2">Get 20% off all camping gear this weekend only. Don't miss out!</p>
+<p class="text-xs text-primary font-semibold">5h ago</p>
+</div>
+</div>
+<!-- Earlier Section Header -->
+<div class="px-1 pt-4 pb-1">
+<p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Earlier</p>
+</div>
+<!-- Notification Item 3: New Arrival (Read) -->
+<div class="group relative flex gap-4 p-4 rounded-xl bg-transparent hover:bg-white dark:hover:bg-[#1a2c22] border border-transparent hover:shadow-sm transition-all cursor-pointer opacity-80 hover:opacity-100">
+<!-- Icon -->
+<div class="flex-shrink-0 relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/10">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Hiker wearing a yellow jacket standing on a snowy mountain peak" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCXyjXX8IZgepvd5RUptdlu3lL7FZKfQRuaAhONbu5GWd1Ts4oi7c9BxIDgbbGYhc4Zq3CivSZya-Lad_QCe42OZnXxzTXtjqTzk5-1QoK5lb0NhZ7GQ77tWoKILUH_Y_xtGy6nEa9o1YZQ61sB9_cC9xlPMyLhCatkX3WXBjaPvBoeyatWNJjBqkUarWy_ILC5ADMOGmrEpeQtPxke8GbEd8rbIHy_bbhekl9Eh60BmUbvPlQ17IRFqNd3n32IhANxD6uofkPuZ84');"></div>
+</div>
+<!-- Content -->
+<div class="flex-1">
+<h3 class="text-[15px] font-semibold text-slate-800 dark:text-slate-200 leading-tight mb-1">New Season, New Gear 🏔</h3>
+<p class="text-[13px] text-slate-500 dark:text-slate-400 leading-normal mb-2">Check out the latest waterproof jackets designed for extreme conditions.</p>
+<p class="text-xs text-slate-400 dark:text-slate-500">1d ago</p>
+</div>
+</div>
+<!-- Notification Item 4: Account (Read) -->
+<div class="group relative flex gap-4 p-4 rounded-xl bg-transparent hover:bg-white dark:hover:bg-[#1a2c22] border border-transparent hover:shadow-sm transition-all cursor-pointer opacity-80 hover:opacity-100">
+<!-- Icon -->
+<div class="flex-shrink-0 relative w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-blue-100 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+<!-- Content -->
+<div class="flex-1">
+<h3 class="text-[15px] font-semibold text-slate-800 dark:text-slate-200 leading-tight mb-1">Security Update</h3>
+<p class="text-[13px] text-slate-500 dark:text-slate-400 leading-normal mb-2">We've updated our privacy policy to better protect your data.</p>
+<p class="text-xs text-slate-400 dark:text-slate-500">3d ago</p>
+</div>
+</div>
+<!-- Notification Item 5: Review (Read) -->
+<div class="group relative flex gap-4 p-4 rounded-xl bg-transparent hover:bg-white dark:hover:bg-[#1a2c22] border border-transparent hover:shadow-sm transition-all cursor-pointer opacity-80 hover:opacity-100">
+<!-- Icon -->
+<div class="flex-shrink-0 relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/10">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Close up of a green camping tent in a forest" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAAjayfWL73BoWoDqLqzD9BZu6jkcT73Z1B7QjUDquxxZYl2AMP9htzCGmVV9n3r9Y9k5xmc3ySB2ehQzeYz4TDVANlfQXwNwueVu64Y5DZcmTUy4mo1tVH1dX7sWmotGYlM3Lg2NskhQTr6Tvxe-4lVxq9tQZzy0dRCa84Vc_EK_0IQxxxC4uMaErzKtJE61jnbueJJpwY5JTgp_Govb1nZWNwKXwbo-o8G4ee9Sa3zwZOa-q6EI1KI3UkTPyfre2-W5snw0sHg9U');"></div>
+<div class="absolute inset-0 flex items-center justify-center bg-black/20">
+<span class="material-symbols-outlined text-white text-[20px]">star</span>
+</div>
+</div>
+<!-- Content -->
+<div class="flex-1">
+<h3 class="text-[15px] font-semibold text-slate-800 dark:text-slate-200 leading-tight mb-1">How was your trip?</h3>
+<p class="text-[13px] text-slate-500 dark:text-slate-400 leading-normal mb-2">Leave a review for your recent purchase of the 'Alpine Dome Tent'.</p>
+<p class="text-xs text-slate-400 dark:text-slate-500">5d ago</p>
+</div>
+</div>
+</div>
+<!-- End of list state -->
+<div class="p-8 text-center">
+<p class="text-xs text-slate-400 dark:text-slate-600 font-medium">No more notifications</p>
+</div>
+</main>
+<!-- Bottom Navigation (Simulated) -->
+<nav class="flex-none bg-white dark:bg-[#112117] border-t border-slate-100 dark:border-white/5 pb-6 pt-3 px-6 flex justify-between items-center z-30">
+<button class="flex flex-col items-center gap-1 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+<span class="material-symbols-outlined text-[26px]">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+<span class="material-symbols-outlined text-[26px]">search</span>
+<span class="text-[10px] font-medium">Explore</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-primary">
+<div class="relative">
+<span class="material-symbols-outlined text-[26px] fill-1">notifications</span>
+<span class="absolute top-0 right-0.5 w-2 h-2 bg-primary rounded-full border border-white dark:border-[#112117]"></span>
+</div>
+<span class="text-[10px] font-medium">Alerts</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+<span class="material-symbols-outlined text-[26px]">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</nav>
+<!-- Background Decoration Gradient -->
+<div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none z-0"></div>
+</div>
+</body></html>

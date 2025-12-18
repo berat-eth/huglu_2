@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Chat - Outdoor Shop</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102212",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: #334155;
+        }
+        
+        /* Hide scrollbar for clean UI but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display h-screen flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="shrink-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-20">
+<div class="flex items-center justify-between px-4 py-3">
+<!-- Back Button -->
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-slate-900 dark:text-white">
+<span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span>
+</button>
+<!-- Agent Info -->
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-2">
+<div class="relative">
+<div class="size-8 rounded-full bg-cover bg-center border border-gray-200 dark:border-gray-700" data-alt="Portrait of Alex the gear expert smiling" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJ7fTnu5YdG8cRjzydH1ERSQN-oZ6n6fHbWQAgG5f1AYAU9JkJsk8nRRBUkM_08ZJstkPvfnIsqIQVZmuGmx-xH1YkZ_0SpvhX_WUAtWdY-Dpco3IlZa7pbKr_F_Tut7rYB6qbbItWrFBT_gXHVoOcEQDylNuaDK7PV2o7LQ3NCGM9O7BDMOwT53xXjSeTMML1K0GsB5TPAgYpSDM6iBXoSKrwCszKuEX19k0AFrEIZSoSIWmsDvU-M2w5rhsEd4_4atgFfhP6XgU');"></div>
+<div class="absolute bottom-0 right-0 size-2.5 bg-primary rounded-full border-2 border-background-light dark:border-background-dark"></div>
+</div>
+<div class="text-center">
+<h1 class="text-sm font-bold text-slate-900 dark:text-white leading-tight">Alex</h1>
+<p class="text-[10px] font-medium text-primary">Active Now</p>
+</div>
+</div>
+</div>
+<!-- Call Action -->
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-primary">
+<span class="material-symbols-outlined text-[24px] filled">call</span>
+</button>
+</div>
+</header>
+<!-- Chat Stream -->
+<main class="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth" id="chat-container">
+<!-- Date Separator -->
+<div class="flex justify-center">
+<span class="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-full">
+                Today 10:02 AM
+            </span>
+</div>
+<!-- Agent Message -->
+<div class="flex items-end gap-3 group">
+<div class="shrink-0 size-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden self-end mb-1">
+<div class="w-full h-full bg-cover bg-center" data-alt="Small avatar of Alex" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBp34VIwRN35KCS6dRhDPrqJV6prpzIwRzhySoWGu5S51FU1opyZor_dl-vcX0iERGd7JdPEnc9-4AnEQH6PIJBAt9PNgFk5yMzQjRzoy9Jgv_mSkwKlmvrrm19hJaFru0c_F6JeEGnCf7iwnVz6eSa2p69yIZu7gNGVZcQs3n0pEwOy7xQtBnDtZ06YpuUoGinfFrZB9_is7sH7IqKhZDlibaJGhAEBqe_zeKdP4LfkuttlrvsoVWynsueTKDB5mDaXDBo6Ypjv6o');"></div>
+</div>
+<div class="flex flex-col gap-1 max-w-[75%]">
+<div class="px-4 py-3 bg-white dark:bg-gray-800 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 dark:border-gray-700">
+<p class="text-[15px] leading-relaxed text-slate-800 dark:text-slate-200">
+                        Hi there! 👋 How can I help you prepare for your trip today?
+                    </p>
+</div>
+<span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">10:02 AM</span>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-end gap-3 justify-end group">
+<div class="flex flex-col gap-1 items-end max-w-[75%]">
+<div class="px-4 py-3 bg-primary text-slate-900 rounded-2xl rounded-br-none shadow-sm">
+<p class="text-[15px] leading-relaxed font-medium">
+                        I'm looking for a waterproof tent for 2 people.
+                    </p>
+</div>
+<span class="text-[10px] text-gray-400 dark:text-gray-500 mr-1">10:03 AM</span>
+</div>
+</div>
+<!-- Agent Message with Product -->
+<div class="flex items-end gap-3 group">
+<div class="shrink-0 size-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden self-end mb-1">
+<div class="w-full h-full bg-cover bg-center" data-alt="Small avatar of Alex" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuATjnO00zoifcsSckgPZfsYpVVSEiumI9-192f-fjJJ9MJkB7bmFk6bx94vnl-DcQbz_8AD_2H9tlFB84Mas0zeOPRoDRi0fXPr402TBgveY3tW94OmKSOUg8dYEGy7QuAtdFDnwnRhBJ5bT9edB7iki09TSqfCtPvqj39Ce05nxas-U0VFirlB_dS_rojrfNvfSO2UzPd2H1GMWHyfoX2fIC1d93rjLnik9QNVLANEw0LnvZbk10iJ1NtkwGMEb9RBCb9VsF6-2sU');"></div>
+</div>
+<div class="flex flex-col gap-1 max-w-[85%] sm:max-w-[75%]">
+<div class="px-4 py-3 bg-white dark:bg-gray-800 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 dark:border-gray-700 space-y-3">
+<p class="text-[15px] leading-relaxed text-slate-800 dark:text-slate-200">
+                        Great choice. The <span class="font-semibold text-primary">Summit Series</span> is perfect for wet conditions. It's lightweight too!
+                    </p>
+<!-- Product Card Attachment -->
+<a class="block group/card" href="#">
+<div class="flex gap-3 bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition-colors">
+<div class="size-16 shrink-0 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover/card:scale-110 transition-transform duration-500" data-alt="Green waterproof camping tent set up in forest" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBHg_OuyG24am5cZV4Ga6e0RVZpSGe6IM-4zFrRKikmtwtHzkYHmlzu2TBwqIfhoEe-1J8_PDhy7ZELY-s0LPFEJyGI13sPj2SY1cV5G5MeMAsnxo-aTCbXgZDAAYo6GUtJJRbDuSELzhhoIQioHtFB98Up6WU5SgfO6J2rWPztHHVZZsVmoD-_06tb0fqy2z5uEqIDsD48FBwoH76rqHoIPVVOHMREOw3Izw5Mp62aRj4dKXFFl02W01nBQ5AACnrCNcrHU3RLyy0');"></div>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">Summit Series 2P Tent</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 truncate">Ultra-light, 3-season, Waterproof</p>
+<p class="text-xs font-bold text-primary mt-1">$249.00</p>
+</div>
+<div class="flex items-center justify-center self-center text-gray-400 dark:text-gray-600">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</div>
+</div>
+</a>
+</div>
+<span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">10:04 AM</span>
+</div>
+</div>
+<!-- Typing Indicator -->
+<div class="flex items-center gap-3 pl-11 animate-pulse">
+<div class="bg-gray-200 dark:bg-gray-800/50 rounded-full px-4 py-2 flex items-center gap-1">
+<div class="size-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+<div class="size-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-75"></div>
+<div class="size-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-150"></div>
+</div>
+</div>
+<!-- Spacer for scrolling -->
+<div class="h-2"></div>
+</main>
+<!-- Sticky Footer Input -->
+<footer class="shrink-0 bg-background-light dark:bg-background-dark p-4 pt-2 border-t border-gray-200 dark:border-gray-800/50">
+<div class="flex items-end gap-2 max-w-4xl mx-auto">
+<!-- Add Attachment -->
+<button class="shrink-0 size-11 mb-[1px] rounded-full flex items-center justify-center text-gray-400 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-[28px]">add_circle</span>
+</button>
+<!-- Input Field -->
+<div class="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-primary dark:focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all flex items-center min-h-[48px] shadow-sm">
+<input class="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-3 text-[15px]" placeholder="Type a message..." type="text"/>
+<!-- Emoji Button (Optional decoration inside input) -->
+<button class="p-2 mr-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+<span class="material-symbols-outlined text-[20px]">sentiment_satisfied</span>
+</button>
+</div>
+<!-- Send Button -->
+<button class="shrink-0 size-11 mb-[1px] rounded-full bg-primary text-slate-900 flex items-center justify-center shadow-md hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[22px] ml-0.5">send</span>
+</button>
+</div>
+<!-- Safe area for iOS home indicator -->
+<div class="h-4 w-full"></div>
+</footer>
+</body></html>

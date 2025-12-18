@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flash Sales - Outdoor Shop</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e66b",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#112117",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1c2e24",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-neutral-900 dark:text-neutral-50 antialiased selection:bg-primary selection:text-neutral-900">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
+<!-- Top Sticky Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md border-b border-neutral-200/50 dark:border-neutral-800/50">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-900 dark:text-white">
+<span class="material-symbols-outlined" style="font-size: 24px;">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold uppercase tracking-wide text-neutral-900 dark:text-white">Flash Sales</h1>
+<button class="relative flex size-10 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-900 dark:text-white">
+<span class="material-symbols-outlined" style="font-size: 24px;">shopping_cart</span>
+<span class="absolute top-1.5 right-1.5 size-2.5 rounded-full bg-primary ring-2 ring-background-light dark:ring-background-dark"></span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col pb-8">
+<!-- Hero Countdown Banner -->
+<section class="flex flex-col items-center pt-6 pb-2 px-4">
+<h2 class="text-2xl font-bold tracking-tight text-center mb-6 uppercase">Mega Sale Ends In</h2>
+<div class="flex gap-3 w-full justify-center max-w-sm">
+<!-- Timer Block -->
+<div class="flex flex-1 flex-col items-center gap-2">
+<div class="flex h-14 w-full items-center justify-center rounded-xl bg-surface-light dark:bg-surface-dark shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+<span class="text-2xl font-bold font-mono tracking-tight tabular-nums">00</span>
+</div>
+<span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Days</span>
+</div>
+<span class="text-2xl font-bold self-start mt-3 text-neutral-300 dark:text-neutral-600">:</span>
+<!-- Timer Block -->
+<div class="flex flex-1 flex-col items-center gap-2">
+<div class="flex h-14 w-full items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 shadow-sm ring-1 ring-primary/20">
+<span class="text-2xl font-bold font-mono tracking-tight tabular-nums text-primary-dark dark:text-primary">04</span>
+</div>
+<span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Hours</span>
+</div>
+<span class="text-2xl font-bold self-start mt-3 text-neutral-300 dark:text-neutral-600">:</span>
+<!-- Timer Block -->
+<div class="flex flex-1 flex-col items-center gap-2">
+<div class="flex h-14 w-full items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 shadow-sm ring-1 ring-primary/20">
+<span class="text-2xl font-bold font-mono tracking-tight tabular-nums text-primary-dark dark:text-primary">23</span>
+</div>
+<span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Mins</span>
+</div>
+<span class="text-2xl font-bold self-start mt-3 text-neutral-300 dark:text-neutral-600">:</span>
+<!-- Timer Block -->
+<div class="flex flex-1 flex-col items-center gap-2">
+<div class="flex h-14 w-full items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 shadow-sm ring-1 ring-primary/20">
+<span class="text-2xl font-bold font-mono tracking-tight tabular-nums text-primary-dark dark:text-primary animate-pulse">12</span>
+</div>
+<span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Secs</span>
+</div>
+</div>
+</section>
+<!-- Categories Chips -->
+<section class="sticky top-[65px] z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm py-4 border-b border-transparent">
+<div class="flex gap-3 px-4 overflow-x-auto no-scrollbar snap-x">
+<!-- Active Chip -->
+<button class="snap-start flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-neutral-900 dark:bg-white pl-3 pr-4 shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-white dark:text-neutral-900" style="font-size: 18px;">local_offer</span>
+<span class="text-sm font-semibold text-white dark:text-neutral-900">All Deals</span>
+</button>
+<!-- Inactive Chip -->
+<button class="snap-start flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark ring-1 ring-neutral-200 dark:ring-neutral-700 pl-3 pr-4 transition-transform active:scale-95 hover:ring-primary/50">
+<span class="material-symbols-outlined text-neutral-500 dark:text-neutral-400" style="font-size: 18px;">hiking</span>
+<span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">Hiking</span>
+</button>
+<button class="snap-start flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark ring-1 ring-neutral-200 dark:ring-neutral-700 pl-3 pr-4 transition-transform active:scale-95 hover:ring-primary/50">
+<span class="material-symbols-outlined text-neutral-500 dark:text-neutral-400" style="font-size: 18px;">camping</span>
+<span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">Camping</span>
+</button>
+<button class="snap-start flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark ring-1 ring-neutral-200 dark:ring-neutral-700 pl-3 pr-4 transition-transform active:scale-95 hover:ring-primary/50">
+<span class="material-symbols-outlined text-neutral-500 dark:text-neutral-400" style="font-size: 18px;">checkroom</span>
+<span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">Apparel</span>
+</button>
+</div>
+</section>
+<!-- Product Cards List -->
+<section class="flex flex-col gap-6 px-4 pt-2">
+<!-- Card 1: Featured (Large) -->
+<div class="group relative flex flex-col overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)] transition-all hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] ring-1 ring-neutral-100 dark:ring-neutral-800">
+<!-- Image Area -->
+<div class="relative aspect-[4/3] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+<div class="absolute top-3 left-3 z-10 flex items-center gap-2">
+<span class="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-bold text-neutral-900 shadow-sm">
+                                SAVE 50%
+                            </span>
+<span class="inline-flex items-center rounded-md bg-white/90 dark:bg-black/60 backdrop-blur px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-900 dark:text-white">
+<span class="material-symbols-outlined mr-1 text-red-500" style="font-size: 12px; font-variation-settings: 'FILL' 1;">local_fire_department</span>
+                                Popular
+                            </span>
+</div>
+<img alt="Stormbreak 2-Person Tent" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Orange camping tent setup in a forest clearing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjUO0E4Km-35I6taBX1Q7StrDYmjdYSzpCSaZvzAW4NcDK9V6mfFVHunaDb5IRgYzTzw-UbRQuu1BHveGF7gxMeCcJnKx_UyIBPcn5tmScmNqdzPGcEb8CBxHKn_wQWbgcoM05xEOO8DFi7yi6VIpSpxhGW5r4G-2DbVkRwj-quZA6NrgU3I38VjbrpDtUyQ5fHM7QISFtOHcr3yLaqUj1aXKh3E87hl7SE5PkozfxhGLUZE2aaMMtNui33QpyF9syN3V8pIn4jIA"/>
+</div>
+<!-- Content Area -->
+<div class="flex flex-col p-4">
+<div class="flex justify-between items-start mb-1">
+<div>
+<p class="text-xs font-semibold text-primary uppercase tracking-wide">The North Face</p>
+<h3 class="text-lg font-bold text-neutral-900 dark:text-white leading-tight">Stormbreak 2-Person Tent</h3>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-lg font-bold text-primary">$120.00</span>
+<span class="text-xs text-neutral-400 line-through decoration-neutral-400">$240.00</span>
+</div>
+</div>
+<!-- Progress Bar / Stock -->
+<div class="mt-4 mb-4">
+<div class="flex justify-between items-end mb-1.5">
+<span class="text-xs font-medium text-red-500 dark:text-red-400 flex items-center gap-1">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+</span>
+                                    Almost Gone! Only 3 left
+                                </span>
+<span class="text-xs text-neutral-500 dark:text-neutral-400">85% claimed</span>
+</div>
+<div class="h-2 w-full rounded-full bg-neutral-100 dark:bg-neutral-700 overflow-hidden">
+<div class="h-full w-[85%] rounded-full bg-gradient-to-r from-primary to-emerald-400"></div>
+</div>
+</div>
+<!-- Action -->
+<button class="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 dark:bg-white py-3 text-sm font-bold text-white dark:text-neutral-900 transition-transform active:scale-[0.98]">
+                            Shop Now
+                            <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Standard (Vertical) -->
+<div class="group relative flex flex-col overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)] transition-all ring-1 ring-neutral-100 dark:ring-neutral-800">
+<div class="relative aspect-video w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+<div class="absolute top-3 left-3 z-10">
+<span class="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-bold text-neutral-900 shadow-sm">
+                                SAVE 30%
+                            </span>
+</div>
+<img alt="Osprey Atmos AG 65" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Rugged hiking backpack resting on a rock near mountains" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAS9GJw0Fym68fJFNwx6iqZ5hxnPL1wfQHDGitX6u96cAEeL9p00_RG1rZguSAyjKxPxJSkc3DetvUc8IBStCPs9zjZ6hNoO_DKgNtpR3AxS2FZ-J7e-NMyIUm1Eaa60zQavOK3OU3TDxY3mD5JrGRSJsa0BFEY6u-VSv1XyutHCCQvwIt4u0UqtDg1O0Zhjtq_ejIfCaTwCtCdNCIlLg9Pp7UWejxNpxEliaWHZCDijwZ7oQv8B4ZyQe4TESAFLm7kcN9dihISCtw"/>
+</div>
+<div class="flex flex-col p-4">
+<div class="mb-3">
+<p class="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Osprey</p>
+<h3 class="text-base font-bold text-neutral-900 dark:text-white leading-tight">Atmos AG 65 Backpack</h3>
+</div>
+<div class="flex items-center justify-between gap-4">
+<div class="flex flex-col">
+<div class="flex items-baseline gap-2">
+<span class="text-lg font-bold text-neutral-900 dark:text-white">$230.00</span>
+<span class="text-sm text-neutral-400 line-through">$330.00</span>
+</div>
+<div class="h-1.5 w-24 rounded-full bg-neutral-100 dark:bg-neutral-700 mt-1 overflow-hidden">
+<div class="h-full w-[45%] rounded-full bg-primary"></div>
+</div>
+</div>
+<button class="flex shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-bold text-neutral-900 transition-transform active:scale-95">
+                                Add
+                            </button>
+</div>
+</div>
+</div>
+<!-- Card 3: Standard (Horizontal Layout Variation) -->
+<div class="group relative flex overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)] ring-1 ring-neutral-100 dark:ring-neutral-800">
+<div class="relative w-32 shrink-0 bg-neutral-100 dark:bg-neutral-800">
+<img alt="Trail Runners" class="h-full w-full object-cover" data-alt="Red Nike running shoe floating on red background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZA-xKihry4PK-K0Wc1QO50JuKU4q-qJ3F4au6oZ0Gd51C0enDCLlxYZggJ9mbj8h4ApxJ-8x6Cfd9qa7IplUYcYrf8nYBCZHMpyP-iRs3VxwhgZ7vc4vfFCjTTsqCDk0lZ84WbC2HUq_9bqO51EOniBntTEVq_DrHeEcwOIj0qJ1dYqnmMBjcvitWFoB6VjsLMrS34WMRxSsJWUk-abBjdQCD4hHPLV-YKiERmj5BPmkVfXlN4VnHehXBh0LVcp_hRXvHE2T_1ms"/>
+<span class="absolute top-2 left-2 inline-flex items-center rounded-md bg-neutral-900/80 backdrop-blur px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            -25%
+                        </span>
+</div>
+<div class="flex grow flex-col justify-center p-3">
+<p class="text-[10px] font-semibold text-neutral-500 uppercase">Salomon</p>
+<h3 class="text-sm font-bold text-neutral-900 dark:text-white mb-1 line-clamp-1">Speedcross 5 Trail Runners</h3>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-base font-bold text-primary">$105.00</span>
+<span class="text-xs text-neutral-400 line-through">$140.00</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-medium text-neutral-500">62% Claimed</span>
+<button class="h-8 w-8 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white hover:bg-primary hover:text-neutral-900 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">add_shopping_cart</span>
+</button>
+</div>
+<div class="h-1 w-full rounded-full bg-neutral-100 dark:bg-neutral-700 mt-1.5 overflow-hidden">
+<div class="h-full w-[62%] rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Card 4: Standard (Horizontal Layout Variation) -->
+<div class="group relative flex overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)] ring-1 ring-neutral-100 dark:ring-neutral-800 opacity-60">
+<!-- Sold Out Overlay -->
+<div class="absolute inset-0 z-20 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-[1px]">
+<span class="rotate-[-10deg] rounded-lg border-2 border-red-600 px-4 py-1 text-lg font-black uppercase text-red-600 bg-white dark:bg-neutral-900 shadow-xl">Sold Out</span>
+</div>
+<div class="relative w-32 shrink-0 bg-neutral-100 dark:bg-neutral-800 grayscale">
+<img alt="Rain Jacket" class="h-full w-full object-cover" data-alt="Yellow rain jacket hanging on a wooden wall" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHxSXMxICbHW2P-pc0zs6eWTzoOQnd_CtNn8O0Ho3uPJ6NDk6RjC7cbR-nb_mQdUU1uxXHVrp3EIfvSBI4qXyzTj7CB_9ijJsgK5tgM8XxVARRwVPaOKu6CqF0KEpDT8xFRJimyyp9eQr5UilT0e4efSGUf1jU5PSaBwGn33CgabnrkBk0IDIVFo4IhYTv0EC0FpE5kkWO7hGXyesxeOvuOhdR76rLQ-h8zvYaNKYPViUjOeIaVxxWHSLGf4jy0k0BMLAAtn5jfrU"/>
+</div>
+<div class="flex grow flex-col justify-center p-3 grayscale">
+<p class="text-[10px] font-semibold text-neutral-500 uppercase">Patagonia</p>
+<h3 class="text-sm font-bold text-neutral-900 dark:text-white mb-1 line-clamp-1">Torrentshell 3L Jacket</h3>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-base font-bold text-neutral-600">$149.00</span>
+<span class="text-xs text-neutral-400 line-through">$149.00</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-medium text-neutral-500">100% Claimed</span>
+</div>
+<div class="h-1 w-full rounded-full bg-neutral-100 dark:bg-neutral-700 mt-1.5 overflow-hidden">
+<div class="h-full w-[100%] rounded-full bg-neutral-400"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

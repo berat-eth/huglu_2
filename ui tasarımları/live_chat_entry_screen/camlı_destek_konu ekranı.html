@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Chat Entry Screen - Outdoor Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d421",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102212",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a331d",
+                        "text-main-light": "#0d1b0f",
+                        "text-main-dark": "#f0fdf0",
+                        "text-sub-light": "#4c9a52",
+                        "text-sub-dark": "#a0cfa4",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased text-text-main-light dark:text-text-main-dark transition-colors duration-200">
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex items-center px-4 py-4 justify-between sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-text-main-light dark:text-text-main-dark" style="font-size: 24px;">arrow_back_ios_new</span>
+</button>
+<h1 class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight tracking-[-0.015em]">Live Support</h1>
+<div class="size-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Scrollable Content -->
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Hero Status Card -->
+<div class="px-4 py-6">
+<div class="flex flex-col gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-5 shadow-sm border border-gray-100 dark:border-gray-800">
+<div class="flex items-start justify-between gap-4">
+<div class="flex flex-col gap-1 flex-[2_2_0px]">
+<div class="flex items-center gap-2 mb-1">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+</span>
+<p class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight">We are online</p>
+</div>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal">Our gear experts are ready to help you with your adventure.</p>
+<div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 dark:bg-primary/20 rounded-lg w-fit">
+<span class="material-symbols-outlined text-primary text-[18px]">schedule</span>
+<span class="text-primary text-xs font-bold uppercase tracking-wide">Wait time: &lt; 2 mins</span>
+</div>
+</div>
+<div class="w-24 h-24 bg-center bg-no-repeat bg-cover rounded-lg shrink-0 border-2 border-white dark:border-gray-700 shadow-sm" data-alt="Friendly customer support agent smiling in outdoor gear" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB8xb3PjTOHCMOBAwXD8boAtJ7nnWWE1fNckOF7-d09JD64VXSmaVBwHkTTZZ7FVw9NaOcqT7c430hJ2_MjULFxtkmFi2COCWqr5PBfldpyPwbGtxB3a4b8xogtky7LDnnjOtZf1b4oTtLZ1hTrRksWCZ_Bw5CjjJ8AI_bZd1kFaEv2PIhBNGu5EM13-YHOrAvoNOUZWNAqBWNt0iQk0gu-Q5bdI_oLFXBty1Leopy0GA6kWktpJ5URQVl1_kBCvzy9YDdh7uCK0a0");'></div>
+</div>
+</div>
+</div>
+<!-- Topic Selection -->
+<div class="px-4 pb-2">
+<h2 class="text-text-main-light dark:text-text-main-dark tracking-tight text-xl font-bold leading-tight pb-4">Select a topic</h2>
+<div class="grid grid-cols-2 gap-3">
+<!-- Topic 1 -->
+<button class="group flex flex-col gap-3 p-4 bg-surface-light dark:bg-surface-dark hover:bg-white dark:hover:bg-[#234226] rounded-xl border border-transparent hover:border-primary/30 dark:hover:border-primary/50 transition-all shadow-sm hover:shadow-md text-left relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-transparent to-black/5 dark:to-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="h-28 w-full bg-center bg-no-repeat bg-cover rounded-lg overflow-hidden relative" data-alt="Map and compass on a wooden table" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDN6Nw9oMHMDe8dO6vBZQUxTbnZG6Qt02B3M12exCUNW3lm1_XHO3sTw5VDhULxtE8axaN7-I4CdJtg4RHG3XNeuwkeUwFPO4-PEJLaeCvNbuErcx5vRNSBTIgy0HIcE_SNfqJ6CQrLaHOJvCeoXxVvcFThM1YOIkzADhJwRmdczlcJkrtDw8orF9dRUImHkydE4efAFqxYgaNibD4w84g-0e8jLfUibumCUiP44J2I75GGwPyhJfzdef-y6-moqrBTiPqdm_kxXaI");'>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div>
+<p class="text-text-main-light dark:text-text-main-dark text-base font-bold leading-normal group-hover:text-primary transition-colors">Order Tracking</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium leading-normal">Where is my gear?</p>
+</div>
+</button>
+<!-- Topic 2 -->
+<button class="group flex flex-col gap-3 p-4 bg-surface-light dark:bg-surface-dark hover:bg-white dark:hover:bg-[#234226] rounded-xl border border-transparent hover:border-primary/30 dark:hover:border-primary/50 transition-all shadow-sm hover:shadow-md text-left relative overflow-hidden ring-2 ring-primary bg-primary/5 dark:bg-primary/10">
+<div class="absolute top-2 right-2 text-primary">
+<span class="material-symbols-outlined filled" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="h-28 w-full bg-center bg-no-repeat bg-cover rounded-lg overflow-hidden relative" data-alt="Hiker looking at mountain view" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAn8GE3uLyiP0tDRSpWANEVQbS2q1aILtbjxTMkupzWHnjVQgQY2QQ7feP5hI2K0Rqm-eKUPiEkNA6_wXTfYpnXcyqc6b7OFs2CBsc5Gpv-I3o2TekKp0QYJ1FASZxXIWftPQW5iUi8gozyDLX2AFxXiM6PQP72RSKv6fyWhJCA8rRKTmS9ZwUT06lzbV8jXQXY6GopzYzLeCmmdqBFiXreAHMPIOrGC4ShsWH-IO4qM1B9VDajyJQSYQuStvUmS4jrB_L9tDA-Xug");'>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div>
+<p class="text-text-main-light dark:text-text-main-dark text-base font-bold leading-normal group-hover:text-primary transition-colors">Gear Expert</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium leading-normal">Product advice</p>
+</div>
+</button>
+<!-- Topic 3 -->
+<button class="group flex flex-col gap-3 p-4 bg-surface-light dark:bg-surface-dark hover:bg-white dark:hover:bg-[#234226] rounded-xl border border-transparent hover:border-primary/30 dark:hover:border-primary/50 transition-all shadow-sm hover:shadow-md text-left relative overflow-hidden">
+<div class="h-28 w-full bg-center bg-no-repeat bg-cover rounded-lg overflow-hidden relative" data-alt="Package being returned in a box" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDffpk9dSVuw8H15chaLO7u6JuyMtIyqDlL7P_xME66uDSKSlqvrAXo7tJY75pa0v1ofufEIimGSzRZ-n1RBsA3FGYJ__dszdljMwv9rff3BMGaDljnEMQla8RtQ276oW_WP37LyWV34FntefvpqIvapoFzdEr1qItz4dgwV9ldgZdmSnE5v8COziPf7jQzth3gB6wcnxhmh0lAeK-DroiGvmZDB4MAXPinWVTZseHA40QFKOLTSaA3Lf2djTZgXCe3W5y_Wm5IPfs");'>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div>
+<p class="text-text-main-light dark:text-text-main-dark text-base font-bold leading-normal group-hover:text-primary transition-colors">Returns</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium leading-normal">Exchanges &amp; Refunds</p>
+</div>
+</button>
+<!-- Topic 4 -->
+<button class="group flex flex-col gap-3 p-4 bg-surface-light dark:bg-surface-dark hover:bg-white dark:hover:bg-[#234226] rounded-xl border border-transparent hover:border-primary/30 dark:hover:border-primary/50 transition-all shadow-sm hover:shadow-md text-left relative overflow-hidden">
+<div class="h-28 w-full bg-center bg-no-repeat bg-cover rounded-lg overflow-hidden relative" data-alt="Abstract topographic map pattern" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAfbBn754v1WknhhLdNe5FSRMTB9STWY-Ll8uls9rQ6DfGlTlzt1wNLzkpzWtDSydt_g8WGKXUST8r16JKq-4KEiKrLS7C8CjjRRuWlP1aU0Bz6NTf_Oue-YlXlhY0jGpLpSq8aL3KvYcWuyPtgym45kK9naMAj7UceNtI2G1OAE6py3M_lxP4eUKcA0vO7qQS4omoWW3_sqLW0HnM_VDjkamBtT7Hwk1dlZMMSwkL6hJTdqKtruqpPas6PV-IX3POfpKOrqHO-odQ");'>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div>
+<p class="text-text-main-light dark:text-text-main-dark text-base font-bold leading-normal group-hover:text-primary transition-colors">Warranty &amp; Other</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium leading-normal">General help</p>
+</div>
+</button>
+</div>
+</div>
+<!-- Optional Message -->
+<div class="px-4 py-6">
+<label class="flex flex-col w-full">
+<p class="text-text-main-light dark:text-text-main-dark text-sm font-bold leading-normal pb-2">Short description (Optional)</p>
+<textarea class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-xl text-text-main-light dark:text-text-main-dark bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:border-primary dark:focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none min-h-[120px] placeholder:text-gray-400 dark:placeholder:text-gray-600 p-4 text-base font-normal leading-normal transition-shadow shadow-sm" placeholder="Type a brief message about your issue..."></textarea>
+</label>
+</div>
+<div class="h-8"></div>
+</main>
+<!-- Fixed Bottom Action Area -->
+<div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/80 dark:bg-[#102212]/90 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-50">
+<button class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 transition-transform active:scale-[0.98] shadow-lg shadow-primary/20 hover:shadow-primary/30">
+<span class="material-symbols-outlined text-white">chat_bubble</span>
+<span class="text-white text-base font-bold leading-tight">Connect with Agent</span>
+</button>
+<div class="mt-4 flex justify-center">
+<a class="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">help</span>
+                    Check our FAQ instead
+                </a>
+</div>
+</div>
+</div>
+</body></html>

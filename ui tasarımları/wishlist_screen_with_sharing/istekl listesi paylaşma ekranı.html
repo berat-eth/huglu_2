@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wishlist Screen</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#22c55e", // Bright green from reference
+                        "primary-dark": "#16a34a",
+                        "accent-green": "#f0fdf4", // Light green background
+                        "text-dark": "#0f172a",
+                        "text-muted": "#64748b",
+                        "background-main": "#f8fafc", // Very light cool gray/white for main bg
+                        "card-white": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }.no-scrollbar {
+            -ms-overflow-style: none;scrollbar-width: none;}
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-main text-text-dark antialiased transition-colors duration-200">
+<div class="relative flex flex-col h-screen w-full max-w-md mx-auto overflow-hidden bg-background-main shadow-2xl">
+<header class="flex items-center justify-between p-4 pt-6 bg-background-main sticky top-0 z-20">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors text-text-dark">
+<span class="material-symbols-outlined text-[22px]">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold leading-tight tracking-tight text-text-dark">My Gear List (4)</h1>
+<button class="text-primary font-bold text-sm px-2 py-1 rounded hover:bg-green-50 transition-colors">
+            Edit
+        </button>
+</header>
+<main class="flex-1 overflow-y-auto no-scrollbar pb-32">
+<div class="flex gap-3 px-4 py-2 overflow-x-auto no-scrollbar sticky top-0 z-10 bg-background-main pb-4">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary px-5 shadow-lg shadow-primary/20 transition-transform active:scale-95 text-white">
+<p class="text-sm font-semibold">All Items</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white border border-gray-100 px-5 hover:bg-gray-50 transition-colors">
+<p class="text-text-muted text-sm font-medium">Camping</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white border border-gray-100 px-5 hover:bg-gray-50 transition-colors">
+<p class="text-text-muted text-sm font-medium">Climbing</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white border border-gray-100 px-5 hover:bg-gray-50 transition-colors">
+<p class="text-text-muted text-sm font-medium">Apparel</p>
+</button>
+</div>
+<div class="flex flex-col gap-4 px-4">
+<div class="group relative flex overflow-hidden rounded-2xl bg-card-white p-3 shadow-sm border border-gray-100 transition-all hover:shadow-md">
+<div class="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Orange camping tent set up in a mountainous landscape at sunset" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCAYTC80Da_nyDgjbn13t7qMw1jLP9__AgLT-6qxracDo96XhbEkLsDDdOkpnkylU_9e44Y7mzDFmphnpFRuLK7za0lERBsqFKgh1MjxE032zeg7cQMxb3fmW9KYMxGsi7ttSMXIVImFKVShO9j7utu0SwhNspMbiacfUJldbmBWSCr3RwbTVLGp_heD1WTa5Q7pCK7ZW4lJQnw1X_yxcy_3Ezmz2tdLZtoiUiNVyhtAgCPKbdUme5YtrypFZmsinDRHJgkFrNg7-k");'>
+</div>
+</div>
+<div class="flex flex-col flex-1 ml-4 justify-between py-0.5">
+<div class="flex justify-between items-start">
+<div class="pr-6">
+<h3 class="text-text-dark text-[15px] font-bold leading-snug line-clamp-2">Summit Series 3-Person Tent</h3>
+<p class="text-primary text-[11px] font-medium mt-1 uppercase tracking-wide">Camping Gear</p>
+</div>
+<button class="text-gray-300 hover:text-red-500 transition-colors p-1 -mr-2 -mt-1">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-3">
+<p class="text-primary text-lg font-bold leading-none">$299.00</p>
+<button class="flex items-center justify-center rounded-lg h-8 w-8 bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group relative flex overflow-hidden rounded-2xl bg-card-white p-3 shadow-sm border border-gray-100 transition-all hover:shadow-md">
+<div class="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Pair of rugged brown hiking boots on a rocky trail" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBdoi822WLSpXLMct9RKVXBnLvmbF7HVpnWaPkjRHvDEuoVT7hKUO5vGGC_AvZ89atPo_Wx37lHUZIfpLNPC3wyBiXIRav-bfiWqHBpS0dlbl5NUzz_Ot00SkCVCRtLLlQE4dgx2XKkRtD_lSiaz3TC1oV9OxFRRzw7Iskme6Vkf92gxv_Pcrp2hOuN53V6n9j0K7QYpsLxws3rYGO8aHtrBIk_c-KgkwggiVlgCUP-xYo3znI_YDJsPDvd3qWKT9PW9AaaagiQa5o");'>
+</div>
+</div>
+<div class="flex flex-col flex-1 ml-4 justify-between py-0.5">
+<div class="flex justify-between items-start">
+<div class="pr-6">
+<h3 class="text-text-dark text-[15px] font-bold leading-snug line-clamp-2">Trailblazer Hiking Boots</h3>
+<p class="text-primary text-[11px] font-medium mt-1 uppercase tracking-wide">Footwear • Size 10</p>
+</div>
+<button class="text-gray-300 hover:text-red-500 transition-colors p-1 -mr-2 -mt-1">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-3">
+<p class="text-primary text-lg font-bold leading-none">$145.00</p>
+<button class="flex items-center justify-center rounded-lg h-8 w-8 bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group relative flex overflow-hidden rounded-2xl bg-card-white p-3 shadow-sm border border-gray-100 transition-all hover:shadow-md">
+<div class="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Rolled up ultralight sleeping pad next to a backpack" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBhMV9ZzZgbbVHLBTMAmOG7NuFFVHpT6fcDUcPak9Q_LQs6Kr-XR92HuBbDV0D1t5VOCRQX_3qWSGKec3ZDnjxDD3s58skubtO4aAfTknwFq5QHONsNMZvScIDIZ1qLfsttBbwh6dVwlqlzk8U85hQq7ixTrRPziUS3M759K218LWuQAnFCx2lNJR_Z-T56OKxELfiSXxELbpC1yQMBJRXbYSZg2BUgRHiF7dLAjwsEacaXMgX7x6Jy5bkK7Vpbft8_k9hg4RQSQo8");'>
+</div>
+</div>
+<div class="flex flex-col flex-1 ml-4 justify-between py-0.5">
+<div class="flex justify-between items-start">
+<div class="pr-6">
+<h3 class="text-text-dark text-[15px] font-bold leading-snug line-clamp-2">Ultralight Sleeping Pad</h3>
+<p class="text-primary text-[11px] font-medium mt-1 uppercase tracking-wide">Sleeping Gear</p>
+</div>
+<button class="text-gray-300 hover:text-red-500 transition-colors p-1 -mr-2 -mt-1">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-3">
+<p class="text-primary text-lg font-bold leading-none">$85.00</p>
+<button class="flex items-center justify-center rounded-lg h-8 w-8 bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group relative flex overflow-hidden rounded-2xl bg-card-white p-3 shadow-sm border border-gray-100 transition-all hover:shadow-md">
+<div class="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Black waterproof hard shell jacket hanging on a rack" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAdetKqjz1Y5a7K_zjNp6AICjObjXMAsjXFkXJUDh2OHRnXtJGCRMXgF8bb4AfJNvp2qDdiZJ9O8NORiRW42Tzpz0qfHsv-boL6p_s3e4Jml_bIrODlEMiLgFNWcsZX3XS_pQP8aPNhPj7KM_V3FtzITJZnsz_LuHxfmWWaX2AempQ_bTW_rR-2wBmwX2Yz7s_xOeq2gV6i-F2YVbsMIiRiI3TnRiJPTQosWEgXBe8I1VehY783DlW96sDrggA5H5hDuXC9L3V-Os8");'>
+</div>
+</div>
+<div class="flex flex-col flex-1 ml-4 justify-between py-0.5">
+<div class="flex justify-between items-start">
+<div class="pr-6">
+<h3 class="text-text-dark text-[15px] font-bold leading-snug line-clamp-2">Alpine Shell Jacket</h3>
+<p class="text-primary text-[11px] font-medium mt-1 uppercase tracking-wide">Apparel • Black</p>
+</div>
+<button class="text-gray-300 hover:text-red-500 transition-colors p-1 -mr-2 -mt-1">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-3">
+<p class="text-primary text-lg font-bold leading-none">$210.00</p>
+<button class="flex items-center justify-center rounded-lg h-8 w-8 bg-primary text-white shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="absolute bottom-0 left-0 w-full p-4 bg-white border-t border-gray-100 z-30">
+<div class="flex justify-between items-center mb-4">
+<span class="text-text-dark text-base font-bold">Total Value</span>
+<span class="text-text-dark text-lg font-bold">$739.00</span>
+</div>
+<button class="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-base shadow-lg shadow-primary/30 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">ios_share</span>
+                Share Wishlist
+            </button>
+</div>
+</div>
+</body></html>

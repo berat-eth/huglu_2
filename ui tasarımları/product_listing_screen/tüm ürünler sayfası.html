@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Outdoor Shop - Product Listing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+            extend: {
+                colors: {
+                "primary": "#11d421",
+                "background-light": "#f6f8f6",
+                "background-dark": "#102212",
+                },
+                fontFamily: {
+                "display": ["Plus Jakarta Sans", "sans-serif"]
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+            },
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0d1b0f] dark:text-[#e7f3e8] font-display min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
+<!-- Sticky Header Area -->
+<div class="sticky top-0 z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10">
+<!-- TopAppBar -->
+<div class="flex items-center p-4 pb-2 justify-between">
+<button class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[#0d1b0f] dark:text-white">arrow_back</span>
+</button>
+<h2 class="text-[#0d1b0f] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">Camping Gear</h2>
+<div class="absolute right-4 flex w-12 items-center justify-end">
+<button class="relative flex size-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-[#0d1b0f] dark:text-white">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white border-2 border-background-light dark:border-background-dark">2</span>
+</button>
+</div>
+</div>
+<!-- SearchBar -->
+<div class="px-4 py-2">
+<label class="flex flex-col h-12 w-full">
+<div class="flex w-full flex-1 items-center rounded-xl bg-white dark:bg-[#1a2e1d] shadow-sm border border-gray-100 dark:border-white/5 transition-colors group-focus-within:border-primary/50">
+<div class="flex items-center justify-center pl-4 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="flex w-full min-w-0 flex-1 bg-transparent border-none text-base text-[#0d1b0f] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-0 focus:outline-none h-full px-3 font-medium" placeholder="Search tents, boots, gear..." value=""/>
+<button class="pr-4 text-gray-400">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+</label>
+</div>
+<!-- Chips (Filters) -->
+<div class="flex gap-3 px-4 py-3 overflow-x-auto hide-scrollbar snap-x">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#0d1b0f] dark:bg-white px-5 snap-start transition-transform active:scale-95">
+<span class="material-symbols-outlined text-white dark:text-[#0d1b0f] text-[18px]">tune</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary px-5 snap-start transition-transform active:scale-95 shadow-sm shadow-primary/30">
+<p class="text-white text-sm font-semibold leading-normal">All</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 px-5 snap-start transition-transform active:scale-95">
+<p class="text-[#0d1b0f] dark:text-gray-300 text-sm font-medium leading-normal">Tents</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 px-5 snap-start transition-transform active:scale-95">
+<p class="text-[#0d1b0f] dark:text-gray-300 text-sm font-medium leading-normal">Sleeping Bags</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 px-5 snap-start transition-transform active:scale-95">
+<p class="text-[#0d1b0f] dark:text-gray-300 text-sm font-medium leading-normal">Apparel</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-[#1a2e1d] border border-gray-100 dark:border-white/5 px-5 snap-start transition-transform active:scale-95">
+<p class="text-[#0d1b0f] dark:text-gray-300 text-sm font-medium leading-normal">Accessories</p>
+</button>
+</div>
+</div>
+<!-- Main Content: Product Grid -->
+<div class="flex-1 overflow-y-auto pb-24 px-4 pt-2">
+<div class="flex items-center justify-between mb-4 mt-2">
+<h3 class="text-sm font-bold text-[#0d1b0f] dark:text-white uppercase tracking-wider opacity-60">124 Results</h3>
+<div class="flex items-center gap-1 text-primary text-sm font-bold cursor-pointer">
+<span>Newest</span>
+<span class="material-symbols-outlined text-[16px]">keyboard_arrow_down</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Product Card 1 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Orange camping tent pitched in a grassy field with mountains in the background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD4wZ19atPTfvkrIhHHRUYBHAA3W7RrQAxXJyKZw486fCU4KDI7AuP3sMLfrdKm9ghYKE_HM2fsMOG4Rw3X5bXHaoVUDyOKCw5QzmGl17kO4PLu1_J-R8YI1UAILhn9UX7_Y_OoUbg3TaqjfsZGoZaliCvVW2awcExJ4_PrmSC9dR1h3CYgA1YkJwj2L07h9mVCBTkMv9pOVUGUOzRkSpiwzqZ2KFy5Mx2dY7wZAhnNwsnPupsTEV6_ErL2shX4P73tm_hzD7DgRKo");'>
+</div>
+<!-- Badge -->
+<div class="absolute top-2 left-2 rounded-md bg-primary/90 backdrop-blur-sm px-2 py-1 shadow-sm">
+<p class="text-[10px] font-bold text-white uppercase tracking-wide">Best Seller</p>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Apex Ultra-Light</h4>
+<p class="font-bold text-primary">$249</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Tents</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.8</span>
+<span class="text-xs text-gray-400">(128)</span>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Red hiking boots floating on a white background with red accents" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAs3113m4AgD5qtZfUICFHQ0dFyZng5a594j9Vm-rlt4pHnJEpL_fjs_9xdWZ8lAF0hZzPMd0Yz3yFOgcyYHpEY3EjfL5yiDFKd5xRXCUn8TfmaPtF6F1I_P9j-VncHVcWSEE21Rghlcv2AO2sb8M2bbf7CGif8G4RG9ATKjElK6Y-hLnFNhRNvQU2NBDj810xvBiD5wV3dSFwiqw9W650zT0gCVRnmEdMo1nxQe8xDgq_WDtH9oyL5ywvtEZbhtqa5Sv9MPtudN40");'>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Trailblazer Boots</h4>
+<p class="font-bold text-primary">$129</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Footwear</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.5</span>
+<span class="text-xs text-gray-400">(84)</span>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Olive green fleece jacket hanging against a neutral background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAMGF-nBAKrAFG4PLG57LhleGB25u2IG2JNwB1bN-vY9_6ZLW4N_zzQinnbnjpefJDS92P423_APV0WkWq2DboglraeOGrAiNmQ3glyKALZ2Ig2VGBZwD0CJYo6FxAE-o9YLLC5VMzRSTyujGZUxqZs76wKS5GdYcDOf5whSMicbqCP2hSHi5Gbd7d-1e0GsO8pvB0u16MwIzWHbRwjTwVrdO8v1zYYEW6EwSLOWoKGell5FMgNjepL3cPke8924iCRJjJGWkcb5gg");'>
+</div>
+<!-- Badge -->
+<div class="absolute top-2 left-2 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1 shadow-sm">
+<p class="text-[10px] font-bold text-white uppercase tracking-wide">New</p>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Summit Fleece</h4>
+<p class="font-bold text-primary">$89</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Apparel</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.2</span>
+<span class="text-xs text-gray-400">(45)</span>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Small silver portable camping stove with a blue flame on top" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDkphkajju9wzkJrHCXeLRdKSY-gKhh8rZA8tGrrjZHieDkgGWe_gdaI0LpWFBI5UfWHZ9NQ86z3FJeQxa0j9rNNxmurIkJbkNlp4ZxP75Ionf7fgGKRLRK2p-jiQAC40zubcugv4rOrWUE4hMaqFP5F3zPGhWOMeGNpQVIW69zt2Nbzh7cOmCccChnv1L-c1ROT7SVo7CWW3rx6JiKhRHIL2Sca6P7C_mncB_gxydi_XtXCAXZBkHXaVexSRmrUPm-xIaWi07ba-k");'>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Basecamp Stove</h4>
+<p class="font-bold text-primary">$45</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Gear</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.9</span>
+<span class="text-xs text-gray-400">(210)</span>
+</div>
+</div>
+</div>
+<!-- Product Card 5 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Large grey and black hiking backpack resting on a rock" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDcGXBSSJqA6-1r0xCGqaEbleq-GMWWbnHxPj3NoDLQNhUt4Ac2EUDbp98DgI29CJOJI7dDGVeciuaHpI6R031QSyyBJAIdYCr16NsVHXkr30UC5SnLEXfs9UbdNnhNcKasJKQFVgwwQkAS6Z5Ry53R__PiVTpTRVeZZrmM_2ntLg0TdhqpD30lzwLLxiMziEJoUg7g0DgUFyqMYj6CDHD0D1B2bGEkv9923jnHbBzHFD0pDeIhz0dklMF_HTcDTxeXAsDojpj27ic");'>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Alpine Backpack</h4>
+<p class="font-bold text-primary">$150</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Packs</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.7</span>
+<span class="text-xs text-gray-400">(156)</span>
+</div>
+</div>
+</div>
+<!-- Product Card 6 -->
+<div class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#1a2e1d]">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Pair of trekking poles leaning against a tree trunk in a forest" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCZGhK2aUw9aBAPX1oGf06X-kxYH3MzLaVN1lbr1XK05fJW5YOUSULnt-SpUA16UztwNRsnnC3tHtJQDNfqjjYHljE-DrfFvKahRlPKt-AK78Peupblwgw1qkQAN_B-kG6cyvDSugM1H2HpEKKXSy6ipC6JLsEk9B5uh7iR73_RKJe7RUCTHWakffCAKZKEaWVfYkgP1-Kjf1NwUt4Xtnv8r5TPgEVWTqU4LKr_GhfOGHgs_upDMc44ki3xwh6-c_rQGPj-zGuRaVg");'>
+</div>
+<!-- Favorite -->
+<div class="absolute top-2 right-2 rounded-full bg-white/80 dark:bg-black/50 p-2 text-[#0d1b0f] dark:text-white backdrop-blur-sm transition-transform active:scale-90 hover:bg-white">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#0d1b0f] dark:text-white leading-tight text-base line-clamp-1">Trek Poles</h4>
+<p class="font-bold text-primary">$30</p>
+</div>
+<p class="text-xs font-medium text-gray-500 dark:text-gray-400">Accessories</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-yellow-400 fill-current filled">star</span>
+<span class="text-xs font-bold text-[#0d1b0f] dark:text-white">4.3</span>
+<span class="text-xs text-gray-400">(29)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BottomNavBar -->
+<div class="fixed bottom-0 z-50 w-full border-t border-gray-200 dark:border-white/10 bg-white/90 dark:bg-[#102212]/90 backdrop-blur-xl px-6 pb-6 pt-3">
+<div class="flex justify-between items-end">
+<!-- Home -->
+<a class="flex flex-col items-center justify-end gap-1 text-gray-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[28px]">home</span>
+<p class="text-xs font-medium leading-none tracking-wide">Home</p>
+</a>
+<!-- Shop (Active) -->
+<a class="flex flex-col items-center justify-end gap-1 text-primary" href="#">
+<span class="material-symbols-outlined filled text-[28px]">storefront</span>
+<p class="text-xs font-bold leading-none tracking-wide">Shop</p>
+</a>
+<!-- Saved -->
+<a class="flex flex-col items-center justify-end gap-1 text-gray-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[28px]">favorite</span>
+<p class="text-xs font-medium leading-none tracking-wide">Saved</p>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-end gap-1 text-gray-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[28px]">person</span>
+<p class="text-xs font-medium leading-none tracking-wide">Profile</p>
+</a>
+</div>
+</div>
+</body></html>

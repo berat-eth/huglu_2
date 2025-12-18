@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Confirmation Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#11d421",
+              "background-light": "#f6f8f6",
+              "background-dark": "#102212",
+              "surface-light": "#ffffff",
+              "surface-dark": "#162b18",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0d1b0f] dark:text-gray-100 overflow-x-hidden min-h-screen relative">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-transparent dark:border-white/5 transition-all duration-300">
+<div class="flex items-center p-4 pb-2 justify-between">
+<button aria-label="Go back" class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all text-[#0d1b0f] dark:text-white">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h2 class="text-[#0d1b0f] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">Review Order</h2>
+</div>
+</header>
+<!-- Progress Stepper -->
+<div class="w-full bg-background-light dark:bg-background-dark">
+<div class="flex w-full flex-row items-center justify-center gap-2 py-6 px-6">
+<!-- Step 1: Cart (Completed) -->
+<div class="flex items-center gap-2 opacity-50">
+<div class="flex items-center justify-center size-6 rounded-full bg-primary text-black text-xs font-bold shadow-sm">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+<span class="hidden sm:block text-xs font-bold text-slate-800 dark:text-slate-200">Cart</span>
+</div>
+<div class="h-[2px] w-8 md:w-16 bg-primary/30 rounded-full"></div>
+<!-- Step 2: Payment (Completed) -->
+<div class="flex items-center gap-2 opacity-50">
+<div class="flex items-center justify-center size-6 rounded-full bg-primary text-black text-xs font-bold shadow-sm">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+<span class="hidden sm:block text-xs font-bold text-slate-800 dark:text-slate-200">Payment</span>
+</div>
+<div class="h-[2px] w-8 md:w-16 bg-primary/30 rounded-full"></div>
+<!-- Step 3: Review (Active) -->
+<div class="flex items-center gap-2">
+<div class="flex items-center justify-center size-6 rounded-full bg-primary text-black text-xs font-extrabold shadow-md shadow-primary/20 ring-2 ring-primary/20 ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark">3</div>
+<span class="text-xs font-bold text-slate-900 dark:text-white">Review</span>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<main class="flex flex-col gap-6 px-4 pb-40 max-w-lg mx-auto w-full">
+<!-- Items Section -->
+<section>
+<div class="flex items-center justify-between px-1">
+<h3 class="text-[#0d1b0f] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] pb-3 pt-2">Items (2)</h3>
+<button class="text-primary text-sm font-bold hover:text-green-600 transition-colors">Edit Cart</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Product 1 -->
+<article class="flex gap-4 bg-surface-light dark:bg-surface-dark p-3 rounded-2xl shadow-sm border border-black/5 dark:border-white/5 transition-colors">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl size-[80px] shrink-0 shadow-inner bg-gray-100 dark:bg-gray-800" data-alt="Pair of brown leather hiking boots on rocky terrain" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCWJmUv1VLv2t4dDRGJTQMLoSZWPoiCy0QRThZVY23u4aJEaRGq3UoEOgX1PqnR2De1BfKxY2ijbN_8sbjLI8viyVlVz3a_9uUTa7wkKg8zVO2qydgp8tmHfWMS6EQLOURXcrFUrmrxFb5Qvo7YBmWVNhmjWPwHCqKVmGO7OaePs0IBdGvTfb7W63uloa5OH3LMHQtYxhV_PG0BeMB25gscZio5GkPR1fy4TbfsaHBxBeaBTc0b0mfeSHmsRzIdxZjmpfK1EwB4Rzs");'></div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div>
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-tight">Summit Hiker Boots</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1">Size: 10 US | Brown</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<p class="text-xs font-semibold bg-gray-100 dark:bg-white/10 px-2 py-1 rounded text-gray-600 dark:text-gray-300">Qty: 1</p>
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold">$120.00</p>
+</div>
+</div>
+</article>
+<!-- Product 2 -->
+<article class="flex gap-4 bg-surface-light dark:bg-surface-dark p-3 rounded-2xl shadow-sm border border-black/5 dark:border-white/5 transition-colors">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl size-[80px] shrink-0 shadow-inner bg-gray-100 dark:bg-gray-800" data-alt="Orange alpine camping tent set up in snowy mountains" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBj2IW3kQm9PntcDDRByhwlH47n_MUTo7h6Xp8ng_twbH7orqWh1F-QU231C1FY9-gB8be3YX0xxfC68BJH4Zid2FoWr1r_Ctq49DmL8DZTMb6v9fxM9YYR1_1LwPBpiweULFyMZdBnCs-Ese2dmECmgR_1tjo-tBd6GreCCvOzDEli1rWNMOHgtpPEC5dIeoQe2v7qxzVCnVX7kAciU_erP5WZuNfNzDExwcGqyeTXmAYfOdppb-UaVZYPKE2BnekeZu_N4XwzvaY");'></div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div>
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-tight">Alpine Tent 2-Person</p>
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1">Color: Blaze Orange</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<p class="text-xs font-semibold bg-gray-100 dark:bg-white/10 px-2 py-1 rounded text-gray-600 dark:text-gray-300">Qty: 1</p>
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold">$240.00</p>
+</div>
+</div>
+</article>
+</div>
+</section>
+<!-- Delivery & Payment Group -->
+<section class="grid gap-4">
+<!-- Shipping Card -->
+<div class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl shadow-sm border border-black/5 dark:border-white/5">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gray-400 text-xl">local_shipping</span>
+<h4 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Delivery</h4>
+</div>
+<button class="text-primary text-sm font-bold hover:underline">Change</button>
+</div>
+<div class="flex gap-4 items-start">
+<div class="size-10 rounded-full bg-green-50 dark:bg-primary/20 flex items-center justify-center shrink-0 border border-green-100 dark:border-primary/20">
+<span class="material-symbols-outlined text-primary text-xl">location_on</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-slate-900 dark:text-white text-base">John Doe</p>
+<p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mt-1">123 Trailhead Lane<br/>Boulder, CO 80302</p>
+<div class="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg w-fit">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                            Standard Shipping (3-5 Days)
+                        </div>
+</div>
+</div>
+</div>
+<!-- Payment Card -->
+<div class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl shadow-sm border border-black/5 dark:border-white/5">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gray-400 text-xl">credit_card</span>
+<h4 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Payment</h4>
+</div>
+<button class="text-primary text-sm font-bold hover:underline">Change</button>
+</div>
+<div class="flex gap-4 items-center">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center shrink-0 border border-slate-200 dark:border-white/10">
+<!-- Simple Card Icon Representation -->
+<span class="material-symbols-outlined text-slate-700 dark:text-slate-300 text-2xl">credit_card</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-slate-900 dark:text-white text-sm">Visa ending in 4242</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Expires 12/28</p>
+</div>
+<div class="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 dark:bg-white/5 px-2 py-1 rounded border border-gray-100 dark:border-white/5">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                        Secure
+                    </div>
+</div>
+</div>
+</section>
+<!-- Order Summary & Cost Breakdown -->
+<section class="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl shadow-sm border border-black/5 dark:border-white/5">
+<h3 class="text-lg font-bold mb-5 text-[#0d1b0f] dark:text-white">Order Summary</h3>
+<div class="space-y-3">
+<div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+<span>Subtotal</span>
+<span class="font-semibold text-slate-900 dark:text-white">$360.00</span>
+</div>
+<div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+<span>Shipping</span>
+<span class="font-semibold text-slate-900 dark:text-white">$15.00</span>
+</div>
+<div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+<span>Estimated Tax</span>
+<span class="font-semibold text-slate-900 dark:text-white">$28.50</span>
+</div>
+<!-- Separator -->
+<div class="h-px bg-gray-100 dark:bg-white/10 my-3 border-t border-dashed border-gray-300 dark:border-gray-700"></div>
+<div class="flex justify-between items-center">
+<span class="text-base font-bold text-slate-900 dark:text-white">Total</span>
+<span class="text-2xl font-extrabold text-[#0d1b0f] dark:text-white tracking-tight">$403.50</span>
+</div>
+<div class="flex justify-end">
+<span class="text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded">You saved $20.00 today!</span>
+</div>
+</div>
+</section>
+<!-- Trust Badge -->
+<div class="flex justify-center items-center gap-2 text-gray-400 dark:text-gray-500 pb-4">
+<span class="material-symbols-outlined text-lg">verified_user</span>
+<span class="text-xs font-medium">100% Secure Checkout Guarantee</span>
+</div>
+</main>
+<!-- Sticky Bottom Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-white dark:bg-[#0c1a0e] border-t border-gray-100 dark:border-white/5 p-4 pb-8 z-50 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
+<div class="max-w-lg mx-auto w-full">
+<button class="group w-full bg-primary hover:bg-[#15e026] active:scale-[0.99] transition-all duration-200 text-black font-bold text-lg py-4 px-6 rounded-xl shadow-lg shadow-green-500/30 flex items-center justify-between relative overflow-hidden">
+<span class="relative z-10">Place Order</span>
+<!-- Hover effect background shine -->
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+<div class="flex items-center gap-3 relative z-10">
+<span class="font-semibold opacity-80 text-base">$403.50</span>
+<div class="bg-black/10 rounded-full p-1 group-hover:translate-x-1 transition-transform">
+<span class="material-symbols-outlined text-xl block">arrow_forward</span>
+</div>
+</div>
+</button>
+</div>
+</div>
+<!-- Hidden Success Modal (Concept for developers) -->
+<!-- 
+    <div id="success-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white dark:bg-surface-dark w-full max-w-sm rounded-3xl p-8 flex flex-col items-center text-center shadow-2xl scale-95 transition-transform duration-300">
+            <div class="size-20 bg-primary/20 rounded-full flex items-center justify-center mb-6 text-primary">
+                <span class="material-symbols-outlined text-5xl">check_circle</span>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Order Confirmed!</h2>
+            <p class="text-gray-500 dark:text-gray-400 mb-6">Adventure Awaits! Your order <span class="text-slate-900 dark:text-white font-mono font-bold">#48291</span> has been placed successfully.</p>
+            <button class="w-full bg-slate-900 dark:bg-white text-white dark:text-black font-bold py-3.5 rounded-xl">Continue Shopping</button>
+        </div>
+    </div>
+    -->
+</body></html>

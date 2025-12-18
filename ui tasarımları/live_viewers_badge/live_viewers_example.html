@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canlı İzleyici Badge - Örnek</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .product-section {
+            margin-bottom: 30px;
+        }
+
+        .category {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .product-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        /* Live Viewers Badge */
+        .live-viewers-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .live-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .live-viewers-text {
+            font-size: 13px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .live-viewers-count {
+            font-weight: 700;
+            color: #ef4444;
+        }
+
+        .eye-icon {
+            width: 16px;
+            height: 16px;
+            color: #ef4444;
+        }
+
+        .price {
+            font-size: 32px;
+            font-weight: 700;
+            color: #11d421;
+            margin-bottom: 20px;
+        }
+
+        .stats {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .stats h3 {
+            font-size: 16px;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .demo-controls {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .demo-controls h3 {
+            font-size: 16px;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px 24px;
+            background: #11d421;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .button:hover {
+            background: #0fb31c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(17, 212, 33, 0.3);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+        }
+
+        .info-box p {
+            font-size: 13px;
+            color: #1e40af;
+            line-height: 1.5;
+        }
+
+        .variants {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .variant-badge {
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .variant-1 {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .variant-2 {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .variant-3 {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .variant-4 {
+            background: rgba(168, 85, 247, 0.08);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .variant-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .variant-number {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .variant-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .variant-1 .variant-number,
+        .variant-1 .variant-label {
+            color: #ef4444;
+        }
+
+        .variant-2 .variant-number,
+        .variant-2 .variant-label {
+            color: #22c55e;
+        }
+
+        .variant-3 .variant-number,
+        .variant-3 .variant-label {
+            color: #3b82f6;
+        }
+
+        .variant-4 .variant-number,
+        .variant-4 .variant-label {
+            color: #a855f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔴 Canlı İzleyici Badge</h1>
+            <p>Sosyal Kanıt Özelliği Demo</p>
+        </div>
+
+        <div class="product-section">
+            <div class="category">OUTDOOR EKIPMAN</div>
+            <h2 class="product-name">Profesyonel Dağcılık Sırt Çantası</h2>
+            
+            <!-- Live Viewers Badge -->
+            <div class="live-viewers-badge">
+                <div class="live-indicator"></div>
+                <svg class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <span class="live-viewers-text">
+                    Şu anda <span class="live-viewers-count" id="viewerCount">7</span> kişi bu ürünü inceliyor
+                </span>
+            </div>
+
+            <div class="price">1.299,00 ₺</div>
+        </div>
+
+        <div class="stats">
+            <h3>📊 Özellik İstatistikleri</h3>
+            <div class="stat-item">
+                <span class="stat-label">Sayı Aralığı</span>
+                <span class="stat-value">1-20 kişi</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">1-10 Arası Olasılık</span>
+                <span class="stat-value">%70 (%40 daha fazla)</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">11-20 Arası Olasılık</span>
+                <span class="stat-value">%30</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Güncelleme Süresi</span>
+                <span class="stat-value">15-30 saniye</span>
+            </div>
+        </div>
+
+        <div class="demo-controls">
+            <h3>🎮 Demo Kontrolleri</h3>
+            <button class="button" onclick="updateViewers()">🔄 Yeni Sayı Üret</button>
+            <button class="button" onclick="startAutoUpdate()">▶️ Otomatik Güncellemeyi Başlat</button>
+            <button class="button" onclick="stopAutoUpdate()">⏸️ Otomatik Güncellemeyi Durdur</button>
+
+            <div class="variants">
+                <div class="variant-badge variant-1" onclick="setViewers(5)">
+                    <div class="variant-number">5</div>
+                    <div class="variant-label">Düşük</div>
+                </div>
+                <div class="variant-badge variant-2" onclick="setViewers(12)">
+                    <div class="variant-number">12</div>
+                    <div class="variant-label">Orta</div>
+                </div>
+                <div class="variant-badge variant-3" onclick="setViewers(18)">
+                    <div class="variant-number">18</div>
+                    <div class="variant-label">Yüksek</div>
+                </div>
+                <div class="variant-badge variant-4" onclick="setViewers(3)">
+                    <div class="variant-number">3</div>
+                    <div class="variant-label">Çok Düşük</div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <p>
+                    💡 <strong>İpucu:</strong> Bu özellik, kullanıcılara ürünün popülerliğini göstererek 
+                    satın alma kararını olumlu yönde etkiler. Ağırlıklı algoritma sayesinde 
+                    daha gerçekçi ve inanılır sonuçlar üretir.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoUpdateInterval = null;
+
+        // Ağırlıklı rastgele sayı üretici
+        function generateWeightedRandomViewers() {
+            const random = Math.random();
+            
+            // %70 olasılıkla 1-10 arası
+            if (random < 0.7) {
+                return Math.floor(Math.random() * 10) + 1;
+            }
+            // %30 olasılıkla 11-20 arası
+            else {
+                return Math.floor(Math.random() * 10) + 11;
+            }
+        }
+
+        // İzleyici sayısını güncelle
+        function updateViewers() {
+            const count = generateWeightedRandomViewers();
+            setViewers(count);
+        }
+
+        // Belirli bir sayı ayarla
+        function setViewers(count) {
+            const element = document.getElementById('viewerCount');
+            element.style.transform = 'scale(1.2)';
+            element.style.transition = 'transform 0.2s';
+            
+            setTimeout(() => {
+                element.textContent = count;
+                element.style.transform = 'scale(1)';
+            }, 100);
+        }
+
+        // Otomatik güncellemeyi başlat
+        function startAutoUpdate() {
+            if (autoUpdateInterval) {
+                alert('Otomatik güncelleme zaten çalışıyor!');
+                return;
+            }
+
+            autoUpdateInterval = setInterval(() => {
+                updateViewers();
+            }, 3000); // Demo için 3 saniye (gerçekte 15-30 saniye)
+
+            alert('✅ Otomatik güncelleme başlatıldı! (Her 3 saniyede bir)');
+        }
+
+        // Otomatik güncellemeyi durdur
+        function stopAutoUpdate() {
+            if (!autoUpdateInterval) {
+                alert('Otomatik güncelleme zaten durmuş!');
+                return;
+            }
+
+            clearInterval(autoUpdateInterval);
+            autoUpdateInterval = null;
+            alert('⏸️ Otomatik güncelleme durduruldu!');
+        }
+
+        // Sayfa yüklendiğinde otomatik başlat
+        window.addEventListener('load', () => {
+            startAutoUpdate();
+        });
+
+        // Sayfa kapatılırken temizle
+        window.addEventListener('beforeunload', () => {
+            if (autoUpdateInterval) {
+                clearInterval(autoUpdateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

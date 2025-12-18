@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Outdoor Shop - Sign Up</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#11d421",
+                "background-light": "#f6f8f6",
+                "background-dark": "#102212",
+                "surface-light": "#ffffff",
+                "surface-dark": "#1a2c1e",
+                "text-main": "#0d1b0f",
+                "text-muted": "#4c9a52",
+              },
+              fontFamily: {
+                "display": ["Plus Jakarta Sans", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hide for cleaner mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-text-main dark:text-white font-display antialiased selection:bg-primary/30">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-surface-light dark:bg-surface-dark shadow-2xl">
+<!-- Header -->
+<header class="flex items-center p-4 pt-6 pb-2 justify-between bg-surface-light dark:bg-surface-dark sticky top-0 z-10">
+<button aria-label="Go back" class="text-text-main dark:text-white flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
+</button>
+<h2 class="text-text-main dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">Create Account</h2>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col px-6 pt-4 pb-8">
+<!-- Hero Text -->
+<div class="mb-8">
+<h1 class="text-text-main dark:text-white tracking-tight text-[32px] font-extrabold leading-tight text-left mb-2">Join the Adventure</h1>
+<p class="text-text-muted dark:text-gray-400 text-base font-normal leading-normal">Sign up to start your outdoor journey today.</p>
+</div>
+<!-- Form -->
+<form class="flex flex-col gap-5">
+<!-- Full Name -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-main dark:text-gray-200 text-sm font-semibold leading-normal" for="fullname">Full Name</label>
+<div class="relative">
+<input class="form-input w-full rounded-xl text-text-main dark:text-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 pl-4 pr-4 text-base font-medium placeholder:text-gray-400 transition-all" id="fullname" placeholder="Enter your full name" type="text"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-primary hidden peer-valid:block">
+<span class="material-symbols-outlined text-xl">check_circle</span>
+</span>
+</div>
+</div>
+<!-- Email -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-main dark:text-gray-200 text-sm font-semibold leading-normal" for="email">Email Address</label>
+<div class="relative">
+<input class="form-input w-full rounded-xl text-text-main dark:text-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 pl-4 pr-12 text-base font-medium placeholder:text-gray-400 transition-all" id="email" placeholder="name@example.com" type="email"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+<span class="material-symbols-outlined text-xl">mail</span>
+</span>
+</div>
+</div>
+<!-- Password -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-main dark:text-gray-200 text-sm font-semibold leading-normal" for="password">Password</label>
+<div class="relative">
+<input class="form-input w-full rounded-xl text-text-main dark:text-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 pl-4 pr-12 text-base font-medium placeholder:text-gray-400 transition-all" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-main dark:hover:text-white transition-colors" type="button">
+<span class="material-symbols-outlined text-xl">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Confirm Password -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-main dark:text-gray-200 text-sm font-semibold leading-normal" for="confirm_password">Confirm Password</label>
+<div class="relative">
+<input class="form-input w-full rounded-xl text-text-main dark:text-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary h-14 pl-4 pr-12 text-base font-medium placeholder:text-gray-400 transition-all" id="confirm_password" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<!-- Terms Checkbox -->
+<div class="flex items-start gap-3 mt-2">
+<div class="flex h-6 items-center">
+<input class="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50 dark:border-gray-600 dark:bg-background-dark" id="terms" type="checkbox"/>
+</div>
+<div class="text-sm leading-6">
+<label class="font-medium text-text-main dark:text-gray-300" for="terms">I agree to the <a class="font-semibold text-primary hover:underline" href="#">Terms of Service</a> and <a class="font-semibold text-primary hover:underline" href="#">Privacy Policy</a></label>
+</div>
+</div>
+<!-- Submit Button -->
+<button class="mt-4 flex w-full items-center justify-center rounded-xl bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-green-600 hover:shadow-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-background-dark" type="button">
+                    Sign Up
+                </button>
+</form>
+<!-- Divider -->
+<div class="relative mt-8 mb-6">
+<div aria-hidden="true" class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+</div>
+<div class="relative flex justify-center text-sm font-medium leading-6">
+<span class="bg-surface-light dark:bg-surface-dark px-4 text-gray-500 dark:text-gray-400">Or continue with</span>
+</div>
+</div>
+<!-- Social Buttons -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark px-4 py-3 text-sm font-semibold text-text-main dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all" type="button">
+<img alt="Google logo" class="h-5 w-5" data-alt="Google G Logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1g1NorhgJ_Faa9vqLxFQnck61_lCZPvtaTTEllwjmGF9sESD0HqyTsqX0fIIeLzab7WsFlnnWh5URINXOgIVTzEILgmoe1xbjzpVrHsB0hxRtPADOOepe_7TBYS1IvMZtVDR1uOCfK2xyWBmtFSqELbv2pKdGGPtwbNHwxGXvzqJzNmV9EervP-GWaHmeA3WxdQ1BijvjYuExPzHdjbJ1mdwRYly4DxRZPWhxa9V0ZtTB08y1SxlNs_Yx4gGhkgSE44ZimMNvYks"/>
+                    Google
+                </button>
+<button class="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark px-4 py-3 text-sm font-semibold text-text-main dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all" type="button">
+<img alt="Apple logo" class="h-5 w-5 dark:invert" data-alt="Apple Logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA23TKXOxjhI-Ldx-0XC_Wkc0Y2_RH0oGd9FofZvUM3Fj9jHCs7rEzzPoch7PenmboO1M6j-zBfJKBy6n3tIJF-oMewl5sPDCHx59rqnz7aTOvGw47Cc5EWBx7OrGZ1z3zg1Ytd8yeeqyZgf0XS8POOw-N85djMs5TfiV-pOTnFCuyvfm1yZnXwhOq8U8Q8fm7RRAPqQRPcUK9EBmWfjo-93I3Xg5HYqE7Qp4U-JPP3ha_ox2V7bg9RvKHT4T8LDumJpUQ-T073N8c"/>
+                    Apple
+                </button>
+</div>
+<!-- Footer Link -->
+<p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                Already have an account? 
+                <a class="font-bold text-primary hover:text-green-600 transition-colors" href="#">Log In</a>
+</p>
+</main>
+</div>
+</body></html>

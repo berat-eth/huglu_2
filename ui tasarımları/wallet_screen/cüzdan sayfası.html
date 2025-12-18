@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wallet Screen</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#11d421",
+              "primary-dark": "#0ea61a",
+              "background-light": "#f6f8f6",
+              "background-dark": "#102212",
+              "surface-light": "#ffffff",
+              "surface-dark": "#1a2c1e",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "Noto Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0d1b0f] dark:text-gray-100 flex flex-col min-h-screen pb-10">
+<!-- TopAppBar -->
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-20 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
+<h2 class="text-[#0d1b0f] dark:text-white text-2xl font-bold leading-tight tracking-[-0.015em] flex-1">My Wallet</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[48px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-transparent hover:bg-gray-100 dark:hover:bg-surface-dark text-[#0d1b0f] dark:text-white transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+<!-- Main Content -->
+<div class="flex flex-col gap-6 px-4 pt-2">
+<!-- Loyalty Card Section -->
+<div class="relative w-full aspect-[1.586/1] rounded-xl overflow-hidden shadow-lg bg-primary text-white group transform transition-transform hover:scale-[1.02] duration-300">
+<!-- Decorative Background -->
+<div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent mix-blend-overlay pointer-events-none"></div>
+<div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+<div class="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full blur-xl"></div>
+<div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&amp;w=1000&amp;auto=format&amp;fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" data-alt="Forest texture overlay on green card"></div>
+<div class="relative h-full flex flex-col justify-between p-5 sm:p-6">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-xl">landscape</span>
+<span class="text-xs font-bold uppercase tracking-wider opacity-90">Outdoor Pro</span>
+</div>
+<h3 class="text-3xl font-bold tracking-tight">1,240 Pts</h3>
+<p class="text-sm font-medium opacity-90 text-green-50 bg-white/10 inline-block px-2 py-0.5 rounded mt-1">$12.40 Reward Value</p>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div>
+<p class="text-sm font-bold tracking-wide uppercase drop-shadow-sm">John Doe</p>
+<p class="text-xs opacity-80 font-mono tracking-wider">ID: 883920</p>
+</div>
+<!-- QR Code -->
+<div class="bg-white p-1.5 rounded-lg shadow-sm">
+<img alt="Membership QR Code" class="w-10 h-10 object-contain" data-alt="QR code for scanning membership" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFUA8Srogqm5OCecTTJjm7zR0oBqR1VEED_0bJ7PafoYN3q2a4GO1mVG197d9z2oA9ZFH8asqTjZKs6CDW2Th6y28XdHaFi-3VID6pqzC6AevZwX71cW6LWqiaVOzzolMKOG3r1C62c3tGC_axsGKN28UCupXXCxH0elaTgnPMe7u5t9klRJXUSST8U8dplyfYMUcG_SL0jKqi0JzJ7TdO5z7TN8kjUZlWmMSD83FWAy_taSGBSi1_ydUSR7ZnGYRLV00TCNz3zes"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Add to Apple Wallet Button -->
+<div class="flex">
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-black text-white gap-3 px-4 shadow-md hover:bg-gray-900 transition-colors">
+<span class="material-symbols-outlined">wallet</span>
+<span class="text-sm font-bold leading-normal tracking-[0.015em] truncate">Add to Apple Wallet</span>
+</button>
+</div>
+<!-- Payment Methods Section -->
+<div class="flex flex-col gap-2">
+<h3 class="text-[#0d1b0f] dark:text-white tracking-tight text-xl font-bold leading-tight text-left pb-1">Payment Methods</h3>
+<div class="flex flex-col gap-3">
+<!-- Visa Card Item -->
+<div class="flex items-center gap-4 bg-surface-light dark:bg-surface-dark px-4 py-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 justify-between group cursor-pointer hover:border-primary/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="bg-gray-50 dark:bg-gray-800 h-10 w-14 shrink-0 rounded flex items-center justify-center p-1 border border-gray-100 dark:border-gray-700">
+<img alt="Visa" class="h-full w-full object-contain" data-alt="Visa logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDywVi19y3qF_d_Fk3Q_toRyieMMAdkup7C_gLQ_n-g4foJwzn4CkGTCAn2WjM2VT093APmEj5ShERM11xPU8IjUpqYQJ3AKPEzBhj7bajVeQr-o_nDJNl-jTm0VUqYqYyNhKfMJntnjYueAClKVVks9LV-sOoUwfpRQmj5vIytA5P2quHV2k9Cdgg7eeHh-1gmOlaTBX5J2UBPVIuzV718ldsbB0Lq2g3yx9AX2TYak9Lp0Ojw4-GXQJruCivNdHmJOOIjTACXI0I"/>
+</div>
+<div class="flex flex-col justify-center">
+<div class="flex items-center gap-2">
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-normal line-clamp-1">Visa ending in 4242</p>
+<span class="bg-primary/20 text-green-700 dark:text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded">Default</span>
+</div>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal line-clamp-2">Expires 12/25</p>
+</div>
+</div>
+<div class="shrink-0 text-gray-400 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</div>
+</div>
+<!-- Mastercard Item -->
+<div class="flex items-center gap-4 bg-surface-light dark:bg-surface-dark px-4 py-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 justify-between group cursor-pointer hover:border-primary/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="bg-gray-50 dark:bg-gray-800 h-10 w-14 shrink-0 rounded flex items-center justify-center p-1 border border-gray-100 dark:border-gray-700">
+<img alt="Mastercard" class="h-full w-full object-contain" data-alt="Mastercard logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGib_q3FOgRkDNBQBoPDG7otefCdNzM2h1aqCxRC8JAunJNjQc_4XMyMfcQ1QtyOEVghFgMWVpWQGK-NCwMBHLHaVoq61-IW8HE8Ja2rct4l5YB9ngNY5XOJtX2EwoRQqwiy_jIEGeeflPoyHGnq4iN0O75YlE-MnHHINvp9UYfO5Be3XMysdtiMRXsYF3l9EFtM56SS5kGNcoDdnmoP9nDNQPDCkBsVacmmh1Q_bAPZqFf_Lh4IKRwowQX1PN6bCFYXuudsP6RgU"/>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-normal line-clamp-1">Mastercard ending in 8888</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal line-clamp-2">Expires 09/26</p>
+</div>
+</div>
+<div class="shrink-0 text-gray-400 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</div>
+</div>
+<!-- Add New Method Button -->
+<button class="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-surface-dark hover:border-primary hover:text-primary transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+<span>Add Payment Method</span>
+</button>
+</div>
+</div>
+<!-- Vouchers & Gift Cards Section -->
+<div class="flex flex-col gap-2">
+<h3 class="text-[#0d1b0f] dark:text-white tracking-tight text-xl font-bold leading-tight text-left pb-1 pt-2">Vouchers &amp; Gift Cards</h3>
+<div class="flex flex-col gap-3">
+<!-- Gift Card Item -->
+<div class="flex items-center gap-4 bg-surface-light dark:bg-surface-dark px-4 py-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 justify-between">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 shrink-0 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined">card_giftcard</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-normal line-clamp-1">Birthday Gift Card</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Balance: <span class="text-primary font-bold">$50.00</span></p>
+</div>
+</div>
+<div class="shrink-0">
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</div>
+</div>
+<!-- Voucher Item -->
+<div class="flex items-center gap-4 bg-surface-light dark:bg-surface-dark px-4 py-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 justify-between opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 shrink-0 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-[#0d1b0f] dark:text-white text-base font-bold leading-normal line-clamp-1">Free Shipping Voucher</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Expires in 3 days</p>
+</div>
+</div>
+<div class="shrink-0">
+<span class="text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">ACTIVE</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Spacer -->
+<div class="h-10"></div>
+</body></html>
