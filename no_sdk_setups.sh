@@ -26,24 +26,24 @@ NC='\033[0m'
 # --------------------------
 # Main Site
 MAIN_DOMAIN="plaxsy.com"
-MAIN_DIR="/root/Huglu_New_Ui/web"
+MAIN_DIR="/root/huglu_2/web"
 MAIN_PORT=3006
 MAIN_PM2_NAME="huglu-web"
 
 # API
 API_DOMAIN="api.plaxsy.com"
-API_DIR="/root/Huglu_New_Ui/server"
+API_DIR="/root/huglu_2/server"
 API_PORT=3000
 API_PM2_NAME="huglu-api"
 
 # Admin Panel
 ADMIN_DOMAIN="admin.plaxsy.com"
-ADMIN_DIR="/root/Huglu_New_Ui/admin-panel"
+ADMIN_DIR="/root/huglu_2/admin-panel"
 ADMIN_PORT=3001
 ADMIN_PM2_NAME="admin-panel"
 
 # AI/ML Service
-AI_DIR="/root/Huglu_New_Ui/ml-service"
+AI_DIR="/root/huglu_2/ml-service"
 AI_PORT=8001
 AI_PM2_NAME="ml-service"
 
@@ -270,12 +270,12 @@ deploy_updates() {
     clear
     print_header "Yazılım Güncellemelerini Dağıtma"
 
-    if [ ! -d "/root/Huglu_New_Ui/.git" ]; then
+    if [ ! -d "/root/huglu_2/.git" ]; then
         echo -e "${RED}Repository bulunamadı. Önce kurulum yapın.${NC}"
         return 1
     fi
 
-    cd /root/Huglu_New_Ui
+    cd /root/huglu_2
 
     echo -e "${BLUE}Son değişiklikler çekiliyor...${NC}"
     if git pull --rebase --autostash origin main; then
@@ -575,10 +575,10 @@ install_nodejs() {
 
 clone_repository() {
     echo -e "${BLUE}[4/7] Repository klonlanıyor...${NC}"
-    if [ ! -d "/root/Huglu_New_Ui" ]; then
-        git clone https://github.com/berat-eth/Huglu_New_Ui.git /root/Huglu_New_Ui
+    if [ ! -d "/root/huglu_2" ]; then
+        git clone https://github.com/berat-eth/huglu_2.git /root/huglu_2
     else
-        cd /root/Huglu_New_Ui
+        cd /root/huglu_2
         git pull origin main || git pull origin master || true
     fi
 }
