@@ -22931,6 +22931,77 @@ async function startServer() {
     }
   });
 
+  // Kullanıcının hediye çekleri ve kuponları
+  app.get('/api/wallet/gift-cards/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+
+      // Validate userId is a valid number
+      const userIdNum = parseInt(userId);
+      if (isNaN(userIdNum) || userIdNum <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid userId parameter' 
+        });
+      }
+
+      // Kullanıcının aktif hediye çeklerini al
+      // recipientUserId = userId olanlar veya recipientUserId NULL olup kullanıcıya gönderilenler
+      const [giftCards] = await poolWrapper.execute(
+        `SELECT 
+          id,
+          code,
+          amount,
+          message,
+          status,
+          recipient,
+          recipientUserId,
+          createdAt,
+          expiresAt,
+          usedAt
+        FROM gift_cards 
+        WHERE (recipientUserId = ? OR recipientUserId IS NULL)
+          AND tenantId = ?
+          AND status = 'active'
+          AND (expiresAt IS NULL OR expiresAt > NOW())
+          AND usedAt IS NULL
+        ORDER BY createdAt DESC`,
+        [userIdNum, tenantId]
+      );
+
+      // Format gift cards for response
+      const vouchers = giftCards.map(card => ({
+        id: card.id,
+        code: card.code,
+        name: card.message || `Hediye Çeki - ${card.code}`,
+        title: card.message || `Hediye Çeki - ${card.code}`,
+        balance: parseFloat(card.amount) || 0,
+        amount: parseFloat(card.amount) || 0,
+        type: 'gift',
+        status: card.status,
+        expiryDate: card.expiresAt ? new Date(card.expiresAt).toISOString() : null,
+        createdAt: card.createdAt ? new Date(card.createdAt).toISOString() : null,
+        usedAt: card.usedAt ? new Date(card.usedAt).toISOString() : null,
+        recipient: card.recipient
+      }));
+
+      res.json({
+        success: true,
+        vouchers: vouchers,
+        data: vouchers
+      });
+    } catch (error) {
+      console.error('❌ Wallet gift cards error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Hediye çekleri alınamadı',
+        vouchers: [],
+        data: []
+      });
+    }
+  });
+
   // Yardımcı fonksiyonlar
   async function processCardPayment(requestId, amount, userId) {
     console.log('🔄 Processing card payment - NO CARD DATA STORED');
@@ -23209,6 +23280,14 @@ async function startServer() {
       res.json({
         success: true,
         data: {
+          currentLevel: levels.indexOf(currentLevel) + 1,
+          levelName: currentLevel.displayName,
+          currentExp: Number(totalExp),
+          nextLevelExp: nextLevel ? nextLevel.minExp : currentLevel.maxExp,
+          totalPoints: Number(totalExp),
+          totalExp: Number(totalExp),
+          expToNextLevel: Number(expToNextLevel),
+          progressPercentage: Number(progressPercentage.toFixed(2)),
           levelProgress: {
             currentLevel,
             nextLevel,
@@ -23409,10 +23488,31 @@ async function startServer() {
         [userId, tenantId]
       );
 
+      // Format transactions for mobile app
+      const formattedHistory = transactions.map(t => {
+        const sourceTitle = getSourceTitle(t.source, t.description);
+        const date = formatDate(t.timestamp);
+        return {
+          id: t.id,
+          title: sourceTitle,
+          points: Number(t.amount) || 0,
+          date: date,
+          source: t.source,
+          orderId: t.orderId,
+          productId: t.productId,
+          description: t.description || sourceTitle,
+          timestamp: t.timestamp
+        };
+      });
+
       res.json({
         success: true,
-        data: {
-          transactions: transactions || [],
+        data: formattedHistory,
+        history: formattedHistory,
+        transactions: transactions || [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
           total: totalRows[0]?.total || 0,
           hasMore: offset + (transactions?.length || 0) < (totalRows[0]?.total || 0)
         }
@@ -23420,6 +23520,222 @@ async function startServer() {
     } catch (error) {
       console.error('❌ Error getting EXP history:', error);
       res.status(500).json({ success: false, message: 'Error getting EXP history' });
+    }
+  });
+
+  // Get user level stats
+  app.get('/api/user-level/:userId/stats', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'User ID is required' });
+      }
+
+      // Get total purchases count
+      const [purchaseCount] = await poolWrapper.execute(
+        'SELECT COUNT(DISTINCT orderId) as total FROM user_exp_transactions WHERE userId = ? AND tenantId = ? AND source IN ("purchase", "purchase_exp") AND orderId IS NOT NULL',
+        [userId, tenantId]
+      );
+
+      // Get total reviews count (if reviews table exists)
+      let reviewCount = 0;
+      try {
+        const [reviewRows] = await poolWrapper.execute(
+          'SELECT COUNT(*) as total FROM reviews WHERE userId = ? AND tenantId = ?',
+          [userId, tenantId]
+        );
+        reviewCount = reviewRows[0]?.total || 0;
+      } catch (e) {
+        // Reviews table might not exist
+        console.log('⚠️ Reviews table not found, skipping review count');
+      }
+
+      // Get total referrals count
+      const [referralCount] = await poolWrapper.execute(
+        'SELECT COUNT(*) as total FROM users WHERE referred_by = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+
+      // Get total EXP from different sources
+      const [expBySource] = await poolWrapper.execute(
+        `SELECT source, SUM(amount) as total FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? 
+         GROUP BY source`,
+        [userId, tenantId]
+      );
+
+      const stats = {
+        totalPurchases: purchaseCount[0]?.total || 0,
+        totalReviews: reviewCount,
+        totalReferrals: referralCount[0]?.total || 0,
+        expBySource: expBySource.reduce((acc, row) => {
+          acc[row.source] = Number(row.total || 0);
+          return acc;
+        }, {})
+      };
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      console.error('❌ Error getting user level stats:', error);
+      res.status(500).json({ success: false, message: 'Error getting user level stats' });
+    }
+  });
+
+  // Helper function to format date
+  function formatDate(date) {
+    if (!date) return 'Bugün';
+    const now = new Date();
+    const transactionDate = new Date(date);
+    const diffMs = now - transactionDate;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Bugün';
+    if (diffDays === 1) return 'Dün';
+    if (diffDays < 7) return `${diffDays} gün önce`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} hafta önce`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} ay önce`;
+    return `${Math.floor(diffDays / 365)} yıl önce`;
+  }
+
+  // Helper function to get source title
+  function getSourceTitle(source, description) {
+    if (description) return description;
+    const titles = {
+      'purchase': 'Satın Alma',
+      'purchase_exp': 'Satın Alma',
+      'review': 'Yorum',
+      'referral': 'Referans Bonusu',
+      'invitation_exp': 'Davet Bonusu',
+      'social_share': 'Sosyal Paylaşım',
+      'social-share-exp': 'Sosyal Paylaşım',
+      'manual_add': 'Manuel Ekleme',
+      'manual_remove': 'Manuel Çıkarma'
+    };
+    return titles[source] || 'Aktivite';
+  }
+
+  // Add purchase EXP
+  app.post('/api/user-level/:userId/purchase-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { orderAmount, orderId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !orderAmount || !orderId) {
+        return res.status(400).json({ success: false, message: 'userId, orderAmount, and orderId are required' });
+      }
+
+      // Calculate EXP based on order amount (1 EXP per 10 TL)
+      const expAmount = Math.floor(parseFloat(orderAmount) / 10);
+
+      // Insert EXP transaction
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, orderId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, 'purchase_exp', expAmount, `Satın alma: Sipariş #${orderId}`, orderId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Satın alma EXP\'si başarıyla eklendi',
+        expGained: expAmount
+      });
+    } catch (error) {
+      console.error('❌ Error adding purchase EXP:', error);
+      res.status(500).json({ success: false, message: 'Satın alma EXP\'si eklenemedi' });
+    }
+  });
+
+  // Add invitation EXP
+  app.post('/api/user-level/:userId/invitation-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { invitedUserId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !invitedUserId) {
+        return res.status(400).json({ success: false, message: 'userId and invitedUserId are required' });
+      }
+
+      const expAmount = 200; // Davet bonusu için sabit 200 EXP
+
+      // Insert EXP transaction
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'invitation_exp', expAmount, `Davet bonusu: Kullanıcı #${invitedUserId}`]
+      );
+
+      res.json({
+        success: true,
+        message: 'Davet EXP\'si başarıyla eklendi',
+        expGained: expAmount
+      });
+    } catch (error) {
+      console.error('❌ Error adding invitation EXP:', error);
+      res.status(500).json({ success: false, message: 'Davet EXP\'si eklenemedi' });
+    }
+  });
+
+  // Claim level rewards
+  app.post('/api/user-level/:userId/claim-rewards', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { levelId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !levelId) {
+        return res.status(400).json({ success: false, message: 'userId and levelId are required' });
+      }
+
+      // Get user's total EXP to verify level
+      const [expRows] = await poolWrapper.execute(
+        'SELECT SUM(amount) as total_exp FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+
+      const totalExp = expRows[0]?.total_exp || 0;
+
+      // Level definitions
+      const levels = [
+        { id: 'bronze', minExp: 0, maxExp: 1500 },
+        { id: 'iron', minExp: 1500, maxExp: 4500 },
+        { id: 'gold', minExp: 4500, maxExp: 10500 },
+        { id: 'platinum', minExp: 10500, maxExp: 22500 },
+        { id: 'diamond', minExp: 22500, maxExp: Infinity }
+      ];
+
+      const level = levels.find(l => l.id === levelId);
+      if (!level) {
+        return res.status(400).json({ success: false, message: 'Invalid level ID' });
+      }
+
+      // Check if user has reached this level
+      if (totalExp < level.minExp) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Bu seviyeye ulaşmak için ${level.minExp - totalExp} EXP daha gerekli` 
+        });
+      }
+
+      // Check if reward already claimed (you might want to add a claimed_rewards table)
+      // For now, just return success
+      res.json({
+        success: true,
+        message: 'Ödül başarıyla kullanıldı',
+        levelId: levelId,
+        rewards: level.id === 'bronze' ? ['%10 İndirim', 'Ücretsiz Kargo'] :
+                 level.id === 'iron' ? ['%15 İndirim', 'Öncelikli Destek'] :
+                 level.id === 'gold' ? ['%20 İndirim', 'Hediye Paketleri'] :
+                 level.id === 'platinum' ? ['%25 İndirim', 'Kişisel Danışman'] :
+                 ['%30 İndirim', 'Özel Etkinlikler']
+      });
+    } catch (error) {
+      console.error('❌ Error claiming rewards:', error);
+      res.status(500).json({ success: false, message: 'Ödül kullanılamadı' });
     }
   });
 

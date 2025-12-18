@@ -216,7 +216,7 @@ export const walletAPI = {
   // Ek endpoint'ler (backend'de yoksa çalışmaz)
   getPoints: (userId) => api.get(`/wallet/points/${userId}`),
   getPaymentMethods: (userId) => api.get(`/wallet/payment-methods/${userId}`),
-  getVouchers: (userId) => api.get(`/wallet/vouchers/${userId}`),
+  getVouchers: (userId) => api.get(`/wallet/gift-cards/${userId}`),
 };
 
 // ==================== USERS API ====================

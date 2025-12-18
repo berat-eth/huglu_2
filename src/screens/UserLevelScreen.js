@@ -33,38 +33,54 @@ export default function UserLevelScreen({ navigation }) {
           userLevelAPI.getStats(userId),
         ]);
 
+        console.log('📊 Level Response:', JSON.stringify(levelResponse.data, null, 2));
+        console.log('📜 History Response:', JSON.stringify(historyResponse.data, null, 2));
+        console.log('📈 Stats Response:', JSON.stringify(statsResponse.data, null, 2));
+
         if (levelResponse.data?.success) {
-          setLevelData(levelResponse.data.data);
+          const levelData = levelResponse.data.data;
+          // Backend'den gelen veriyi mobil uygulama formatına çevir
+          setLevelData({
+            currentLevel: levelData.currentLevel || levelData.levelProgress?.currentLevel?.id || 1,
+            currentExp: levelData.currentExp || levelData.levelProgress?.currentExp || 0,
+            nextLevelExp: levelData.nextLevelExp || levelData.levelProgress?.nextLevel?.minExp || 1500,
+            totalPoints: levelData.totalPoints || levelData.totalExp || levelData.levelProgress?.totalExp || 0,
+            levelName: levelData.levelName || levelData.levelProgress?.currentLevel?.displayName || 'Bronz',
+            progressPercentage: levelData.progressPercentage || levelData.levelProgress?.progressPercentage || 0,
+          });
         }
 
         if (historyResponse.data?.success) {
-          const historyData = historyResponse.data.data || historyResponse.data.history || [];
+          // Backend'den gelen history formatını kontrol et
+          const historyData = historyResponse.data.history || historyResponse.data.data || [];
           setHistory(Array.isArray(historyData) ? historyData : []);
+          console.log('✅ History loaded:', historyData.length, 'items');
+        } else {
+          console.log('⚠️ History response not successful');
+          setHistory([]);
         }
 
         if (statsResponse.data?.success) {
           setStats(statsResponse.data.data);
+          console.log('✅ Stats loaded:', statsResponse.data.data);
+        } else {
+          console.log('⚠️ Stats response not successful');
+          setStats(null);
         }
       } catch (apiError) {
-        console.log('API hatası, mock data kullanılıyor:', apiError.message);
+        console.error('❌ API hatası:', apiError.message);
+        console.error('❌ API error details:', apiError.response?.data || apiError);
         
-        // Mock data (API hazır değilse)
+        // Hata durumunda boş veri set et
         setLevelData({
-          currentLevel: 2,
-          currentExp: 1250,
+          currentLevel: 1,
+          currentExp: 0,
           nextLevelExp: 1500,
-          totalPoints: 1250,
-          levelName: 'Kaşif',
+          totalPoints: 0,
+          levelName: 'Bronz',
         });
-
-        setHistory([
-          { title: 'Satın Alma: Trail Boots', points: 450, date: '2 gün önce' },
-          { title: 'Ödül Kullanıldı: %10 İndirim', points: -500, date: '1 hafta önce' },
-          { title: 'Referans Bonusu', points: 200, date: '2 hafta önce' },
-          { title: 'Satın Alma: Climbing Rope', points: 120, date: '3 hafta önce' },
-        ]);
-
-        setStats({ totalPurchases: 12, totalReviews: 5, totalReferrals: 3 });
+        setHistory([]);
+        setStats(null);
       }
     } catch (error) {
       console.error('Seviye bilgileri yüklenemedi:', error);
@@ -94,7 +110,8 @@ export default function UserLevelScreen({ navigation }) {
   const currentExp = levelData?.currentExp || 0;
   const nextLevelExp = levelData?.nextLevelExp || 1500;
   const totalPoints = levelData?.totalPoints || 0;
-  const progress = (currentExp / nextLevelExp) * 100;
+  const levelName = levelData?.levelName || 'Bronz';
+  const progress = nextLevelExp > 0 ? Math.min(100, (currentExp / nextLevelExp) * 100) : 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -119,7 +136,7 @@ export default function UserLevelScreen({ navigation }) {
             <View style={styles.levelContent}>
               <View style={styles.statusBadge}><Text style={styles.statusText}>AKTİF</Text></View>
               <Text style={styles.currentStatusLabel}>Mevcut Durum</Text>
-              <Text style={styles.levelTitle}>Seviye {currentLevel}: Kaşif</Text>
+              <Text style={styles.levelTitle}>Seviye {currentLevel}: {levelName}</Text>
               <View style={styles.pointsContainer}>
                 <Text style={styles.pointsLabel}>Toplam Puan Birikimi</Text>
                 <View style={styles.pointsRow}>
@@ -248,7 +265,10 @@ export default function UserLevelScreen({ navigation }) {
           )}
         </View>
 
-        <TouchableOpacity style={styles.redeemButton}>
+        <TouchableOpacity 
+          style={styles.redeemButton}
+          onPress={handleClaimRewards}
+        >
           <Ionicons name="gift" size={20} color={COLORS.white} />
           <Text style={styles.redeemButtonText}>Ödülleri Kullan</Text>
         </TouchableOpacity>
