@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -177,17 +177,25 @@ export default function UserLevelScreen({ navigation }) {
           </LinearGradient>
         </View>
 
-        <View style={styles.progressCard}>
+          <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Sonraki: Zirve Durumu</Text>
+            <Text style={styles.progressTitle}>
+              {nextLevelExp > currentExp 
+                ? `Sonraki Seviye: ${nextLevelExp - currentExp} EXP kaldı` 
+                : 'Maksimum Seviyeye Ulaştınız!'}
+            </Text>
             <Text style={styles.progressPoints}>{currentExp} / {nextLevelExp}</Text>
           </View>
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBarBackground}>
-              <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+              <View style={[styles.progressBarFill, { width: `${Math.min(100, progress)}%` }]} />
             </View>
           </View>
-          <Text style={styles.progressMessage}>Sadece birkaç satın alma daha ile ödülleri açın</Text>
+          <Text style={styles.progressMessage}>
+            {nextLevelExp > currentExp 
+              ? `${nextLevelExp - currentExp} EXP daha kazanarak bir sonraki seviyeye geçin`
+              : 'Tebrikler! En yüksek seviyeye ulaştınız'}
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -281,7 +289,13 @@ export default function UserLevelScreen({ navigation }) {
                   </Text>
                 </View>
               ))}
-              <TouchableOpacity style={styles.viewHistoryButton}>
+              <TouchableOpacity 
+                style={styles.viewHistoryButton}
+                onPress={() => {
+                  // Tüm geçmişi göster (şimdilik aynı ekranda göster, ileride ayrı ekran eklenebilir)
+                  Alert.alert('Geçmiş', `${history.length} aktivite kaydı bulundu`);
+                }}
+              >
                 <Text style={styles.viewHistoryText}>Tüm Geçmişi Görüntüle</Text>
               </TouchableOpacity>
             </View>

@@ -23235,6 +23235,39 @@ async function startServer() {
 
   // ==================== USER LEVEL SYSTEM API ====================
 
+  // Helper function to format date
+  function formatDate(date) {
+    if (!date) return 'Bugün';
+    const now = new Date();
+    const transactionDate = new Date(date);
+    const diffMs = now - transactionDate;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Bugün';
+    if (diffDays === 1) return 'Dün';
+    if (diffDays < 7) return `${diffDays} gün önce`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} hafta önce`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} ay önce`;
+    return `${Math.floor(diffDays / 365)} yıl önce`;
+  }
+
+  // Helper function to get source title
+  function getSourceTitle(source, description) {
+    if (description) return description;
+    const titles = {
+      'purchase': 'Satın Alma',
+      'purchase_exp': 'Satın Alma',
+      'review': 'Yorum',
+      'referral': 'Referans Bonusu',
+      'invitation_exp': 'Davet Bonusu',
+      'social_share': 'Sosyal Paylaşım',
+      'social-share-exp': 'Sosyal Paylaşım',
+      'manual_add': 'Manuel Ekleme',
+      'manual_remove': 'Manuel Çıkarma'
+    };
+    return titles[source] || 'Aktivite';
+  }
+
   // Get user level information
   app.get('/api/user-level/:userId', async (req, res) => {
     try {
