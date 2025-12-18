@@ -98,6 +98,35 @@ export default function UserLevelScreen({ navigation }) {
     loadUserLevel();
   };
 
+  const handleClaimRewards = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId || !levelData) {
+        Alert.alert('Hata', 'Kullanıcı bilgileri yüklenemedi');
+        return;
+      }
+
+      // Get current level ID from level data
+      const levelIds = ['bronze', 'iron', 'gold', 'platinum', 'diamond'];
+      const levelId = levelIds[currentLevel - 1] || 'bronze';
+
+      const response = await userLevelAPI.claimRewards(userId, levelId);
+      
+      if (response.data?.success) {
+        Alert.alert(
+          'Başarılı',
+          `Ödüller başarıyla kullanıldı!\n\n${(response.data.rewards || []).join('\n')}`,
+          [{ text: 'Tamam', onPress: () => loadUserLevel() }]
+        );
+      } else {
+        Alert.alert('Hata', response.data?.message || 'Ödüller kullanılamadı');
+      }
+    } catch (error) {
+      console.error('Ödül kullanma hatası:', error);
+      Alert.alert('Hata', error.response?.data?.message || 'Ödüller kullanılırken bir hata oluştu');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
