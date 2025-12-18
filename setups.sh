@@ -96,9 +96,21 @@ export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
 export ANDROID_HOME=$ANDROID_HOME
 export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
 
+# .bashrc'ye ekle
 echo "export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> /root/.bashrc
 echo "export ANDROID_HOME=$ANDROID_HOME" >> /root/.bashrc
 echo "export PATH=\$PATH:\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$ANDROID_SDK_ROOT/platform-tools" >> /root/.bashrc
+
+# /etc/environment'a da ekle (tüm kullanıcılar için)
+if ! grep -q "ANDROID_SDK_ROOT" /etc/environment; then
+    echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> /etc/environment
+    echo "ANDROID_HOME=$ANDROID_HOME" >> /etc/environment
+fi
+
+# Değişkenlerin doğru set edildiğini kontrol et
+echo -e "${YELLOW}Android SDK değişkenleri kontrol ediliyor...${NC}"
+echo -e "  ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+echo -e "  ANDROID_HOME: $ANDROID_HOME"
 
 # SDK paketlerini yükle
 yes | sdkmanager --licenses || true
@@ -136,6 +148,21 @@ npm --version
 # APK Build İşlemi
 # --------------------------
 echo -e "${BLUE}APK Build işlemi başlatılıyor...${NC}"
+
+# ANDROID_HOME ve ANDROID_SDK_ROOT'un set edildiğinden emin ol
+export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
+export ANDROID_HOME=$ANDROID_HOME
+export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+
+# Değişkenlerin doğru set edildiğini kontrol et
+if [ -z "$ANDROID_HOME" ] || [ -z "$ANDROID_SDK_ROOT" ]; then
+    echo -e "${RED}❌ ANDROID_HOME veya ANDROID_SDK_ROOT tanımlı değil!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ ANDROID_HOME: $ANDROID_HOME${NC}"
+echo -e "${GREEN}✅ ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT${NC}"
+
 mkdir -p $APK_OUTPUT_DIR
 
 if [ -d "$ANDROID_DIR" ]; then
@@ -151,11 +178,15 @@ if [ -d "$ANDROID_DIR" ]; then
         chmod +x android/gradlew
         cd android
         
+        # ANDROID_HOME'u gradle için export et
+        export ANDROID_HOME=$ANDROID_HOME
+        export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
+        
         echo -e "${YELLOW}Gradle dependencies indiriliyor...${NC}"
-        ./gradlew clean
+        ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ./gradlew clean
         
         echo -e "${YELLOW}Release APK build ediliyor...${NC}"
-        ./gradlew assembleRelease
+        ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ./gradlew assembleRelease
         
         # APK'yı kopyala
         if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
@@ -201,4 +232,12 @@ echo -e "  ✅ Android SDK (Platform 34, Build Tools 34.0.0, NDK 25.2.9519653)"
 echo -e "  ✅ Gradle 8.5"
 echo -e "  ✅ Node.js $(node --version)"
 echo -e "  ✅ npm $(npm --version)"
+echo -e ""
+echo -e "${BLUE}Environment Variables:${NC}"
+echo -e "  ✅ ANDROID_HOME=$ANDROID_HOME"
+echo -e "  ✅ ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+echo -e "  ✅ JAVA_HOME=$JAVA_HOME"
+echo -e ""
+echo -e "${YELLOW}Not: Yeni bir shell açtığınızda environment değişkenleri otomatik yüklenecektir.${NC}"
+echo -e "${YELLOW}Mevcut shell'de kullanmak için: source /root/.bashrc${NC}"
 echo -e "${BLUE}========================================${NC}"
