@@ -2,7 +2,7 @@
 
 Bu dokümanda mobil uygulamanın kullandığı tüm API endpointleri listelenmiştir.
 
-**Base URL:** `https://plaxsy.com/api`
+**Base URL:** `https://api.huglutekstil.com/api`
 
 ---
 

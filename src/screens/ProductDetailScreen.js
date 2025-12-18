@@ -224,16 +224,45 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         console.log('📋 xmlOptions parse edildi:', xmlOpts);
         
-        if (Array.isArray(xmlOpts)) {
-          xmlOpts.forEach(opt => {
+        // xmlOptions formatı: { options: [...] } veya direkt array
+        const optionsArray = xmlOpts?.options || (Array.isArray(xmlOpts) ? xmlOpts : []);
+        
+        if (Array.isArray(optionsArray) && optionsArray.length > 0) {
+          optionsArray.forEach(opt => {
             console.log('   Option:', opt);
-            if (opt.value || opt.name) {
-              sizes.push({
-                value: opt.value || opt.name,
-                stock: opt.stock || 999,
-                price: opt.price || product.price,
-                sku: opt.sku || opt.barkod,
+            
+            // Beden bilgisini attributes objesinden al
+            let bedenValue = null;
+            if (opt.attributes && typeof opt.attributes === 'object') {
+              // Beden veya Size anahtarını bul
+              const bedenKeys = Object.keys(opt.attributes).filter(key => {
+                const normalizedKey = key.toLowerCase().trim();
+                return normalizedKey === 'beden' || normalizedKey === 'size' || 
+                       normalizedKey.includes('beden') || normalizedKey.includes('size');
               });
+              
+              if (bedenKeys.length > 0) {
+                bedenValue = opt.attributes[bedenKeys[0]];
+                console.log(`   ✅ Beden bulundu: "${bedenValue}" (key: ${bedenKeys[0]})`);
+              }
+            }
+            
+            // Eğer attributes'ten beden bulunamadıysa, direkt value/name kontrolü yap
+            if (!bedenValue) {
+              bedenValue = opt.value || opt.name || opt.size;
+            }
+            
+            if (bedenValue) {
+              sizes.push({
+                value: bedenValue,
+                stock: opt.stok !== undefined ? opt.stok : (opt.stock !== undefined ? opt.stock : 999),
+                price: opt.fiyat || opt.price || product.price,
+                sku: opt.sku || opt.barkod || opt.stokKodu,
+                variationId: opt.varyasyonId || opt.variationId,
+              });
+              console.log(`   ✅ Beden eklendi: ${bedenValue} (stok: ${opt.stok || opt.stock || 999})`);
+            } else {
+              console.log('   ⚠️ Option\'da beden bilgisi bulunamadı:', opt);
             }
           });
         }
