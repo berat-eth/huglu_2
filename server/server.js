@@ -6028,14 +6028,28 @@ app.patch('/api/admin/orders/:orderId/shipping', authenticateAdmin, async (req, 
   try {
     const orderId = parseInt(req.params.orderId);
     const { trackingNumber, cargoCompany, cargoStatus } = req.body || {};
-    const cargoAllowed = ['preparing', 'shipped', 'in-transit', 'delivered', null, undefined];
-    if (!cargoAllowed.includes(cargoStatus)) {
-      return res.status(400).json({ success: false, message: 'Invalid cargoStatus' });
+    const tenantId = req.tenant?.id || 1;
+    
+    // Check if trackingNumber column exists, if not use cargoProvider for cargoCompany
+    try {
+      // Try to update with trackingNumber column first
+      await poolWrapper.execute(
+        `UPDATE orders SET trackingNumber = ?, cargoProvider = ?, status = ?, updatedAt = NOW() WHERE id = ? AND tenantId = ?`,
+        [trackingNumber || null, cargoCompany || null, cargoStatus || null, orderId, tenantId]
+      );
+    } catch (updateError) {
+      // If trackingNumber column doesn't exist, update only cargoProvider and status
+      if (updateError.message && updateError.message.includes('trackingNumber')) {
+        console.warn('⚠️ trackingNumber column not found, using cargoProvider only');
+        await poolWrapper.execute(
+          `UPDATE orders SET cargoProvider = ?, status = ?, updatedAt = NOW() WHERE id = ? AND tenantId = ?`,
+          [cargoCompany || null, cargoStatus || null, orderId, tenantId]
+        );
+      } else {
+        throw updateError;
+      }
     }
-    await poolWrapper.execute(
-      `UPDATE orders SET trackingNumber = ?, cargoCompany = ?, cargoStatus = ?, updatedAt = NOW() WHERE id = ? AND tenantId = ?`,
-      [trackingNumber || null, cargoCompany || null, cargoStatus || null, orderId, req.tenant?.id || 1]
-    );
+    
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Error updating shipping info:', error);
@@ -15263,15 +15277,15 @@ app.post('/api/users/login', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, address, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, currentPassword, newPassword } = req.body;
+    const { name, email, phone, address, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, currentPassword, newPassword, dateOfBirth, height, weight } = req.body;
 
-    // Get current user - Try with company fields first, fallback if columns don't exist
+    // Get current user - Try with all fields first, fallback if columns don't exist
     let [userRows] = await poolWrapper.execute(
-      'SELECT id, name, email, phone, address, password, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt, tenantId FROM users WHERE id = ? AND tenantId = ?',
+      'SELECT id, name, email, phone, address, password, dateOfBirth, height, weight, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt, tenantId FROM users WHERE id = ? AND tenantId = ?',
       [id, req.tenant.id]
     ).catch(async (error) => {
       if (error.code === 'ER_BAD_FIELD_ERROR') {
-        console.log('⚠️ Company columns missing, using fallback query');
+        console.log('⚠️ Some columns missing, using fallback query');
         return await poolWrapper.execute(
           'SELECT id, name, email, phone, address, password, createdAt, tenantId FROM users WHERE id = ? AND tenantId = ?',
           [id, req.tenant.id]
@@ -15289,7 +15303,7 @@ app.put('/api/users/:id', async (req, res) => {
 
     const currentUser = userRows[0];
 
-    // Şirket bilgileri kolonlarını kontrol et ve ekle
+    // Şirket bilgileri ve kullanıcı profil kolonlarını kontrol et ve ekle
     const [cols] = await poolWrapper.execute(`
       SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'
@@ -15297,8 +15311,20 @@ app.put('/api/users/:id', async (req, res) => {
     const columnNames = cols.map(c => c.COLUMN_NAME);
     const alters = [];
 
+    // User profile fields
+    if (!columnNames.includes('dateOfBirth')) {
+      alters.push("ADD COLUMN dateOfBirth VARCHAR(50) NULL AFTER address");
+    }
+    if (!columnNames.includes('height')) {
+      alters.push("ADD COLUMN height INT NULL AFTER dateOfBirth");
+    }
+    if (!columnNames.includes('weight')) {
+      alters.push("ADD COLUMN weight INT NULL AFTER height");
+    }
+
+    // Company fields
     if (!columnNames.includes('companyName')) {
-      alters.push("ADD COLUMN companyName VARCHAR(255) NULL AFTER address");
+      alters.push("ADD COLUMN companyName VARCHAR(255) NULL AFTER weight");
     }
     if (!columnNames.includes('taxOffice')) {
       alters.push("ADD COLUMN taxOffice VARCHAR(255) NULL AFTER companyName");
@@ -15314,8 +15340,18 @@ app.put('/api/users/:id', async (req, res) => {
     }
 
     if (alters.length > 0) {
-      await poolWrapper.execute(`ALTER TABLE users ${alters.join(', ')}`);
-      console.log('✅ Şirket bilgileri kolonları eklendi');
+      // Execute ALTER TABLE statements one by one to avoid conflicts
+      for (const alter of alters) {
+        try {
+          await poolWrapper.execute(`ALTER TABLE users ${alter}`);
+        } catch (alterError) {
+          // Ignore if column already exists (race condition)
+          if (!alterError.message.includes('Duplicate column name')) {
+            console.error('❌ Error adding column:', alterError.message);
+          }
+        }
+      }
+      console.log('✅ Kullanıcı profil ve şirket bilgileri kolonları eklendi');
     }
 
     // If password change is requested
@@ -15351,53 +15387,149 @@ app.put('/api/users/:id', async (req, res) => {
       const plainPhone = phone || currentUser.phone;
       const plainAddress = address || currentUser.address;
 
-      const updateFields = ['name', 'email', 'phone', 'address', 'password'];
-      const updateValues = [name, email, plainPhone, plainAddress, hashedNewPassword];
+      const updateFields = ['password'];
+      const updateValues = [hashedNewPassword];
 
-      if (columnNames.includes('companyName') || alters.length > 0) {
-        updateFields.push('companyName', 'taxOffice', 'taxNumber', 'tradeRegisterNumber', 'website');
-        updateValues.push(companyName || '', taxOffice || '', taxNumber || '', tradeRegisterNumber || '', website || '');
+      // Only update fields that are provided in request body
+      if (name !== undefined) {
+        updateFields.push('name');
+        updateValues.push(name);
+      }
+      if (email !== undefined) {
+        updateFields.push('email');
+        updateValues.push(email);
+      }
+      if (phone !== undefined) {
+        updateFields.push('phone');
+        updateValues.push(phone);
+      } else if (currentUser.phone) {
+        updateFields.push('phone');
+        updateValues.push(currentUser.phone);
+      }
+      if (address !== undefined) {
+        updateFields.push('address');
+        updateValues.push(address);
+      } else if (currentUser.address) {
+        updateFields.push('address');
+        updateValues.push(currentUser.address);
+      }
+      if (dateOfBirth !== undefined) {
+        updateFields.push('dateOfBirth');
+        updateValues.push(dateOfBirth);
+      }
+      if (height !== undefined) {
+        updateFields.push('height');
+        updateValues.push(height);
+      }
+      if (weight !== undefined) {
+        updateFields.push('weight');
+        updateValues.push(weight);
       }
 
-      updateFields.push('id');
-      updateValues.push(id);
-      updateValues.push(req.tenant.id);
+      // Company fields - only add if provided in request body AND columns exist
+      if ((columnNames.includes('companyName') || alters.length > 0)) {
+        if (companyName !== undefined) {
+          updateFields.push('companyName');
+          updateValues.push(companyName || null);
+        }
+        if (taxOffice !== undefined) {
+          updateFields.push('taxOffice');
+          updateValues.push(taxOffice || null);
+        }
+        if (taxNumber !== undefined) {
+          updateFields.push('taxNumber');
+          updateValues.push(taxNumber || null);
+        }
+        if (tradeRegisterNumber !== undefined) {
+          updateFields.push('tradeRegisterNumber');
+          updateValues.push(tradeRegisterNumber || null);
+        }
+        if (website !== undefined) {
+          updateFields.push('website');
+          updateValues.push(website || null);
+        }
+      }
 
       await poolWrapper.execute(
-        `UPDATE users SET ${updateFields.slice(0, -2).map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
-        updateValues
+        `UPDATE users SET ${updateFields.map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
+        [...updateValues, id, req.tenant.id]
       );
     } else {
       // Update user data (no encryption needed)
-      const plainPhone = phone || currentUser.phone;
-      const plainAddress = address || currentUser.address;
+      // Only update fields that are provided in request body
+      const updateFields = [];
+      const updateValues = [];
 
-      const updateFields = ['name', 'email', 'phone', 'address'];
-      const updateValues = [name, email, plainPhone, plainAddress];
-
-      if (columnNames.includes('companyName') || alters.length > 0) {
-        updateFields.push('companyName', 'taxOffice', 'taxNumber', 'tradeRegisterNumber', 'website');
-        updateValues.push(companyName || '', taxOffice || '', taxNumber || '', tradeRegisterNumber || '', website || '');
+      if (name !== undefined) {
+        updateFields.push('name');
+        updateValues.push(name);
+      }
+      if (email !== undefined) {
+        updateFields.push('email');
+        updateValues.push(email);
+      }
+      if (phone !== undefined) {
+        updateFields.push('phone');
+        updateValues.push(phone);
+      }
+      if (address !== undefined) {
+        updateFields.push('address');
+        updateValues.push(address);
+      }
+      if (dateOfBirth !== undefined) {
+        updateFields.push('dateOfBirth');
+        updateValues.push(dateOfBirth);
+      }
+      if (height !== undefined) {
+        updateFields.push('height');
+        updateValues.push(height);
+      }
+      if (weight !== undefined) {
+        updateFields.push('weight');
+        updateValues.push(weight);
       }
 
-      updateFields.push('id');
-      updateValues.push(id);
-      updateValues.push(req.tenant.id);
+      // Company fields - only add if provided in request body AND columns exist
+      if ((columnNames.includes('companyName') || alters.length > 0)) {
+        if (companyName !== undefined) {
+          updateFields.push('companyName');
+          updateValues.push(companyName || null);
+        }
+        if (taxOffice !== undefined) {
+          updateFields.push('taxOffice');
+          updateValues.push(taxOffice || null);
+        }
+        if (taxNumber !== undefined) {
+          updateFields.push('taxNumber');
+          updateValues.push(taxNumber || null);
+        }
+        if (tradeRegisterNumber !== undefined) {
+          updateFields.push('tradeRegisterNumber');
+          updateValues.push(tradeRegisterNumber || null);
+        }
+        if (website !== undefined) {
+          updateFields.push('website');
+          updateValues.push(website || null);
+        }
+      }
 
-      await poolWrapper.execute(
-        `UPDATE users SET ${updateFields.slice(0, -2).map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
-        updateValues
-      );
+      // Only update if there are fields to update
+      if (updateFields.length > 0) {
+        await poolWrapper.execute(
+          `UPDATE users SET ${updateFields.map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
+          [...updateValues, id, req.tenant.id]
+        );
+      }
     }
 
     // Return updated user data
-      // Try with company fields first, fallback if columns don't exist
+      // Try with all fields first, fallback if columns don't exist
       let [updatedUser] = await poolWrapper.execute(
-        'SELECT id, name, email, phone, address, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt FROM users WHERE id = ? AND tenantId = ?',
+        'SELECT id, name, email, phone, address, dateOfBirth, height, weight, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt FROM users WHERE id = ? AND tenantId = ?',
         [id, req.tenant.id]
       ).catch(async (error) => {
         if (error.code === 'ER_BAD_FIELD_ERROR') {
-          console.log('⚠️ Company columns missing, using fallback query');
+          console.log('⚠️ Some columns missing, using fallback query');
           return await poolWrapper.execute(
             'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
             [id, req.tenant.id]
@@ -16158,10 +16290,12 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
     }
 
     // Get order details with tenant check
+    // Note: trackingNumber, carrier, deliveryStatus, estimatedDelivery, latestUpdate columns may not exist
+    // Using COALESCE and NULL to handle missing columns gracefully
     const [orders] = await poolWrapper.execute(
       `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.updatedAt, o.city, o.district, o.fullAddress, 
               o.shippingAddress, o.paymentMethod, o.customerName, o.customerEmail, o.customerPhone,
-              o.trackingNumber, o.carrier, o.deliveryStatus, o.estimatedDelivery, o.latestUpdate
+              o.cargoProvider
        FROM orders o 
        WHERE o.id = ? AND o.tenantId = ?`,
       [numericId, tenantId]
@@ -16237,14 +16371,14 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
       customerName: order.customerName,
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
-      trackingNumber: order.trackingNumber,
-      carrier: order.carrier || 'DHL E-commerce',
-      deliveryStatus: order.deliveryStatus || order.status || 'Kargoda',
-      statusText: order.deliveryStatus || order.status || 'Kargoda',
-      estimatedDelivery: order.estimatedDelivery || null,
-      estimatedDeliveryDate: order.estimatedDelivery || null,
-      latestUpdate: order.latestUpdate || order.updatedAt || order.createdAt,
-      lastUpdate: order.latestUpdate || order.updatedAt || order.createdAt,
+      trackingNumber: null, // Not stored in orders table currently
+      carrier: order.cargoProvider || 'DHL E-commerce',
+      deliveryStatus: order.status || 'Kargoda',
+      statusText: order.status || 'Kargoda',
+      estimatedDelivery: null, // Not stored in orders table currently
+      estimatedDeliveryDate: null, // Not stored in orders table currently
+      latestUpdate: order.updatedAt || order.createdAt,
+      lastUpdate: order.updatedAt || order.createdAt,
       items: order.items,
       // Timeline (basit bir timeline oluştur)
       timeline: [
@@ -16263,10 +16397,10 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
       ],
     };
 
-    console.log(`✅ [GET /api/orders/${id}] Order found with ${order.items.length} items`);
+    console.log(`✅ [GET /api/orders/${numericId}] Order found with ${order.items.length} items`);
     res.json({ success: true, order: orderResponse, data: orderResponse });
   } catch (error) {
-    console.error(`❌ [GET /api/orders/${id}] Error getting order details:`, error);
+    console.error(`❌ [GET /api/orders/${numericId}] Error getting order details:`, error);
     res.status(500).json({ 
       success: false, 
       message: 'Sipariş detayları yüklenirken bir hata oluştu. Lütfen tekrar deneyin.' 

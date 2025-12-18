@@ -138,6 +138,14 @@ async function createDatabaseSchema(pool) {
       gender ENUM('male', 'female', 'unspecified') DEFAULT 'unspecified',
       birthDate DATE,
       address TEXT,
+      dateOfBirth VARCHAR(50) NULL,
+      height INT NULL,
+      weight INT NULL,
+      companyName VARCHAR(255) NULL,
+      taxOffice VARCHAR(255) NULL,
+      taxNumber VARCHAR(50) NULL,
+      tradeRegisterNumber VARCHAR(100) NULL,
+      website VARCHAR(255) NULL,
       referral_code VARCHAR(20) UNIQUE,
       referred_by INT NULL,
       referral_count INT DEFAULT 0,
@@ -238,6 +246,42 @@ async function createDatabaseSchema(pool) {
           await pool.execute('ALTER TABLE users ADD COLUMN lastLoginAt TIMESTAMP NULL AFTER createdAt');
           await pool.execute('CREATE INDEX idx_last_login ON users(lastLoginAt)');
           console.log('✅ Added lastLoginAt column to users table');
+      }
+      
+      // Ensure dateOfBirth, height, weight columns exist (user profile fields)
+      if (!userColsAllNames.includes('dateOfBirth')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN dateOfBirth VARCHAR(50) NULL AFTER address');
+          console.log('✅ Added dateOfBirth column to users table');
+      }
+      if (!userColsAllNames.includes('height')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN height INT NULL AFTER dateOfBirth');
+          console.log('✅ Added height column to users table');
+      }
+      if (!userColsAllNames.includes('weight')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN weight INT NULL AFTER height');
+          console.log('✅ Added weight column to users table');
+      }
+      
+      // Ensure company fields exist
+      if (!userColsAllNames.includes('companyName')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN companyName VARCHAR(255) NULL AFTER weight');
+          console.log('✅ Added companyName column to users table');
+      }
+      if (!userColsAllNames.includes('taxOffice')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN taxOffice VARCHAR(255) NULL AFTER companyName');
+          console.log('✅ Added taxOffice column to users table');
+      }
+      if (!userColsAllNames.includes('taxNumber')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN taxNumber VARCHAR(50) NULL AFTER taxOffice');
+          console.log('✅ Added taxNumber column to users table');
+      }
+      if (!userColsAllNames.includes('tradeRegisterNumber')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN tradeRegisterNumber VARCHAR(100) NULL AFTER taxNumber');
+          console.log('✅ Added tradeRegisterNumber column to users table');
+      }
+      if (!userColsAllNames.includes('website')) {
+          await pool.execute('ALTER TABLE users ADD COLUMN website VARCHAR(255) NULL AFTER tradeRegisterNumber');
+          console.log('✅ Added website column to users table');
       }
 
       // Products table
