@@ -174,6 +174,16 @@ export const userAPI = {
     api.put(`/users/${userId}/password`, { currentPassword, newPassword }),
   search: (query, excludeUserId) => api.get('/users/search', { params: { query, excludeUserId } }),
   
+  // Two Factor Authentication
+  getTwoFactorStatus: (userId) => api.get(`/users/${userId}/two-factor`),
+  sendTwoFactorCode: (userId, phoneNumber) => api.post(`/users/${userId}/two-factor/send-code`, { phoneNumber }),
+  verifyTwoFactorCode: (userId, code) => api.post(`/users/${userId}/two-factor/verify`, { code }),
+  disableTwoFactor: (userId) => api.put(`/users/${userId}/two-factor/disable`),
+  
+  // Privacy Settings
+  getPrivacySettings: (userId) => api.get(`/users/${userId}/privacy-settings`),
+  updatePrivacySettings: (userId, settings) => api.put(`/users/${userId}/privacy-settings`, settings),
+  
   // Addresses
   getAddresses: (userId, addressType) => api.get('/user-addresses', { params: { userId, addressType } }),
   addAddress: (addressData) => api.post('/user-addresses', addressData),

@@ -110,7 +110,10 @@ export default function SettingsScreen({ navigation }) {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('Language')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="language-outline" size={22} color={COLORS.primary} />
@@ -129,7 +132,10 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Gizlilik & Güvenlik</Text>
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('ChangePassword')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="lock-closed-outline" size={22} color={COLORS.primary} />
@@ -141,7 +147,10 @@ export default function SettingsScreen({ navigation }) {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('TwoFactorAuth')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="shield-checkmark-outline" size={22} color={COLORS.primary} />
@@ -153,7 +162,10 @@ export default function SettingsScreen({ navigation }) {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('PrivacySettings')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="eye-off-outline" size={22} color={COLORS.primary} />
@@ -169,7 +181,10 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Hakkında</Text>
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('TermsOfService')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
@@ -181,7 +196,10 @@ export default function SettingsScreen({ navigation }) {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+            >
               <View style={styles.settingLeft}>
                 <View style={styles.settingIcon}>
                   <Ionicons name="shield-outline" size={22} color={COLORS.primary} />

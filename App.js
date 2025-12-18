@@ -31,6 +31,12 @@ import LiveChatScreen from './src/screens/LiveChatScreen';
 import LiveChatEntryScreen from './src/screens/LiveChatEntryScreen';
 import FAQScreen from './src/screens/FAQScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
+import TwoFactorAuthScreen from './src/screens/TwoFactorAuthScreen';
+import PrivacySettingsScreen from './src/screens/PrivacySettingsScreen';
+import LanguageScreen from './src/screens/LanguageScreen';
 import PersonalInfoScreen from './src/screens/PersonalInfoScreen';
 import PhysicalStoresScreen from './src/screens/PhysicalStoresScreen';
 import WalletScreen from './src/screens/WalletScreen';
@@ -157,6 +163,12 @@ function App() {
         <Stack.Screen name="LiveChat" component={LiveChatScreen} />
         <Stack.Screen name="FAQ" component={FAQScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="TwoFactorAuth" component={TwoFactorAuthScreen} />
+        <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
+        <Stack.Screen name="Language" component={LanguageScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="PhysicalStores" component={PhysicalStoresScreen} />
         <Stack.Screen name="Wallet" component={WalletScreen} />

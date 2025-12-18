@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -208,8 +208,14 @@ export default function SignUpScreen({ navigation, route }) {
                 {agreeTerms && <Ionicons name="checkmark" size={16} color={COLORS.white} />}
               </View>
               <Text style={styles.checkboxText}>
-                <Text style={styles.termsLink}>Kullanım Koşulları</Text> ve{' '}
-                <Text style={styles.termsLink}>Gizlilik Politikası</Text>'nı kabul ediyorum
+                <Pressable onPress={() => navigation.navigate('TermsOfService')}>
+                  <Text style={styles.termsLink}>Kullanım Koşulları</Text>
+                </Pressable>
+                {' '}ve{' '}
+                <Pressable onPress={() => navigation.navigate('PrivacyPolicy')}>
+                  <Text style={styles.termsLink}>Gizlilik Politikası</Text>
+                </Pressable>
+                'nı kabul ediyorum
               </Text>
             </TouchableOpacity>
 

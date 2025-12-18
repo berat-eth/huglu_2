@@ -70,13 +70,61 @@ run_prebuild() {
     echo -e "${YELLOW}🔧 Expo prebuild çalıştırılıyor...${NC}"
     npx expo prebuild --platform android --clean
     echo -e "${GREEN}✓ Prebuild tamamlandı${NC}"
+    
+    # Gradle konfigürasyonunu kontrol et ve düzelt
+    if [ -f "android/build.gradle" ]; then
+        echo -e "${YELLOW}🔧 Gradle konfigürasyonu kontrol ediliyor...${NC}"
+        
+        # Android Gradle Plugin versiyonunu Expo SDK 51 için kontrol et
+        if ! grep -q "com.android.tools.build:gradle:8.3" android/build.gradle; then
+            echo -e "${YELLOW}Android Gradle Plugin versiyonu güncelleniyor...${NC}"
+            sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.0/g' android/build.gradle
+        fi
+        
+        # Gradle wrapper versiyonunu kontrol et
+        if [ -f "android/gradle/wrapper/gradle-wrapper.properties" ]; then
+            if ! grep -q "gradle-8.8" android/gradle/wrapper/gradle-wrapper.properties; then
+                echo -e "${YELLOW}Gradle wrapper versiyonu güncelleniyor...${NC}"
+                sed -i 's/distributionUrl=.*/distributionUrl=https\\:\\/\\/services.gradle.org\\/distributions\\/gradle-8.8-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+            fi
+        fi
+        
+        # gradle.properties dosyasını oluştur/güncelle
+        mkdir -p android
+        cat > android/gradle.properties << 'EOF'
+# Project-wide Gradle settings.
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+android.useAndroidX=true
+android.enableJetifier=true
+android.defaults.buildfeatures.buildconfig=true
+android.nonTransitiveRClass=false
+android.nonFinalResIds=false
+# Expo için gerekli ayarlar
+expo.autolinking=true
+EOF
+        
+        echo -e "${GREEN}✓ Gradle konfigürasyonu kontrol edildi${NC}"
+    fi
 }
 
 # Gradle build
 build_apk() {
     echo -e "${YELLOW}🏗️  APK oluşturuluyor...${NC}"
     cd android
+    
+    # Gradle wrapper izinlerini ayarla
+    if [ -f "gradlew" ]; then
+        chmod +x gradlew
+    fi
+    
+    # Clean build
+    echo -e "${YELLOW}🧹 Clean build yapılıyor...${NC}"
+    ./gradlew clean || true
+    
+    # Release build
+    echo -e "${YELLOW}📦 Release APK build ediliyor...${NC}"
     ./gradlew assembleRelease
+    
     cd ..
     echo -e "${GREEN}✓ APK başarıyla oluşturuldu${NC}"
 }

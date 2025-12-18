@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
-import { cartAPI, ordersAPI, userLevelAPI, userAPI } from '../services/api';
+import { cartAPI, ordersAPI, userLevelAPI, userAPI, walletAPI } from '../services/api';
 import OrderSuccessModal from '../components/OrderSuccessModal';
 import ErrorModal from '../components/ErrorModal';
 
@@ -25,6 +25,13 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const [successModalData, setSuccessModalData] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 
   // Route'dan gelen parametreler
   const routeTotal = route?.params?.total;
@@ -39,10 +46,11 @@ export default function OrderConfirmationScreen({ navigation, route }) {
     loadCustomerInfo();
   }, []);
 
-  // Sayfa her açıldığında adresi yeniden yükle
+  // Sayfa her açıldığında adresi ve ödeme yöntemlerini yeniden yükle
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadShippingAddress();
+      loadPaymentMethods();
     });
     return unsubscribe;
   }, [navigation]);
@@ -64,12 +72,24 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         ? `${address.fullAddress}\n${address.city || ''}${address.district ? `, ${address.district}` : ''} ${address.postalCode || ''}`.trim()
         : 'Adres bilgisi bulunamadı';
       
+      // Seçilen ödeme yöntemini belirle
+      let finalPaymentMethod = paymentMethod || 'card';
+      if (selectedPaymentMethod) {
+        if (selectedPaymentMethod.type === 'bank_transfer') {
+          finalPaymentMethod = 'bank_transfer';
+        } else if (selectedPaymentMethod.type === 'wallet') {
+          finalPaymentMethod = 'wallet';
+        } else {
+          finalPaymentMethod = 'card';
+        }
+      }
+
       const orderData = {
         userId: parseInt(storedUserId),
         totalAmount: total,
         status: 'pending',
         shippingAddress: fullAddressString,
-        paymentMethod: paymentMethod || 'card',
+        paymentMethod: finalPaymentMethod,
         city: address.city || '',
         district: address.district || '',
         fullAddress: address.fullAddress || '',
@@ -112,8 +132,8 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         setSuccessModalData({
           orderId,
           expGained: true, // EXP kazanımı başarılı
-          paymentMethod: paymentMethod || 'card',
-          paymentInfo: paymentMethod === 'bank_transfer' ? {
+          paymentMethod: finalPaymentMethod,
+          paymentInfo: finalPaymentMethod === 'bank_transfer' ? {
             recipient: 'Huğlu Av Tüfekleri Kooperatifi',
             bank: 'İş Bankası',
             iban: 'TR33 0006 4000 0011 2345 6789 01',
@@ -313,6 +333,115 @@ export default function OrderConfirmationScreen({ navigation, route }) {
     }
   };
 
+  const handleChangeAddress = async () => {
+    setShowAddressModal(true);
+    await loadAddresses();
+  };
+
+  const loadAddresses = async () => {
+    try {
+      setLoadingAddresses(true);
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+
+      const response = await userAPI.getAddresses(userId, 'shipping');
+      if (response.data?.success) {
+        const addressList = response.data.data || response.data.addresses || [];
+        setAddresses(addressList);
+      }
+    } catch (error) {
+      console.error('Adresler yüklenemedi:', error);
+      setAddresses([]);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  const handleSelectAddress = (address) => {
+    setShippingAddress(address);
+    setShowAddressModal(false);
+  };
+
+  const handleAddNewAddress = () => {
+    setShowAddressModal(false);
+    navigation.navigate('AddAddress', {
+      onAddressAdded: async () => {
+        await loadAddresses();
+        await loadShippingAddress();
+      }
+    });
+  };
+
+  const handleChangePayment = async () => {
+    setShowPaymentModal(true);
+    await loadPaymentMethods();
+  };
+
+  const loadPaymentMethods = async () => {
+    try {
+      setLoadingPaymentMethods(true);
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+
+      try {
+        const response = await walletAPI.getPaymentMethods(userId);
+        if (response.data?.success) {
+          const methods = response.data.data || response.data.paymentMethods || [];
+          setPaymentMethods(methods);
+          // Varsayılan ödeme yöntemini bul
+          const defaultMethod = methods.find(m => m.isDefault) || methods[0];
+          if (defaultMethod && !selectedPaymentMethod) {
+            setSelectedPaymentMethod(defaultMethod);
+          }
+        }
+      } catch (error) {
+        console.log('Ödeme yöntemleri yüklenemedi, mock data kullanılıyor:', error);
+        // Mock data
+        const mockMethods = [
+          {
+            id: 1,
+            cardType: 'Visa',
+            lastFour: '4242',
+            expiryDate: '12/28',
+            cardName: 'John Doe',
+            isDefault: true,
+          },
+          {
+            id: 2,
+            cardType: 'Mastercard',
+            lastFour: '8888',
+            expiryDate: '06/29',
+            cardName: 'John Doe',
+            isDefault: false,
+          },
+        ];
+        setPaymentMethods(mockMethods);
+        if (!selectedPaymentMethod) {
+          setSelectedPaymentMethod(mockMethods[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Ödeme yöntemleri yükleme hatası:', error);
+      setPaymentMethods([]);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  const handleSelectPaymentMethod = (method) => {
+    setSelectedPaymentMethod(method);
+    setShowPaymentModal(false);
+  };
+
+  const handleAddNewPaymentMethod = () => {
+    setShowPaymentModal(false);
+    navigation.navigate('PaymentMethod', {
+      onPaymentAdded: async () => {
+        await loadPaymentMethods();
+      }
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -409,7 +538,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
               <Ionicons name="car-outline" size={20} color={COLORS.gray400} />
               <Text style={styles.infoHeaderTitle}>TESLİMAT</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => handleChangeAddress()}>
               <Text style={styles.changeButton}>Değiştir</Text>
             </TouchableOpacity>
           </View>
@@ -452,7 +581,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
               <Ionicons name="card-outline" size={20} color={COLORS.gray400} />
               <Text style={styles.infoHeaderTitle}>ÖDEME</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => handleChangePayment()}>
               <Text style={styles.changeButton}>Değiştir</Text>
             </TouchableOpacity>
           </View>
@@ -461,8 +590,24 @@ export default function OrderConfirmationScreen({ navigation, route }) {
               <Ionicons name="card-outline" size={20} color={COLORS.textMain} />
             </View>
             <View style={styles.infoDetails}>
-              <Text style={styles.infoName}>Visa ****4242</Text>
-              <Text style={styles.infoAddress}>Son kullanma: 12/28</Text>
+              <Text style={styles.infoName}>
+                {selectedPaymentMethod 
+                  ? `${selectedPaymentMethod.cardType || 'Kart'} ****${selectedPaymentMethod.lastFour || '****'}` 
+                  : paymentMethod === 'bank_transfer' 
+                    ? 'Banka Havalesi'
+                    : paymentMethod === 'wallet'
+                      ? 'Cüzdan Bakiyesi'
+                      : 'Visa ****4242'}
+              </Text>
+              <Text style={styles.infoAddress}>
+                {selectedPaymentMethod?.expiryDate 
+                  ? `Son kullanma: ${selectedPaymentMethod.expiryDate}` 
+                  : paymentMethod === 'bank_transfer'
+                    ? 'İş Bankası - TR33 0006 4000 0011 2345 6789 01'
+                    : paymentMethod === 'wallet'
+                      ? 'Cüzdan bakiyenizden ödeme'
+                      : 'Son kullanma: 12/28'}
+              </Text>
             </View>
             <View style={styles.secureBadge}>
               <Ionicons name="lock-closed-outline" size={12} color={COLORS.gray400} />
@@ -544,6 +689,307 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         onClose={() => setShowErrorModal(false)}
         message={errorMessage}
       />
+
+      {/* Address Selection Modal */}
+      <Modal
+        visible={showAddressModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowAddressModal(false)}
+          />
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Teslimat Adresi Seç</Text>
+              <TouchableOpacity 
+                onPress={() => setShowAddressModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textMain} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={false}
+            >
+              {loadingAddresses ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.modalLoadingText}>Adresler yükleniyor...</Text>
+                </View>
+              ) : addresses.length === 0 ? (
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="location-outline" size={64} color={COLORS.gray300} />
+                  <Text style={styles.modalEmptyText}>Henüz adres eklenmemiş</Text>
+                  <Text style={styles.modalEmptySubtext}>Yeni adres eklemek için aşağıdaki butonu kullanın</Text>
+                </View>
+              ) : (
+                addresses.map((address) => (
+                  <TouchableOpacity
+                    key={address.id}
+                    style={[
+                      styles.addressOptionCard,
+                      shippingAddress?.id === address.id && styles.addressOptionCardSelected
+                    ]}
+                    onPress={() => handleSelectAddress(address)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.addressOptionContent}>
+                      <View style={styles.addressOptionHeader}>
+                        <View style={styles.addressOptionIcon}>
+                          <Ionicons 
+                            name={address.addressType === 'home' ? 'home' : address.addressType === 'office' ? 'business' : 'location'} 
+                            size={20} 
+                            color={shippingAddress?.id === address.id ? COLORS.primary : COLORS.gray400} 
+                          />
+                        </View>
+                        <View style={styles.addressOptionInfo}>
+                          <View style={styles.addressOptionTitleRow}>
+                            <Text style={styles.addressOptionTitle}>
+                              {address.label || address.addressType || 'Adres'}
+                            </Text>
+                            {address.isDefault && (
+                              <View style={styles.defaultBadge}>
+                                <Text style={styles.defaultBadgeText}>VARSayıLAN</Text>
+                              </View>
+                            )}
+                            {shippingAddress?.id === address.id && (
+                              <View style={styles.selectedBadge}>
+                                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                                <Text style={styles.selectedBadgeText}>Seçili</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.addressOptionName}>
+                            {address.fullName || address.customerName || ''}
+                          </Text>
+                          <Text style={styles.addressOptionAddress}>
+                            {address.fullAddress || address.address || ''}
+                          </Text>
+                          <Text style={styles.addressOptionLocation}>
+                            {address.city || ''}{address.district ? `, ${address.district}` : ''} {address.postalCode || ''}
+                          </Text>
+                          {address.phone && (
+                            <View style={styles.addressOptionPhone}>
+                              <Ionicons name="call-outline" size={12} color={COLORS.gray500} />
+                              <Text style={styles.addressOptionPhoneText}>{address.phone}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.addAddressButton}
+                onPress={handleAddNewAddress}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={20} color={COLORS.white} />
+                <Text style={styles.addAddressButtonText}>Yeni Adres Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowPaymentModal(false)}
+          />
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ödeme Yöntemi Seç</Text>
+              <TouchableOpacity 
+                onPress={() => setShowPaymentModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textMain} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={false}
+            >
+              {loadingPaymentMethods ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.modalLoadingText}>Ödeme yöntemleri yükleniyor...</Text>
+                </View>
+              ) : paymentMethods.length === 0 ? (
+                <View style={styles.modalEmptyContainer}>
+                  <Ionicons name="card-outline" size={64} color={COLORS.gray300} />
+                  <Text style={styles.modalEmptyText}>Henüz ödeme yöntemi eklenmemiş</Text>
+                  <Text style={styles.modalEmptySubtext}>Yeni ödeme yöntemi eklemek için aşağıdaki butonu kullanın</Text>
+                </View>
+              ) : (
+                <>
+                  {paymentMethods.map((method) => {
+                    const cardType = method.cardType || method.type || 'Kart';
+                    const lastFour = method.lastFour || method.cardNumber?.slice(-4) || '****';
+                    const expiry = method.expiryDate || method.expiry || '';
+                    const isSelected = selectedPaymentMethod?.id === method.id;
+                    
+                    return (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          styles.paymentOptionCard,
+                          isSelected && styles.paymentOptionCardSelected
+                        ]}
+                        onPress={() => handleSelectPaymentMethod(method)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.paymentOptionContent}>
+                          <View style={styles.paymentOptionHeader}>
+                            <View style={[
+                              styles.paymentOptionIcon,
+                              cardType.toUpperCase().includes('MASTER') && styles.mastercardIcon
+                            ]}>
+                              <Text style={styles.paymentOptionIconText}>
+                                {cardType.toUpperCase().includes('MASTER') ? 'MC' : cardType.substring(0, 4).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View style={styles.paymentOptionInfo}>
+                              <View style={styles.paymentOptionTitleRow}>
+                                <Text style={styles.paymentOptionTitle}>
+                                  {cardType} ****{lastFour}
+                                </Text>
+                                {method.isDefault && (
+                                  <View style={styles.defaultBadge}>
+                                    <Text style={styles.defaultBadgeText}>VARSayıLAN</Text>
+                                  </View>
+                                )}
+                                {isSelected && (
+                                  <View style={styles.selectedBadge}>
+                                    <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                                    <Text style={styles.selectedBadgeText}>Seçili</Text>
+                                  </View>
+                                )}
+                              </View>
+                              {expiry && (
+                                <Text style={styles.paymentOptionExpiry}>
+                                  Son kullanma: {expiry}
+                                </Text>
+                              )}
+                              {method.cardName && (
+                                <Text style={styles.paymentOptionName}>
+                                  {method.cardName}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  
+                  {/* Bank Transfer Option */}
+                  <TouchableOpacity
+                    style={[
+                      styles.paymentOptionCard,
+                      paymentMethod === 'bank_transfer' && styles.paymentOptionCardSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedPaymentMethod({ id: 'bank_transfer', type: 'bank_transfer' });
+                      setShowPaymentModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.paymentOptionContent}>
+                      <View style={styles.paymentOptionHeader}>
+                        <View style={styles.paymentOptionIcon}>
+                          <Ionicons name="business-outline" size={20} color={paymentMethod === 'bank_transfer' ? COLORS.primary : COLORS.gray400} />
+                        </View>
+                        <View style={styles.paymentOptionInfo}>
+                          <View style={styles.paymentOptionTitleRow}>
+                            <Text style={styles.paymentOptionTitle}>Banka Havalesi</Text>
+                            {paymentMethod === 'bank_transfer' && (
+                              <View style={styles.selectedBadge}>
+                                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                                <Text style={styles.selectedBadgeText}>Seçili</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.paymentOptionExpiry}>
+                            İş Bankası - TR33 0006 4000 0011 2345 6789 01
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  {/* Wallet Balance Option */}
+                  <TouchableOpacity
+                    style={[
+                      styles.paymentOptionCard,
+                      paymentMethod === 'wallet' && styles.paymentOptionCardSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedPaymentMethod({ id: 'wallet', type: 'wallet' });
+                      setShowPaymentModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.paymentOptionContent}>
+                      <View style={styles.paymentOptionHeader}>
+                        <View style={styles.paymentOptionIcon}>
+                          <Ionicons name="wallet-outline" size={20} color={paymentMethod === 'wallet' ? COLORS.primary : COLORS.gray400} />
+                        </View>
+                        <View style={styles.paymentOptionInfo}>
+                          <View style={styles.paymentOptionTitleRow}>
+                            <Text style={styles.paymentOptionTitle}>Cüzdan Bakiyesi</Text>
+                            {paymentMethod === 'wallet' && (
+                              <View style={styles.selectedBadge}>
+                                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                                <Text style={styles.selectedBadgeText}>Seçili</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.paymentOptionExpiry}>
+                            Cüzdan bakiyenizden ödeme yapın
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.addAddressButton}
+                onPress={handleAddNewPaymentMethod}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={20} color={COLORS.white} />
+                <Text style={styles.addAddressButtonText}>Yeni Ödeme Yöntemi Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -889,5 +1335,245 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.gray100,
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  // Address Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  modalLoadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    gap: 16,
+  },
+  modalLoadingText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  modalEmptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  modalEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.gray600,
+    marginTop: 16,
+  },
+  modalEmptySubtext: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  addressOptionCard: {
+    margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  addressOptionCardSelected: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  addressOptionContent: {
+    flex: 1,
+  },
+  addressOptionHeader: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  addressOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addressOptionInfo: {
+    flex: 1,
+  },
+  addressOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  addressOptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  defaultBadge: {
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
+  },
+  selectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+  },
+  selectedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  addressOptionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 4,
+  },
+  addressOptionAddress: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  addressOptionLocation: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: 4,
+  },
+  addressOptionPhone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  addressOptionPhoneText: {
+    fontSize: 12,
+    color: COLORS.gray500,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray100,
+  },
+  addAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+  addAddressButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  // Payment Modal Styles
+  paymentOptionCard: {
+    margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  paymentOptionCardSelected: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  paymentOptionContent: {
+    flex: 1,
+  },
+  paymentOptionHeader: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  paymentOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: COLORS.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mastercardIcon: {
+    backgroundColor: '#EB001B',
+  },
+  paymentOptionIconText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  paymentOptionInfo: {
+    flex: 1,
+  },
+  paymentOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  paymentOptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  paymentOptionExpiry: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: 2,
+  },
+  paymentOptionName: {
+    fontSize: 12,
+    color: COLORS.gray500,
+    marginTop: 2,
   },
 });

@@ -277,6 +277,28 @@ export default function AddAddressScreen({ navigation, route }) {
           loading={loading}
         />
       </SafeAreaView>
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          // Callback varsa çağır
+          if (route?.params?.onAddressAdded) {
+            route.params.onAddressAdded();
+          }
+          navigation.goBack();
+        }}
+        title="Başarılı"
+        message={isEditMode ? 'Adres güncellendi' : 'Adres eklendi'}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={errorMessage}
+      />
     </SafeAreaView>
   );
 }
