@@ -32,6 +32,7 @@ import PushNotifications from '@/components/PushNotifications'
 import Sliders from '@/components/Sliders'
 import Coupons from '@/components/Coupons'
 import Reviews from '@/components/Reviews'
+import ProductQuestions from '@/components/ProductQuestions'
 import SnortLogs from '@/components/SnortLogs'
 import Settings from '@/components/Settings'
 import ProjectAjax from '@/components/ProjectAjax'
@@ -247,6 +248,7 @@ export default function DashboardPage() {
           {activeTab === 'popups' && <Popups />}
           {activeTab === 'push-notifications' && <PushNotifications />}
           {activeTab === 'reviews' && <Reviews />}
+          {activeTab === 'product-questions' && <ProductQuestions />}
           {activeTab === 'applications' && <Applications />}
           {activeTab === 'customer-care' && <CustomerCare />}
           {activeTab === 'segments' && <Segments />}

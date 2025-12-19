@@ -19406,6 +19406,122 @@ app.post('/api/product-questions/:questionId/helpful', async (req, res) => {
   }
 });
 
+// ==================== ADMIN PRODUCT QUESTIONS API ====================
+
+// Get all product questions for admin panel
+app.get('/api/admin/product-questions', async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || 1;
+    const page = parseInt(req.query.page || '1') || 1;
+    const limit = parseInt(req.query.limit || '50') || 50;
+    const offset = (page - 1) * limit;
+    const status = req.query.status; // 'answered' or 'unanswered'
+
+    let whereClause = 'q.tenantId = ?';
+    let queryParams = [tenantId];
+
+    if (status === 'answered') {
+      whereClause += ' AND q.answer IS NOT NULL AND q.answer != ""';
+    } else if (status === 'unanswered') {
+      whereClause += ' AND (q.answer IS NULL OR q.answer = "")';
+    }
+
+    // Tüm soruları getir (ürün ve kullanıcı bilgileriyle birlikte)
+    const [questions] = await poolWrapper.execute(
+      `SELECT q.id, q.productId, q.userId, q.question, q.answer, q.answeredBy, q.answeredAt,
+              q.helpfulCount, q.createdAt, q.updatedAt,
+              p.name as productName, p.image as productImage,
+              u.name as userName, u.email as userEmail, u.phone as userPhone
+       FROM product_questions q
+       LEFT JOIN products p ON q.productId = p.id AND q.tenantId = p.tenantId
+       LEFT JOIN users u ON q.userId = u.id AND q.tenantId = u.tenantId
+       WHERE ${whereClause}
+       ORDER BY q.createdAt DESC
+       LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    );
+
+    // Toplam soru sayısı
+    const [countResult] = await poolWrapper.execute(
+      `SELECT COUNT(*) as total FROM product_questions q WHERE ${whereClause}`,
+      queryParams
+    );
+    const total = countResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      data: questions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting admin product questions:', error);
+    res.status(500).json({ success: false, message: 'Error getting product questions' });
+  }
+});
+
+// Answer product question (admin)
+app.post('/api/admin/product-questions/:questionId/answer', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { answer, answeredBy } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!answer || !answer.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'answer is required'
+      });
+    }
+
+    await poolWrapper.execute(
+      `UPDATE product_questions
+       SET answer = ?, answeredBy = ?, answeredAt = NOW()
+       WHERE id = ? AND tenantId = ?`,
+      [answer.trim(), answeredBy || 'Admin', questionId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Answer added successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error answering product question:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error answering product question'
+    });
+  }
+});
+
+// Delete product question (admin)
+app.delete('/api/admin/product-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    await poolWrapper.execute(
+      `DELETE FROM product_questions WHERE id = ? AND tenantId = ?`,
+      [questionId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Question deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting product question:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting product question'
+    });
+  }
+});
+
 // GÜVENLİK: Dosya yükleme endpoint'i - Magic bytes kontrolü ile güvenli
 app.post('/api/reviews/upload', upload.array('media', 5), async (req, res) => {
   try {
