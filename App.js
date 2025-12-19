@@ -146,6 +146,7 @@ function App() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="ProductList" component={ProductListScreen} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
         <Stack.Screen name="ProductCompare" component={ProductCompareScreen} />
         <Stack.Screen name="CommunityFeed" component={CommunityFeedScreen} />
