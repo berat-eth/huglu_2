@@ -750,6 +750,13 @@ if (!fs.existsSync(uploadsDir)) {
   logger.log('✅ Uploads directory created:', uploadsDir);
 }
 
+// Community posts uploads directory
+const communityUploadsDir = path.join(__dirname, 'uploads', 'community');
+if (!fs.existsSync(communityUploadsDir)) {
+  fs.mkdirSync(communityUploadsDir, { recursive: true });
+  logger.log('✅ Community uploads directory created:', communityUploadsDir);
+}
+
 // Invoices PDF yükleme için uploads klasörünü oluştur
 const invoicesDir = path.join(__dirname, 'uploads', 'invoices');
 if (!fs.existsSync(invoicesDir)) {
@@ -2260,6 +2267,23 @@ try {
   });
 } catch (e) {
   console.warn(' Popups routes could not be required:', e.message);
+}
+
+// Community Routes
+try {
+  const communityRoutesFactory = require('./routes/community');
+  // Delay init until after poolWrapper is defined
+  process.nextTick(() => {
+    try {
+      const communityRouter = communityRoutesFactory(poolWrapper);
+      app.use('/api/community', communityRouter);
+      console.log(' Community routes mounted at /api/community');
+    } catch (e) {
+      console.warn(' Failed to mount community routes:', e.message);
+    }
+  });
+} catch (e) {
+  console.warn(' Community routes could not be required:', e.message);
 }
 
 // Flash Deals Routes

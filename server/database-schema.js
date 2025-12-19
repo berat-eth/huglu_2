@@ -47,6 +47,11 @@ async function createDatabaseSchema(pool) {
           'sliders',
           // Popups
           'popups',
+          // Community
+          'community_posts',
+          'community_post_likes',
+          'community_comments',
+          'community_follows',
           // User Behavior Analytics
           'anonymous_devices',
           'user_behavior_events',
@@ -2567,6 +2572,86 @@ async function createDatabaseSchema(pool) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
       console.log('✅ Popups table ready');
+
+      // Community Posts table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS community_posts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          image VARCHAR(500) NOT NULL,
+          caption TEXT,
+          location VARCHAR(255),
+          category VARCHAR(50) DEFAULT 'All',
+          productId INT,
+          hashtags JSON,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant_user (tenantId, userId),
+          INDEX idx_category (category),
+          INDEX idx_created (createdAt),
+          INDEX idx_product (productId),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Community posts table ready');
+
+      // Community Post Likes table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS community_post_likes (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          postId INT NOT NULL,
+          userId INT NOT NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_like (tenantId, postId, userId),
+          INDEX idx_post (postId),
+          INDEX idx_user (userId),
+          FOREIGN KEY (postId) REFERENCES community_posts(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Community post likes table ready');
+
+      // Community Comments table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS community_comments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          postId INT NOT NULL,
+          userId INT NOT NULL,
+          comment TEXT NOT NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_post (postId),
+          INDEX idx_user (userId),
+          INDEX idx_created (createdAt),
+          FOREIGN KEY (postId) REFERENCES community_posts(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Community comments table ready');
+
+      // Community Follows table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS community_follows (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          followUserId INT NOT NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_follow (tenantId, userId, followUserId),
+          INDEX idx_user (userId),
+          INDEX idx_follow_user (followUserId),
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (followUserId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Community follows table ready');
 
       // Anonymous devices table - Oturum açmamış kullanıcıların device bilgileri
       await pool.execute(`

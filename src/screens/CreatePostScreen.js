@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
+import { communityAPI } from '../services/api';
 
 export default function CreatePostScreen({ navigation, route }) {
   const { image } = route.params || {};
@@ -25,6 +26,7 @@ export default function CreatePostScreen({ navigation, route }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [posting, setPosting] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState(null);
 
   const categories = ['Yürüyüş', 'Kamp', 'Tırmanış', 'Diğer'];
 
@@ -35,10 +37,19 @@ export default function CreatePostScreen({ navigation, route }) {
   const loadUserData = async () => {
     try {
       const name = await AsyncStorage.getItem('userName');
+      const id = await AsyncStorage.getItem('userId');
       setUserName(name || 'Kullanıcı');
+      setUserId(id);
     } catch (error) {
       console.error('Kullanıcı bilgisi yüklenemedi:', error);
     }
+  };
+
+  // Extract hashtags from caption
+  const extractHashtags = (text) => {
+    const hashtagRegex = /#[\w\u0131\u0130\u015F\u015E\u011F\u011E\u00E7\u00C7\u00F6\u00D6\u00FC\u00DC]+/g;
+    const matches = text.match(hashtagRegex);
+    return matches || [];
   };
 
   const handleSelectProduct = () => {
@@ -63,28 +74,59 @@ export default function CreatePostScreen({ navigation, route }) {
   };
 
   const handlePost = async () => {
-    if (!caption.trim()) {
-      Alert.alert('Hata', 'Lütfen bir açıklama yazın');
+    if (!userId) {
+      Alert.alert('Giriş Gerekli', 'Gönderi paylaşmak için lütfen giriş yapın.');
       return;
     }
 
-    if (!location.trim()) {
-      Alert.alert('Hata', 'Lütfen konum bilgisi girin');
+    if (!image) {
+      Alert.alert('Hata', 'Lütfen bir fotoğraf seçin');
+      return;
+    }
+
+    if (!caption.trim()) {
+      Alert.alert('Hata', 'Lütfen bir açıklama yazın');
       return;
     }
 
     try {
       setPosting(true);
 
-      // Mock API call - Backend hazır olduğunda gerçek API çağrısı yapılacak
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Extract hashtags from caption
+      const hashtags = extractHashtags(caption);
 
-      Alert.alert('Başarılı! 🎉', 'Maceranız paylaşıldı!', [
-        { text: 'Tamam', onPress: () => navigation.goBack() },
-      ]);
+      // Prepare post data
+      const postData = {
+        userId: parseInt(userId),
+        image: image, // For now, using the URI directly. In production, upload to server first
+        caption: caption.trim(),
+        location: location.trim() || '',
+        category: selectedCategory,
+        productId: selectedProduct?.id || null,
+        hashtags: hashtags,
+      };
+
+      const response = await communityAPI.createPost(postData);
+
+      if (response.data && response.data.success) {
+        Alert.alert('Başarılı! 🎉', 'Maceranız paylaşıldı!', [
+          { 
+            text: 'Tamam', 
+            onPress: () => {
+              // Navigate back and refresh the feed
+              navigation.goBack();
+            }
+          },
+        ]);
+      } else {
+        throw new Error(response.data?.message || 'Gönderi oluşturulamadı');
+      }
     } catch (error) {
-      console.error('Gönderi oluşturulamadı:', error);
-      Alert.alert('Hata', 'Gönderi paylaşılırken bir hata oluştu');
+      console.error('❌ Gönderi oluşturulamadı:', error);
+      Alert.alert(
+        'Hata', 
+        error.response?.data?.message || error.message || 'Gönderi paylaşılırken bir hata oluştu'
+      );
     } finally {
       setPosting(false);
     }

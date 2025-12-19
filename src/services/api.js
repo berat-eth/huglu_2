@@ -407,7 +407,31 @@ export const communityAPI = {
   // Posts
   getPosts: (params) => api.get('/community/posts', { params }),
   getPostById: (postId) => api.get(`/community/posts/${postId}`),
-  createPost: (postData) => api.post('/community/posts', postData),
+  createPost: (postData) => {
+    // If image is a local URI, use FormData; otherwise use JSON
+    if (postData.image && (postData.image.startsWith('file://') || postData.image.startsWith('content://'))) {
+      const formData = new FormData();
+      formData.append('userId', postData.userId);
+      formData.append('caption', postData.caption || '');
+      formData.append('location', postData.location || '');
+      formData.append('category', postData.category || 'All');
+      if (postData.productId) formData.append('productId', postData.productId);
+      if (postData.hashtags && postData.hashtags.length > 0) {
+        formData.append('hashtags', JSON.stringify(postData.hashtags));
+      }
+      formData.append('image', {
+        uri: postData.image,
+        type: 'image/jpeg',
+        name: 'post.jpg',
+      });
+      return api.post('/community/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    } else {
+      // Image is already a URL, send as JSON
+      return api.post('/community/posts', postData);
+    }
+  },
   updatePost: (postId, postData) => api.put(`/community/posts/${postId}`, postData),
   deletePost: (postId) => api.delete(`/community/posts/${postId}`),
   

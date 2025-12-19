@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
+import { communityAPI } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ export default function CommunityFeedScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState(null);
 
   const tabs = ['All', 'Yürüyüş', 'Kamp', 'Tırmanış'];
 
@@ -32,10 +34,17 @@ export default function CommunityFeedScreen({ navigation }) {
     loadPosts();
   }, []);
 
+  useEffect(() => {
+    // Reload posts when tab changes
+    loadPosts();
+  }, [activeTab]);
+
   const loadUserData = async () => {
     try {
       const name = await AsyncStorage.getItem('userName');
+      const id = await AsyncStorage.getItem('userId');
       setUserName(name || 'Kullanıcı');
+      setUserId(id);
     } catch (error) {
       console.error('Kullanıcı bilgisi yüklenemedi:', error);
     }
@@ -44,114 +53,32 @@ export default function CommunityFeedScreen({ navigation }) {
   const loadPosts = async () => {
     try {
       setLoading(true);
-      // Mock data - Backend hazır olduğunda API'den çekilecek
-      const mockPosts = [
-        {
-          id: 1,
-          userName: 'Ahmet Dağcı',
-          userAvatar: 'https://i.pravatar.cc/150?img=12',
-          location: 'Kaçkar Dağları',
-          timeAgo: '2 saat önce',
-          image: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800',
-          caption: 'Sisli patikalarda yeni ekipmanı test ediyorum. Bu sırt çantasının su geçirmezliği inanılmaz! 🎒',
-          productName: 'Summit Pro Sırt Çantası 40L',
-          productPrice: '₺1,299.00',
-          productImage: 'https://images.unsplash.com/photo-1622260614153-03223fb72052?w=200',
-          likes: 448,
-          comments: 12,
-          category: 'Yürüyüş',
-          hashtags: ['#YürüyüşEkipmanı', '#PatikadaYaşam', '#SırtÇantası'],
-        },
-        {
-          id: 2,
-          userName: 'Ayşe Gezgin',
-          userAvatar: 'https://i.pravatar.cc/150?img=45',
-          location: 'Abant Gölü',
-          timeAgo: '1 gün önce',
-          image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800',
-          caption: 'Yıldızların altında bir hafta sonu gibisi yok. QuickPitch ile kurulum çok hızlıydı! ⛺',
-          productName: 'QuickPitch Dome Çadır',
-          productPrice: '₺2,499.00',
-          productImage: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=200',
-          likes: 324,
-          comments: 84,
-          category: 'Kamp',
-          hashtags: ['#KampYaşamı', '#GeceyeYarısı'],
-        },
-        {
-          id: 3,
-          userName: 'Mehmet Zirve',
-          userAvatar: 'https://i.pravatar.cc/150?img=33',
-          location: 'Erciyes Dağı',
-          timeAgo: '3 gün önce',
-          image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-          caption: 'Zirve günü! Bu botlar kayalık arazide mükemmel performans gösterdi. 🏔️',
-          productName: 'Alpine Explorer Botları',
-          productPrice: '₺1,899.00',
-          productImage: 'https://images.unsplash.com/photo-1542834281-0e5abcbdc5b4?w=200',
-          likes: 567,
-          comments: 23,
-          category: 'Tırmanış',
-          hashtags: ['#ZirveGünü', '#DağYaşamı'],
-        },
-        {
-          id: 4,
-          userName: 'Zeynep Doğa',
-          userAvatar: 'https://i.pravatar.cc/150?img=20',
-          location: 'Yedigöller Milli Parkı',
-          timeAgo: '5 gün önce',
-          image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-          caption: 'Sonbahar renkleri arasında harika bir kamp deneyimi. Yeni uyku tulumum çok sıcak tuttu! 🍂',
-          productName: 'ThermalMax Uyku Tulumu',
-          productPrice: '₺899.00',
-          productImage: 'https://images.unsplash.com/photo-1520095972714-909e91b038e5?w=200',
-          likes: 289,
-          comments: 45,
-          category: 'Kamp',
-          hashtags: ['#Sonbahar', '#KampSevgisi', '#UykuTulumu'],
-        },
-        {
-          id: 5,
-          userName: 'Can Macera',
-          userAvatar: 'https://i.pravatar.cc/150?img=8',
-          location: 'Fırtına Deresi',
-          timeAgo: '1 hafta önce',
-          image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
-          caption: 'Trekking botlarımla 15 km yürüdüm, ayaklarımda hiç ağrı yok! Mükemmel destek sağlıyor. 👟',
-          productName: 'TrailMaster Pro Botlar',
-          productPrice: '₺1,599.00',
-          productImage: 'https://images.unsplash.com/photo-1542834281-0e5abcbdc5b4?w=200',
-          likes: 412,
-          comments: 67,
-          category: 'Yürüyüş',
-          hashtags: ['#Trekking', '#DoğaYürüyüşü', '#BotÖnerisi'],
-        },
-        {
-          id: 6,
-          userName: 'Elif Outdoor',
-          userAvatar: 'https://i.pravatar.cc/150?img=25',
-          location: 'Aladağlar',
-          timeAgo: '2 hafta önce',
-          image: 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=800',
-          caption: 'İlk solo tırmanışım! Bu kask ve emniyet ekipmanları sayesinde kendimi çok güvende hissettim. 🧗‍♀️',
-          productName: 'SafeClimb Kask Seti',
-          productPrice: '₺749.00',
-          productImage: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=200',
-          likes: 523,
-          comments: 91,
-          category: 'Tırmanış',
-          hashtags: ['#Tırmanış', '#SoloClimb', '#GüvenlikÖncelikli'],
-        },
-      ];
+      
+      const params = {
+        page: 1,
+        limit: 20,
+      };
+      
+      if (activeTab !== 'All') {
+        params.category = activeTab;
+      }
 
-      setPosts(mockPosts);
-      console.log('✅ Mock posts yüklendi:', mockPosts.length, 'gönderi');
+      const response = await communityAPI.getPosts(params);
+      
+      if (response.data && response.data.success) {
+        setPosts(response.data.data || []);
+        console.log('✅ Posts yüklendi:', response.data.data?.length || 0, 'gönderi');
+      } else {
+        console.warn('⚠️ Posts yüklenemedi:', response.data?.message || 'Bilinmeyen hata');
+        setPosts([]);
+      }
     } catch (error) {
       console.error('❌ Gönderiler yüklenemedi:', error);
+      Alert.alert('Hata', 'Gönderiler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setPosts([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
-      console.log('🔄 Loading state:', false);
     }
   };
 
@@ -186,16 +113,82 @@ export default function CommunityFeedScreen({ navigation }) {
     }
   };
 
-  const handleLike = (postId) => {
-    setPosts(
-      posts.map((post) =>
-        post.id === postId ? { ...post, likes: post.likes + 1 } : post
-      )
-    );
+  const handleLike = async (postId) => {
+    if (!userId) {
+      Alert.alert('Giriş Gerekli', 'Beğenmek için lütfen giriş yapın.');
+      return;
+    }
+
+    try {
+      const post = posts.find(p => p.id === postId);
+      const isLiked = post?.isLiked;
+
+      if (isLiked) {
+        // Unlike
+        const response = await communityAPI.unlikePost(postId, userId);
+        if (response.data && response.data.success) {
+          setPosts(
+            posts.map((p) =>
+              p.id === postId
+                ? { ...p, likes: response.data.likes || p.likes - 1, isLiked: false }
+                : p
+            )
+          );
+        }
+      } else {
+        // Like
+        const response = await communityAPI.likePost(postId, userId);
+        if (response.data && response.data.success) {
+          setPosts(
+            posts.map((p) =>
+              p.id === postId
+                ? { ...p, likes: response.data.likes || p.likes + 1, isLiked: true }
+                : p
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('❌ Like error:', error);
+      Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu.');
+    }
   };
 
-  const handleComment = (postId) => {
-    Alert.alert('Yorum', 'Yorum özelliği yakında eklenecek!');
+  const handleComment = async (postId) => {
+    if (!userId) {
+      Alert.alert('Giriş Gerekli', 'Yorum yapmak için lütfen giriş yapın.');
+      return;
+    }
+
+    Alert.prompt(
+      'Yorum Yap',
+      'Yorumunuzu yazın:',
+      [
+        {
+          text: 'İptal',
+          style: 'cancel',
+        },
+        {
+          text: 'Gönder',
+          onPress: async (comment) => {
+            if (comment && comment.trim()) {
+              try {
+                const response = await communityAPI.addComment(postId, userId, comment);
+                if (response.data && response.data.success) {
+                  // Reload posts to get updated comment count
+                  loadPosts();
+                  Alert.alert('Başarılı', 'Yorumunuz eklendi!');
+                }
+              } catch (error) {
+                console.error('❌ Comment error:', error);
+                Alert.alert('Hata', 'Yorum eklenirken bir hata oluştu.');
+              }
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
   };
 
   const handleShare = async (post) => {
@@ -203,14 +196,18 @@ export default function CommunityFeedScreen({ navigation }) {
   };
 
   const handleProductClick = (post) => {
-    Alert.alert(
-      post.productName,
-      `Fiyat: ${post.productPrice}\n\nÜrün detaylarına gitmek ister misiniz?`,
-      [
-        { text: 'İptal', style: 'cancel' },
-        { text: 'Ürüne Git', onPress: () => {} },
-      ]
-    );
+    if (post.productId) {
+      navigation.navigate('ProductDetail', { productId: post.productId });
+    } else {
+      Alert.alert(
+        post.productName || 'Ürün',
+        `Fiyat: ${post.productPrice || 'Bilinmiyor'}\n\nÜrün detaylarına gitmek ister misiniz?`,
+        [
+          { text: 'İptal', style: 'cancel' },
+          { text: 'Ürüne Git', onPress: () => {} },
+        ]
+      );
+    }
   };
 
   const filteredPosts =
@@ -302,7 +299,11 @@ export default function CommunityFeedScreen({ navigation }) {
                 style={styles.actionButton}
                 onPress={() => handleLike(post.id)}
               >
-                <Ionicons name="heart-outline" size={24} color={COLORS.textMain} />
+                <Ionicons 
+                  name={post.isLiked ? "heart" : "heart-outline"} 
+                  size={24} 
+                  color={post.isLiked ? COLORS.primary : COLORS.textMain} 
+                />
                 <Text style={styles.actionText}>{post.likes}</Text>
               </TouchableOpacity>
 
