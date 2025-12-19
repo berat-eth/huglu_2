@@ -19326,7 +19326,7 @@ app.post('/api/product-questions', async (req, res) => {
 app.post('/api/product-questions/:questionId/answer', async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { answer, answeredBy } = req.body;
+    const { answer } = req.body;
     const tenantId = req.tenant?.id || 1;
 
     if (!answer || !answer.trim()) {
@@ -19336,12 +19336,62 @@ app.post('/api/product-questions/:questionId/answer', async (req, res) => {
       });
     }
 
+    // Önce soruyu al (userId ve productId için)
+    const [questionRows] = await poolWrapper.execute(
+      `SELECT q.userId, q.productId, q.question, p.name as productName
+       FROM product_questions q
+       LEFT JOIN products p ON q.productId = p.id AND q.tenantId = p.tenantId
+       WHERE q.id = ? AND q.tenantId = ?`,
+      [questionId, tenantId]
+    );
+
+    if (questionRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    const question = questionRows[0];
+    const userId = question.userId;
+    const productName = question.productName || 'Ürün';
+
+    // Soruyu güncelle - answeredBy'u "Huglu outdoor" olarak ayarla
     await poolWrapper.execute(
       `UPDATE product_questions
-       SET answer = ?, answeredBy = ?, answeredAt = NOW()
+       SET answer = ?, answeredBy = 'Huglu outdoor', answeredAt = NOW()
        WHERE id = ? AND tenantId = ?`,
-      [answer.trim(), answeredBy || 'seller', questionId, tenantId]
+      [answer.trim(), questionId, tenantId]
     );
+
+    // Kullanıcıya bildirim gönder
+    if (userId) {
+      try {
+        const notificationTitle = 'Soranız Cevaplandı';
+        const notificationMessage = `${productName} ürünü hakkındaki sorunuz cevaplandı.`;
+        
+        await poolWrapper.execute(
+          `INSERT INTO user_notifications (tenantId, userId, title, message, type, data)
+           VALUES (?, ?, ?, ?, 'info', ?)`,
+          [
+            tenantId,
+            userId,
+            notificationTitle,
+            notificationMessage,
+            JSON.stringify({
+              type: 'question_answered',
+              questionId: parseInt(questionId),
+              productId: question.productId,
+              productName: productName
+            })
+          ]
+        );
+        console.log(`✅ Bildirim gönderildi - Kullanıcı ID: ${userId}, Soru ID: ${questionId}`);
+      } catch (notificationError) {
+        console.error('⚠️ Bildirim gönderilemedi (soru yine de cevaplandı):', notificationError);
+        // Bildirim hatası soruyu cevaplamayı engellemez
+      }
+    }
 
     res.json({
       success: true,
@@ -19468,7 +19518,7 @@ app.get('/api/admin/product-questions', async (req, res) => {
 app.post('/api/admin/product-questions/:questionId/answer', async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { answer, answeredBy } = req.body;
+    const { answer } = req.body;
     const tenantId = req.tenant?.id || 1;
 
     if (!answer || !answer.trim()) {
@@ -19478,12 +19528,62 @@ app.post('/api/admin/product-questions/:questionId/answer', async (req, res) => 
       });
     }
 
+    // Önce soruyu al (userId ve productId için)
+    const [questionRows] = await poolWrapper.execute(
+      `SELECT q.userId, q.productId, q.question, p.name as productName
+       FROM product_questions q
+       LEFT JOIN products p ON q.productId = p.id AND q.tenantId = p.tenantId
+       WHERE q.id = ? AND q.tenantId = ?`,
+      [questionId, tenantId]
+    );
+
+    if (questionRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    const question = questionRows[0];
+    const userId = question.userId;
+    const productName = question.productName || 'Ürün';
+
+    // Soruyu güncelle - answeredBy'u "Huglu outdoor" olarak ayarla
     await poolWrapper.execute(
       `UPDATE product_questions
-       SET answer = ?, answeredBy = ?, answeredAt = NOW()
+       SET answer = ?, answeredBy = 'Huglu outdoor', answeredAt = NOW()
        WHERE id = ? AND tenantId = ?`,
-      [answer.trim(), answeredBy || 'Admin', questionId, tenantId]
+      [answer.trim(), questionId, tenantId]
     );
+
+    // Kullanıcıya bildirim gönder
+    if (userId) {
+      try {
+        const notificationTitle = 'Soranız Cevaplandı';
+        const notificationMessage = `${productName} ürünü hakkındaki sorunuz cevaplandı.`;
+        
+        await poolWrapper.execute(
+          `INSERT INTO user_notifications (tenantId, userId, title, message, type, data)
+           VALUES (?, ?, ?, ?, 'info', ?)`,
+          [
+            tenantId,
+            userId,
+            notificationTitle,
+            notificationMessage,
+            JSON.stringify({
+              type: 'question_answered',
+              questionId: parseInt(questionId),
+              productId: question.productId,
+              productName: productName
+            })
+          ]
+        );
+        console.log(`✅ Bildirim gönderildi - Kullanıcı ID: ${userId}, Soru ID: ${questionId}`);
+      } catch (notificationError) {
+        console.error('⚠️ Bildirim gönderilemedi (soru yine de cevaplandı):', notificationError);
+        // Bildirim hatası soruyu cevaplamayı engellemez
+      }
+    }
 
     res.json({
       success: true,
