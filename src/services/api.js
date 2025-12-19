@@ -229,6 +229,10 @@ export const walletAPI = {
   rechargeRequest: (userId, amount, paymentMethod) => 
     api.post('/wallet/recharge-request', { userId, amount, paymentMethod }),
   
+  // Çekim Talebi (Banka Hesabına Transfer)
+  createWithdrawRequest: (userId, amount, iban, accountHolderName) =>
+    api.post('/wallet/withdraw-request', { userId, amount, iban, accountHolderName }),
+  
   // Hediye Kartı
   useGiftCard: (userId, code) => 
     api.post('/wallet/gift-card', { userId, code }),

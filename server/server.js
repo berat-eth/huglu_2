@@ -6478,6 +6478,117 @@ app.get('/api/admin/wallet-withdraw-requests', authenticateAdmin, async (req, re
   }
 });
 
+// User - Create wallet withdraw request (Banka hesabına transfer)
+app.post('/api/wallet/withdraw-request', validateUserIdMatch('body'), async (req, res) => {
+  try {
+    const { userId, amount, iban, accountHolderName } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!userId || !amount || !iban) {
+      return res.status(400).json({
+        success: false,
+        message: 'Eksik parametreler: userId, amount ve iban gereklidir'
+      });
+    }
+
+    const transferAmount = parseFloat(amount);
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçerli bir tutar giriniz'
+      });
+    }
+
+    // Kullanıcının bakiyesini kontrol et
+    const [walletRows] = await poolWrapper.execute(
+      'SELECT balance FROM user_wallets WHERE userId = ? AND tenantId = ?',
+      [userId, tenantId]
+    );
+
+    const currentBalance = walletRows.length > 0 ? parseFloat(walletRows[0].balance || 0) : 0;
+    if (transferAmount > currentBalance) {
+      return res.status(400).json({
+        success: false,
+        message: 'Yetersiz bakiye'
+      });
+    }
+
+    // IBAN formatını kontrol et (basit kontrol)
+    const ibanRegex = /^[A-Z]{2}\d{2}[A-Z0-9]{4,30}$/i;
+    if (!ibanRegex.test(iban.replace(/\s/g, ''))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçersiz IBAN formatı'
+      });
+    }
+
+    // Tablo yoksa oluştur
+    try {
+      await poolWrapper.execute(`
+        CREATE TABLE IF NOT EXISTS wallet_withdraw_requests (
+          id VARCHAR(50) PRIMARY KEY,
+          userId VARCHAR(50) NOT NULL,
+          tenantId INT NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          iban VARCHAR(50) NOT NULL,
+          accountHolderName VARCHAR(255),
+          bankInfo TEXT,
+          status VARCHAR(50) DEFAULT 'pending',
+          errorMessage TEXT,
+          approvedBy VARCHAR(50),
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          completedAt DATETIME,
+          INDEX idx_userId (userId),
+          INDEX idx_tenantId (tenantId),
+          INDEX idx_status (status),
+          INDEX idx_createdAt (createdAt)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (tableError) {
+      // Tablo zaten varsa devam et
+      if (tableError.code !== 'ER_TABLE_EXISTS_ERROR') {
+        console.error('Table creation error:', tableError);
+      }
+    }
+
+    const requestId = `WDR-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const bankInfo = {
+      iban: iban.replace(/\s/g, '').toUpperCase(),
+      accountHolderName: accountHolderName || null
+    };
+
+    // Withdraw request kaydet
+    await poolWrapper.execute(
+      `INSERT INTO wallet_withdraw_requests 
+       (id, userId, tenantId, amount, iban, accountHolderName, bankInfo, status, createdAt) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [requestId, userId, tenantId, transferAmount, iban.replace(/\s/g, '').toUpperCase(), accountHolderName || null, JSON.stringify(bankInfo)]
+    );
+
+    // Bakiyeyi düş (pending durumunda bile, onaylandığında zaten düşülmüş olacak)
+    // Ancak burada düşmeyelim, admin onayladığında düşülsün
+    // await poolWrapper.execute(
+    //   'UPDATE user_wallets SET balance = balance - ? WHERE userId = ? AND tenantId = ?',
+    //   [transferAmount, userId, tenantId]
+    // );
+
+    res.json({
+      success: true,
+      data: {
+        id: requestId,
+        status: 'pending',
+        message: 'Çekim talebi oluşturuldu. İşlem admin onayından sonra gerçekleştirilecektir.'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Create withdraw request error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Çekim talebi oluşturulurken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata')
+    });
+  }
+});
+
 // Admin - Update wallet withdraw request status
 app.post('/api/admin/wallet-withdraw-requests/:id/status', authenticateAdmin, async (req, res) => {
   try {
@@ -6491,12 +6602,61 @@ app.post('/api/admin/wallet-withdraw-requests/:id/status', authenticateAdmin, as
     }
     
     try {
+      // Önce request'i bul
+      const [requestRows] = await poolWrapper.execute(
+        'SELECT * FROM wallet_withdraw_requests WHERE id = ? AND tenantId = ?',
+        [id, tenantId]
+      );
+
+      if (requestRows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Request not found' });
+      }
+
+      const request = requestRows[0];
+
+      // Eğer completed ise, bakiyeyi düş
+      if (status === 'completed') {
+        const amount = parseFloat(request.amount || 0);
+        const userId = request.userId;
+
+        // Bakiyeyi kontrol et
+        const [walletRows] = await poolWrapper.execute(
+          'SELECT balance FROM user_wallets WHERE userId = ? AND tenantId = ?',
+          [userId, tenantId]
+        );
+
+        if (walletRows.length === 0) {
+          return res.status(400).json({ success: false, message: 'User wallet not found' });
+        }
+
+        const currentBalance = parseFloat(walletRows[0].balance || 0);
+        if (amount > currentBalance) {
+          return res.status(400).json({ success: false, message: 'Insufficient balance' });
+        }
+
+        // Bakiyeyi düş
+        await poolWrapper.execute(
+          'UPDATE user_wallets SET balance = balance - ? WHERE userId = ? AND tenantId = ?',
+          [amount, userId, tenantId]
+        );
+
+        // Transaction kaydı ekle
+        await poolWrapper.execute(
+          `INSERT INTO wallet_transactions 
+           (userId, tenantId, type, amount, description, status, createdAt) 
+           VALUES (?, ?, 'withdraw', ?, ?, 'completed', NOW())`,
+          [userId, tenantId, amount, `Banka hesabına transfer - Talep #${id}`]
+        );
+      }
+
+      // Request durumunu güncelle
       await poolWrapper.execute(
         `UPDATE wallet_withdraw_requests 
-         SET status = ?, approvedBy = ?, completedAt = NOW() 
+         SET status = ?, approvedBy = ?, completedAt = CASE WHEN ? = 'completed' THEN NOW() ELSE completedAt END
          WHERE id = ? AND tenantId = ?`,
-        [status, req.user?.id || null, id, tenantId]
+        [status, req.user?.id || null, status, id, tenantId]
       );
+
       res.json({ success: true, message: 'Status updated' });
     } catch (tableError) {
       if (tableError.code === 'ER_NO_SUCH_TABLE') {

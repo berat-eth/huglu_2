@@ -322,7 +322,7 @@ export interface Product {
 export interface Order {
   id: number;
   totalAmount: number;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'completed' | 'delivered' | 'cancelled';
   createdAt: string;
   shippingAddress?: string;
   paymentMethod?: string;

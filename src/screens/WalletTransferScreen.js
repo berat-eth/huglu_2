@@ -17,6 +17,7 @@ export default function WalletTransferScreen({ navigation }) {
   const [balance, setBalance] = useState(0);
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
+  const [userFullName, setUserFullName] = useState('');
   
   // Form states
   const [transferType, setTransferType] = useState('user'); // 'user' or 'bank'
@@ -28,6 +29,7 @@ export default function WalletTransferScreen({ navigation }) {
   
   // Modal states
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showTransferInfoModal, setShowTransferInfoModal] = useState(false);
   const [infoMessage, setInfoMessage] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -63,6 +65,19 @@ export default function WalletTransferScreen({ navigation }) {
 
       setUserId(storedUserId);
       setUserName(storedUserName || 'Kullanıcı');
+
+      // Kullanıcı profil bilgilerini yükle
+      try {
+        const userResponse = await usersAPI.getProfile(storedUserId);
+        if (userResponse.data?.success) {
+          const userData = userResponse.data.user || userResponse.data.data;
+          const fullName = userData.name || userData.fullName || storedUserName || 'Kullanıcı';
+          setUserFullName(fullName);
+        }
+      } catch (error) {
+        console.error('Kullanıcı bilgileri yüklenemedi:', error);
+        setUserFullName(storedUserName || 'Kullanıcı');
+      }
 
       const response = await walletAPI.getBalance(storedUserId);
       if (response.data?.success) {
@@ -160,8 +175,32 @@ export default function WalletTransferScreen({ navigation }) {
           setShowErrorModal(true);
         }
       } else {
-        setInfoMessage('Banka transferi özelliği yakında eklenecek');
-        setShowInfoModal(true);
+        // Banka hesabına transfer - withdrawal request oluştur
+        try {
+          const withdrawResponse = await walletAPI.createWithdrawRequest(
+            userId,
+            transferAmount,
+            recipient, // IBAN
+            userFullName || userName
+          );
+
+          if (withdrawResponse.data?.success) {
+            setInfoMessage(`Banka hesabınıza transfer talebi oluşturuldu. Talep ID: ${withdrawResponse.data.data?.id || withdrawResponse.data.id}. İşlem admin onayından sonra gerçekleştirilecektir.`);
+            setShowInfoModal(true);
+            // Bakiyeyi güncelle
+            await loadWalletBalance();
+            // Formu temizle
+            setRecipient('');
+            setAmount('');
+          } else {
+            setErrorMessage(withdrawResponse.data?.message || 'Transfer talebi oluşturulamadı');
+            setShowErrorModal(true);
+          }
+        } catch (withdrawError) {
+          console.error('Withdrawal request error:', withdrawError);
+          setErrorMessage(withdrawError.response?.data?.message || 'Transfer talebi oluşturulurken bir hata oluştu');
+          setShowErrorModal(true);
+        }
       }
     } catch (error) {
       console.error('Transfer hatası:', error);
@@ -199,7 +238,12 @@ export default function WalletTransferScreen({ navigation }) {
           <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Para Transferi</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity 
+          onPress={() => setShowTransferInfoModal(true)} 
+          style={styles.infoButton}
+        >
+          <Ionicons name="information-circle-outline" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -244,8 +288,23 @@ export default function WalletTransferScreen({ navigation }) {
         {/* Recipient Input */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Alıcı</Text>
+          
+          {/* Müşteri Adı Soyadı - Sadece Banka Hesabı için */}
+          {transferType === 'bank' && (
+            <View style={styles.readOnlyField}>
+              <View style={styles.readOnlyFieldHeader}>
+                <Ionicons name="person-outline" size={18} color={COLORS.textSecondary} />
+                <Text style={styles.readOnlyLabel}>Müşteri Adı Soyadı</Text>
+              </View>
+              <View style={styles.readOnlyValueContainer}>
+                <Text style={styles.readOnlyValue}>{userFullName || userName || 'Kullanıcı'}</Text>
+                <Ionicons name="lock-closed" size={16} color={COLORS.gray400} />
+              </View>
+            </View>
+          )}
+          
           <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+            <Ionicons name={transferType === 'bank' ? 'card-outline' : 'person-outline'} size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder={transferType === 'user' ? 'E-posta veya Kullanıcı ID' : 'IBAN Numarası'}
@@ -358,6 +417,14 @@ export default function WalletTransferScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Transfer Info Modal */}
+      <InfoModal
+        visible={showTransferInfoModal}
+        onClose={() => setShowTransferInfoModal(false)}
+        title="Para Transferi Bilgisi"
+        message="Para transferleri sadece kendi hesabınıza yapılabilir. Banka hesabınıza transfer yaptığınızda, işlem admin onayından sonra gerçekleştirilecektir. Transfer talebiniz admin panelde görüntülenecek ve manuel olarak işleme alınacaktır."
+      />
+
       {/* Info Modal */}
       <InfoModal
         visible={showInfoModal}
@@ -411,6 +478,13 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.gray100,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -722,5 +796,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.textMain,
+  },
+  readOnlyField: {
+    marginBottom: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    padding: 16,
+  },
+  readOnlyFieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  readOnlyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  readOnlyValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray100,
+  },
+  readOnlyValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    flex: 1,
   },
 });

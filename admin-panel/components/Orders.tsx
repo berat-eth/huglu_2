@@ -156,6 +156,7 @@ export default function Orders() {
     processing: { label: 'Paketleniyor', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Package, dotColor: 'bg-blue-500' },
     shipped: { label: 'Kargoya Verildi', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Truck, dotColor: 'bg-purple-500' },
     completed: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle, dotColor: 'bg-green-500' },
+    delivered: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle, dotColor: 'bg-green-500' },
     cancelled: { label: 'İptal', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, dotColor: 'bg-red-500' },
   }
 

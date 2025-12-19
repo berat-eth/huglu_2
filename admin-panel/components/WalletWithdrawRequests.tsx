@@ -103,11 +103,31 @@ export default function WalletWithdrawRequests() {
                 <div className="flex items-start space-x-4">
                   <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
                   <div className="space-y-1">
-                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">{request.fullName || request.userName || '-'}</h3>
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                      {request.accountHolderName || request.fullName || request.userName || '-'}
+                    </h3>
                     <div className="text-sm text-slate-600 dark:text-slate-300">
                       <span className="font-medium">IBAN: </span>
-                      <span className="font-mono tracking-wider">{request.iban || request.IBAN || request.ibanNumber || '-'}</span>
+                      <span className="font-mono tracking-wider">
+                        {(() => {
+                          if (request.iban) return request.iban;
+                          if (request.IBAN) return request.IBAN;
+                          if (request.ibanNumber) return request.ibanNumber;
+                          if (request.bankInfo) {
+                            try {
+                              const bankInfo = typeof request.bankInfo === 'string' ? JSON.parse(request.bankInfo) : request.bankInfo;
+                              return bankInfo?.iban || '-';
+                            } catch {
+                              return '-';
+                            }
+                          }
+                          return '-';
+                        })()}
+                      </span>
                     </div>
+                    {request.userEmail && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{request.userEmail}</p>
+                    )}
                     <p className="text-xs text-slate-400 dark:text-slate-500">Talep ID: {request.id} • {formatDDMMYYYY(request.createdAt)}</p>
                   </div>
                 </div>
