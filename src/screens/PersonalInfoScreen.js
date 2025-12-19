@@ -68,19 +68,17 @@ export default function PersonalInfoScreen({ navigation }) {
     try {
       setSaving(true);
 
-      // Bilgileri local storage'a kaydet
+      // Bilgileri local storage'a kaydet (boy ve kilo kaydedilmez)
       await AsyncStorage.multiSet([
         ['userName', name.trim()],
         ['userEmail', email.trim()],
         ['userPhone', phone.trim()],
         ['userDateOfBirth', dateOfBirth.trim()],
-        ['userHeight', height.trim()],
-        ['userWeight', weight.trim()],
         ['userHomeAddress', homeAddress.trim()],
         ['userWorkAddress', workAddress.trim()],
       ]);
 
-      // API'ye gönder
+      // API'ye gönder (boy ve kilo gönderilmez)
       try {
         const userId = await AsyncStorage.getItem('userId');
         if (userId) {
@@ -89,8 +87,6 @@ export default function PersonalInfoScreen({ navigation }) {
             email: email.trim(),
             phone: phone.trim(),
             dateOfBirth: dateOfBirth.trim(),
-            height: height.trim() ? parseInt(height.trim()) : null,
-            weight: weight.trim() ? parseInt(weight.trim()) : null,
           };
 
           await userAPI.updateProfile(userId, userData);
@@ -112,33 +108,6 @@ export default function PersonalInfoScreen({ navigation }) {
     }
   };
 
-  const calculateBMI = () => {
-    const h = parseFloat(height);
-    const w = parseFloat(weight);
-    if (h > 0 && w > 0) {
-      const heightInMeters = h / 100;
-      const bmi = w / (heightInMeters * heightInMeters);
-      return bmi.toFixed(1);
-    }
-    return '0.0';
-  };
-
-  const getBMICategory = () => {
-    const bmi = parseFloat(calculateBMI());
-    if (bmi < 18.5) return 'Zayıf';
-    if (bmi < 25) return 'Normal';
-    if (bmi < 30) return 'Fazla Kilolu';
-    return 'Obez';
-  };
-
-  const getBMIPosition = () => {
-    const bmi = parseFloat(calculateBMI());
-    // BMI 15-35 arası için pozisyon hesapla (0-100%)
-    const minBMI = 15;
-    const maxBMI = 35;
-    const position = ((bmi - minBMI) / (maxBMI - minBMI)) * 100;
-    return Math.max(0, Math.min(100, position));
-  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -276,28 +245,6 @@ export default function PersonalInfoScreen({ navigation }) {
               </View>
             </View>
           </View>
-
-          {height && weight && (
-            <View style={styles.bmiCard}>
-              <View style={styles.bmiHeader}>
-                <Ionicons name="analytics" size={20} color={COLORS.primary} />
-                <Text style={styles.bmiTitle}>Vücut Kitle İndeksi (BMI)</Text>
-              </View>
-              <View style={styles.bmiContent}>
-                <Text style={styles.bmiValue}>{calculateBMI()}</Text>
-                <Text style={styles.bmiCategory}>{getBMICategory()}</Text>
-              </View>
-              <View style={styles.bmiBar}>
-                <View style={[styles.bmiIndicator, { left: `${getBMIPosition()}%` }]} />
-              </View>
-              <View style={styles.bmiLegend}>
-                <Text style={styles.bmiLegendText}>Zayıf</Text>
-                <Text style={styles.bmiLegendText}>Normal</Text>
-                <Text style={styles.bmiLegendText}>Fazla Kilolu</Text>
-                <Text style={styles.bmiLegendText}>Obez</Text>
-              </View>
-            </View>
-          )}
         </View>
 
         {/* Contact Details Section */}
@@ -629,69 +576,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FF3B30',
-  },
-  bmiCard: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
-  bmiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  bmiTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 8,
-  },
-  bmiContent: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  bmiValue: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: COLORS.primary,
-    marginBottom: 4,
-  },
-  bmiCategory: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  bmiBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    marginBottom: 8,
-    position: 'relative',
-    overflow: 'visible',
-  },
-  bmiIndicator: {
-    position: 'absolute',
-    top: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bmiLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  bmiLegendText: {
-    fontSize: 10,
-    color: '#999',
-    fontWeight: '500',
   },
 });

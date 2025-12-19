@@ -10,7 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 
@@ -458,56 +458,20 @@ export default function ProductDetailScreen({ navigation, route }) {
     // Typing indicator
     setBotTyping(true);
 
-    try {
-      // Server API'sine mesaj gönder
-      const userId = await AsyncStorage.getItem('userId');
-      const productId = product?.id || product?._id;
-      
-      const response = await chatbotAPI.sendMessage(userId, messageText, productId, 'text', null);
-      
+    // Simüle bot yanıtı (gerçek API entegrasyonu için chatbotAPI kullanılabilir)
+    setTimeout(() => {
       setBotTyping(false);
-      
-      if (response.data?.success && response.data.data) {
-        const botData = response.data.data;
-        const botResponse = {
-          id: chatMessages.length + 2,
-          type: 'bot',
-          text: botData.text || botData.message || 'Üzgünüm, yanıt veremiyorum.',
-          messageType: botData.type || 'text',
-          action: botData.action,
-          quickReplies: botData.quickReplies,
-          timestamp: new Date(botData.timestamp) || new Date(),
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-      } else {
-        // Fallback: Local bot response
-        const localResponse = getBotResponse(messageText);
-        const botResponse = {
-          id: chatMessages.length + 2,
-          type: 'bot',
-          text: localResponse.text || localResponse,
-          messageType: localResponse.type || 'text',
-          action: localResponse.action,
-          timestamp: new Date(),
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-      }
-    } catch (error) {
-      console.error('Chatbot API hatası:', error);
-      setBotTyping(false);
-      
-      // Fallback: Local bot response
       const response = getBotResponse(messageText);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response || 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+        text: response.text || response,
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }
+    }, 1200);
   };
 
   const getBotResponse = (message) => {
@@ -580,7 +544,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     }
   };
 
-  const handleQuickAction = async (question) => {
+  const handleQuickAction = (question) => {
     const userMessage = {
       id: chatMessages.length + 1,
       type: 'user',
@@ -593,56 +557,20 @@ export default function ProductDetailScreen({ navigation, route }) {
     // Typing indicator
     setBotTyping(true);
 
-    try {
-      // Server API'sine mesaj gönder
-      const userId = await AsyncStorage.getItem('userId');
-      const productId = product?.id || product?._id;
-      
-      const response = await chatbotAPI.sendMessage(userId, question, productId, 'text', null);
-      
+    // Bot yanıtı
+    setTimeout(() => {
       setBotTyping(false);
-      
-      if (response.data?.success && response.data.data) {
-        const botData = response.data.data;
-        const botResponse = {
-          id: chatMessages.length + 2,
-          type: 'bot',
-          text: botData.text || botData.message || 'Üzgünüm, yanıt veremiyorum.',
-          messageType: botData.type || 'text',
-          action: botData.action,
-          quickReplies: botData.quickReplies,
-          timestamp: new Date(botData.timestamp) || new Date(),
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-      } else {
-        // Fallback: Local bot response
-        const localResponse = getBotResponse(question);
-        const botResponse = {
-          id: chatMessages.length + 2,
-          type: 'bot',
-          text: localResponse.text || localResponse,
-          messageType: localResponse.type || 'text',
-          action: localResponse.action,
-          timestamp: new Date(),
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-      }
-    } catch (error) {
-      console.error('Chatbot API hatası:', error);
-      setBotTyping(false);
-      
-      // Fallback: Local bot response
       const response = getBotResponse(question);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response || 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+        text: response.text || response,
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }
+    }, 1000);
   };
 
   const handleQuickOrder = async () => {
@@ -1520,35 +1448,6 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.quickOrderButtonText}>Sepete Ekle ve Devam Et</Text>
                     </TouchableOpacity>
                   )}
-                  
-                  {/* Quick Replies */}
-                  {message.quickReplies && message.quickReplies.length > 0 && (
-                    <View style={styles.quickRepliesContainer}>
-                      {message.quickReplies.map((reply) => (
-                        <TouchableOpacity
-                          key={reply.id}
-                          style={styles.quickReplyButton}
-                          onPress={() => {
-                            if (reply.action === 'return_request') {
-                              handleQuickAction('İade işlemi');
-                            } else if (reply.action === 'order_tracking') {
-                              handleQuickAction('Sipariş takibi');
-                            } else if (reply.action === 'navigate_orders') {
-                              navigation.navigate('Orders');
-                              setShowChatbot(false);
-                            } else if (reply.action === 'navigate_returns') {
-                              // İade sayfasına yönlendir (eğer varsa)
-                              Alert.alert('İade İşlemi', 'İade işlemleri için lütfen "Hesabım > İadelerim" sayfasına gidin.');
-                            } else {
-                              handleQuickAction(reply.text);
-                            }
-                          }}
-                        >
-                          <Text style={styles.quickReplyText}>{reply.text}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
                 </View>
                 {message.type === 'user' && (
                   <Text style={styles.chatbotMessageTime}>
@@ -1598,13 +1497,6 @@ export default function ProductDetailScreen({ navigation, route }) {
               onPress={() => handleQuickAction('Fiyat')}
             >
               <Text style={styles.chatbotQuickActionText}>Fiyat</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.chatbotQuickAction}
-              onPress={() => handleQuickAction('İade işlemi')}
-            >
-              <Ionicons name="return-down-back" size={14} color={COLORS.textMain} />
-              <Text style={styles.chatbotQuickActionText}>İade</Text>
             </TouchableOpacity>
           </View>
 
@@ -3270,25 +3162,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.white,
-  },
-  quickRepliesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  quickReplyButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-  },
-  quickReplyText: {
-    fontSize: 13,
-    color: COLORS.textMain,
-    fontWeight: '500',
   },
   chatbotInputContainer: {
     flexDirection: 'row',

@@ -22195,7 +22195,7 @@ async function startServer() {
       // Yanıt oluştur
       let response;
       try {
-        response = await generateChatbotResponse(intent, message, actionType, tenantId, userId);
+        response = await generateChatbotResponse(intent, message, actionType, tenantId);
       } catch (responseError) {
         console.error('❌ Yanıt oluşturma hatası:', responseError);
         // Fallback yanıt
@@ -22212,12 +22212,11 @@ async function startServer() {
         };
       }
 
-      // Analitik verilerini kaydet (ürün bilgileri ve ses URL'i ile)
+      // Analitik verilerini kaydet (ürün bilgileri ile)
       try {
-        // voiceUrl kolonu varsa ekle, yoksa NULL
         await poolWrapper.execute(
-          `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, productId, productName, productPrice, productImage, voiceUrl, timestamp) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, productId, productName, productPrice, productImage, timestamp) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
           [
             tenantId,
             userId || null,
@@ -22226,30 +22225,9 @@ async function startServer() {
             productInfo?.id || null,
             productInfo?.name || null,
             productInfo?.price || null,
-            productInfo?.image || null,
-            voiceUrl || null
+            productInfo?.image || null
           ]
-        ).catch(async (err) => {
-          // voiceUrl kolonu yoksa, kolon olmadan tekrar dene
-          if (err.message?.includes('voiceUrl') || err.code === 'ER_BAD_FIELD_ERROR') {
-            await poolWrapper.execute(
-              `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, productId, productName, productPrice, productImage, timestamp) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-              [
-                tenantId,
-                userId || null,
-                message.substring(0, 100),
-                intent,
-                productInfo?.id || null,
-                productInfo?.name || null,
-                productInfo?.price || null,
-                productInfo?.image || null
-              ]
-            );
-          } else {
-            throw err;
-          }
-        });
+        );
       } catch (analyticsError) {
         console.warn('⚠️ Chatbot analytics kaydedilemedi:', analyticsError.message);
       }
@@ -22613,19 +22591,19 @@ async function startServer() {
   }
 
   // Chatbot yanıt oluşturma fonksiyonu
-  async function generateChatbotResponse(intent, message, actionType, tenantId, userId = null) {
+  async function generateChatbotResponse(intent, message, actionType, tenantId) {
     const timestamp = new Date();
     const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Özel eylem tipleri
     if (actionType !== 'text') {
-      return await handleSpecialChatbotAction(actionType, message, messageId, timestamp, tenantId, userId);
+      return await handleSpecialChatbotAction(actionType, message, messageId, timestamp, tenantId);
     }
 
     // Intent'e göre yanıt oluştur
     switch (intent) {
       case 'order_number':
-        return await handleOrderTracking(message, tenantId, userId);
+        return await handleOrderTracking(message, tenantId);
 
       case 'product_search_query':
         return await handleProductSearch(message, tenantId);
@@ -22634,10 +22612,7 @@ async function startServer() {
         return await handleCampaigns(tenantId);
 
       case 'recommendations':
-        return await handleRecommendations(tenantId, userId);
-
-      case 'return':
-        return await handleReturnRequest(message, tenantId, userId);
+        return await handleRecommendations(tenantId);
 
       case 'unknown':
         return {
@@ -22650,8 +22625,7 @@ async function startServer() {
             { id: '1', text: '📦 Sipariş Takibi', action: 'order_tracking' },
             { id: '2', text: '🔍 Ürün Arama', action: 'product_search' },
             { id: '3', text: '🎧 Canlı Destek', action: 'live_support' },
-            { id: '4', text: '❓ S.S.S.', action: 'faq' },
-            { id: '5', text: '↩️ İade İşlemi', action: 'return_request' }
+            { id: '4', text: '❓ S.S.S.', action: 'faq' }
           ]
         };
 
@@ -22716,35 +22690,20 @@ async function startServer() {
   }
 
   // Sipariş takibi fonksiyonu
-  async function handleOrderTracking(message, tenantId, userId = null) {
+  async function handleOrderTracking(message, tenantId) {
     const orderNumber = message.match(/\b\d{5,}\b/)?.[0];
 
     if (orderNumber) {
       try {
-        // Kargo bilgilerini de almak için sorguyu genişlet
         const [rows] = await poolWrapper.execute(
-          `SELECT o.*, 
-           COALESCE(o.trackingNumber, o.cargoTrackingNumber) as trackingNumber,
-           COALESCE(o.cargoProvider, o.cargoProviderName) as cargoCompany
-           FROM orders o 
-           WHERE o.id = ? AND o.tenantId = ?`,
+          'SELECT * FROM orders WHERE id = ? AND tenantId = ?',
           [orderNumber, tenantId]
         );
 
         if (rows.length > 0) {
           const order = rows[0];
           const statusText = getOrderStatusText(order.status);
-          
-          // Kargo bilgilerini oluştur
-          let cargoInfo = '';
-          if (order.trackingNumber) {
-            cargoInfo += `\n📋 Kargo Kodu: ${order.trackingNumber}`;
-          }
-          if (order.cargoCompany) {
-            cargoInfo += `\n🚚 Kargo Firması: ${order.cargoCompany}`;
-          }
-          
-          const trackingInfo = cargoInfo || (order.trackingNumber ? `\n📋 Takip No: ${order.trackingNumber}` : '');
+          const trackingInfo = order.trackingNumber ? `\n📋 Takip No: ${order.trackingNumber}` : '';
 
           return {
             id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -22755,8 +22714,7 @@ async function startServer() {
             quickReplies: [
               { id: '1', text: '🔍 Detay Gör', action: 'order_detail', data: { orderId: orderNumber } },
               { id: '2', text: '📞 Kargo Şirketi', action: 'cargo_contact' },
-              { id: '3', text: '📋 Tüm Siparişler', action: 'view_orders' },
-              { id: '4', text: '↩️ İade İşlemi', action: 'return_request', data: { orderId: orderNumber } }
+              { id: '3', text: '📋 Tüm Siparişler', action: 'view_orders' }
             ]
           };
         } else {
@@ -22952,60 +22910,8 @@ async function startServer() {
   }
 
   // Öneri fonksiyonu
-  async function handleRecommendations(tenantId, userId = null) {
+  async function handleRecommendations(tenantId) {
     try {
-      let userInfo = null;
-      let personalizedMessage = '';
-      
-      // Kullanıcı bilgilerini çek (kilo ve boy)
-      if (userId) {
-        try {
-          const [userRows] = await poolWrapper.execute(
-            'SELECT height, weight FROM users WHERE id = ? AND tenantId = ?',
-            [userId, tenantId]
-          );
-          
-          if (userRows.length > 0 && (userRows[0].height || userRows[0].weight)) {
-            userInfo = {
-              height: userRows[0].height,
-              weight: userRows[0].weight
-            };
-            
-            // BMI hesapla ve kişiselleştirilmiş mesaj oluştur
-            if (userInfo.height && userInfo.weight) {
-              const heightInMeters = userInfo.height / 100;
-              const bmi = userInfo.weight / (heightInMeters * heightInMeters);
-              
-              let sizeCategory = '';
-              if (bmi < 18.5) {
-                sizeCategory = 'ince';
-                personalizedMessage = `Boyunuz ${userInfo.height} cm ve kilonuz ${userInfo.weight} kg. Size uygun ürünler öneriyorum:`;
-              } else if (bmi < 25) {
-                sizeCategory = 'normal';
-                personalizedMessage = `Boyunuz ${userInfo.height} cm ve kilonuz ${userInfo.weight} kg. Size uygun ürünler öneriyorum:`;
-              } else if (bmi < 30) {
-                sizeCategory = 'kilolu';
-                personalizedMessage = `Boyunuz ${userInfo.height} cm ve kilonuz ${userInfo.weight} kg. Size uygun ürünler öneriyorum:`;
-              } else {
-                sizeCategory = 'obez';
-                personalizedMessage = `Boyunuz ${userInfo.height} cm ve kilonuz ${userInfo.weight} kg. Size uygun ürünler öneriyorum:`;
-              }
-            } else if (userInfo.height) {
-              personalizedMessage = `Boyunuz ${userInfo.height} cm. Size uygun ürünler öneriyorum:`;
-            } else if (userInfo.weight) {
-              personalizedMessage = `Kilonuz ${userInfo.weight} kg. Size uygun ürünler öneriyorum:`;
-            }
-          }
-        } catch (userError) {
-          console.warn('⚠️ Kullanıcı bilgisi alınamadı:', userError.message);
-        }
-      }
-      
-      // Kişiselleştirilmiş mesaj yoksa genel mesaj kullan
-      if (!personalizedMessage) {
-        personalizedMessage = '⭐ Size önerdiklerim:';
-      }
-      
       // Optimize: Sadece gerekli column'lar
       const [rows] = await poolWrapper.execute(
         'SELECT id, name, price, image, brand, category FROM products WHERE tenantId = ? ORDER BY RAND() LIMIT 3',
@@ -23030,7 +22936,7 @@ async function startServer() {
 
       return {
         id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        text: `${personalizedMessage}\n\n${productList}`,
+        text: `⭐ Size önerdiklerim:\n\n${productList}`,
         isBot: true,
         timestamp: new Date(),
         type: 'quick_reply',
@@ -23056,12 +22962,7 @@ async function startServer() {
   }
 
   // Özel eylem fonksiyonu
-  async function handleSpecialChatbotAction(action, message, messageId, timestamp, tenantId, userId = null) {
-    // İade işlemi için özel handler
-    if (action === 'return_request') {
-      return await handleReturnRequest(message, tenantId, userId);
-    }
-    
+  async function handleSpecialChatbotAction(action, message, messageId, timestamp, tenantId) {
     const responses = {
       live_support: {
         text: '🎧 Canlı desteğe bağlanıyorsunuz... Ortalama bekleme süresi: 2-3 dakika\n\n📞 Telefon: 0530 312 58 13\n📱 WhatsApp: +90 530 312 58 13\n📧 E-posta: info@hugluoutdoor.com',
@@ -23092,10 +22993,6 @@ async function startServer() {
       enter_order_number: {
         text: '🔢 Sipariş numaranızı yazın (örn: 12345). Ben sizin için takip edeceğim!',
         type: 'text'
-      },
-      return_request: {
-        text: '↩️ İade işlemi için sipariş numaranızı veya iade etmek istediğiniz ürünü belirtin.',
-        type: 'text'
       }
     };
 
@@ -23116,88 +23013,6 @@ async function startServer() {
       type: response.type || 'text',
       quickReplies: response.quickReplies
     };
-  }
-
-  // İade işlemi handler'ı
-  async function handleReturnRequest(message, tenantId, userId = null) {
-    const timestamp = new Date();
-    const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    if (!userId) {
-      return {
-        id: messageId,
-        text: '↩️ İade işlemi için lütfen giriş yapın. Giriş yaptıktan sonra iade talebinizi oluşturabilirsiniz.',
-        isBot: true,
-        timestamp,
-        type: 'quick_reply',
-        quickReplies: [
-          { id: '1', text: '🔐 Giriş Yap', action: 'login' },
-          { id: '2', text: '📋 Siparişlerim', action: 'view_orders' }
-        ]
-      };
-    }
-    
-    try {
-      // Kullanıcının iade edilebilir siparişlerini getir
-      const [returnableOrders] = await poolWrapper.execute(`
-        SELECT DISTINCT o.id, o.orderNumber, o.totalAmount, o.status, o.createdAt,
-               COUNT(oi.id) as itemCount
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.orderId
-        LEFT JOIN return_requests rr ON oi.id = rr.orderItemId AND rr.status NOT IN ('rejected', 'cancelled')
-        WHERE o.userId = ? 
-        AND o.tenantId = ?
-        AND o.status IN ('delivered', 'completed')
-        AND rr.id IS NULL
-        GROUP BY o.id
-        ORDER BY o.createdAt DESC
-        LIMIT 5
-      `, [userId, tenantId]);
-      
-      if (returnableOrders.length === 0) {
-        return {
-          id: messageId,
-          text: '↩️ Şu anda iade edilebilir siparişiniz bulunmuyor. İade işlemi sadece teslim edilmiş siparişler için yapılabilir.',
-          isBot: true,
-          timestamp,
-          type: 'quick_reply',
-          quickReplies: [
-            { id: '1', text: '📋 Tüm Siparişlerim', action: 'view_orders' },
-            { id: '2', text: '🎧 Canlı Destek', action: 'live_support' }
-          ]
-        };
-      }
-      
-      const orderList = returnableOrders.map(o => 
-        `• Sipariş #${o.orderNumber || o.id} - ₺${Number(o.totalAmount || 0).toFixed(2)} (${o.itemCount} ürün)`
-      ).join('\n');
-      
-      return {
-        id: messageId,
-        text: `↩️ İade edilebilir siparişleriniz:\n\n${orderList}\n\nİade işlemi için sipariş numaranızı yazın veya "Hesabım > İadelerim" sayfasından iade talebi oluşturabilirsiniz.`,
-        isBot: true,
-        timestamp,
-        type: 'quick_reply',
-        quickReplies: [
-          { id: '1', text: '📋 İadelerim', action: 'navigate_returns' },
-          { id: '2', text: '📦 Siparişlerim', action: 'view_orders' },
-          { id: '3', text: '🎧 Yardım', action: 'live_support' }
-        ]
-      };
-    } catch (error) {
-      console.error('❌ İade işlemi hatası:', error);
-      return {
-        id: messageId,
-        text: '↩️ İade işlemleri sorgulanırken bir hata oluştu. Lütfen "Hesabım > İadelerim" sayfasından iade talebi oluşturabilir veya canlı destek ile iletişime geçebilirsiniz.',
-        isBot: true,
-        timestamp,
-        type: 'quick_reply',
-        quickReplies: [
-          { id: '1', text: '📋 İadelerim', action: 'navigate_returns' },
-          { id: '2', text: '🎧 Canlı Destek', action: 'live_support' }
-        ]
-      };
-    }
   }
 
   // Sipariş durumu metni
