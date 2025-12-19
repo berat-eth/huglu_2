@@ -20,7 +20,7 @@ Bu dokümanda mobil uygulamanın kullandığı tüm API endpointleri listelenmi�
 
 ### Kimlik Doğrulama
 - **POST** `/users` - Yeni kullanıcı kaydı (register)
-- **POST** `/users/login` - Kullanıcı girişi
+- **POST** `/users/login` - Kullanıcı giriş
 - **GET** `/users/:userId` - Kullanıcı bilgilerini getir
 - **PUT** `/users/:userId` - Kullanıcı bilgilerini güncelle
   - Body: `{ name, email, phone, dateOfBirth, height, weight }`

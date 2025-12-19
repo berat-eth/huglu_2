@@ -72,6 +72,9 @@ export default function Orders() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null)
   const [invoiceLink, setInvoiceLink] = useState<string>('')
   const [generatingCargoSlipId, setGeneratingCargoSlipId] = useState<number | null>(null)
+  const [customerInvoices, setCustomerInvoices] = useState<any[]>([])
+  const [customerInvoicesLoading, setCustomerInvoicesLoading] = useState(false)
+  const [showInvoiceDropdown, setShowInvoiceDropdown] = useState<number | null>(null)
 
   useEffect(() => { reloadOrders() }, [])
 
@@ -98,6 +101,55 @@ export default function Orders() {
       loadInvoices()
     }
   }, [showCargoSlipModal, selectedOrderForCargoSlip, selectedInvoiceId])
+
+  // Fatura modal'ı açıldığında müşteriye ait faturaları yükle
+  useEffect(() => {
+    if (showInvoiceModal && selectedOrderForAction) {
+      const loadCustomerInvoices = async () => {
+        try {
+          setCustomerInvoicesLoading(true)
+          const response = await api.get<ApiResponse<any[]>>('/admin/invoices')
+          if (response.success && response.data) {
+            // Müşteri bilgilerine göre filtrele
+            const customerEmail = (selectedOrderForAction as any).customerEmail || (selectedOrderForAction as any).userEmail || ''
+            const customerName = (selectedOrderForAction as any).customerName || (selectedOrderForAction as any).userName || ''
+            const orderId = selectedOrderForAction.id
+            
+            const filteredInvoices = response.data.filter((inv: any) => {
+              // Sipariş ID'sine göre eşleştir
+              if (inv.orderId === orderId) return true
+              
+              // Müşteri email'ine göre eşleştir
+              if (customerEmail && inv.customerEmail && 
+                  inv.customerEmail.toLowerCase() === customerEmail.toLowerCase()) {
+                return true
+              }
+              
+              // Müşteri adına göre eşleştir
+              if (customerName && inv.customerName && 
+                  inv.customerName.toLowerCase().trim() === customerName.toLowerCase().trim()) {
+                return true
+              }
+              
+              return false
+            })
+            
+            setCustomerInvoices(filteredInvoices)
+            
+            // İlk faturayı varsayılan olarak seç
+            if (filteredInvoices.length > 0 && !selectedInvoiceId) {
+              setSelectedInvoiceId(filteredInvoices[0].id)
+            }
+          }
+        } catch (err: any) {
+          console.error('Müşteri faturaları yüklenemedi:', err)
+        } finally {
+          setCustomerInvoicesLoading(false)
+        }
+      }
+      loadCustomerInvoices()
+    }
+  }, [showInvoiceModal, selectedOrderForAction])
 
   const statusConfig: Record<any, { label: string; color: string; icon: any; dotColor: string }> = {
     pending: { label: 'Ödeme Bekleniyor', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock, dotColor: 'bg-yellow-500' },
@@ -522,7 +574,8 @@ export default function Orders() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    onClick={() => openOrderDetails(order)}
                   >
                     <td className="px-6 py-4">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">#{order.id}</span>
@@ -606,18 +659,104 @@ export default function Orders() {
                           <Truck className="w-5 h-5 text-slate-400 group-hover:text-purple-600" />
                         </button>
                         )}
-                        {order.invoiceNumber && (
+                        {/* Fatura Seçme Dropdown */}
+                        <div className="relative">
                           <button
-                            onClick={() => {
-                              setSelectedOrderForAction(order)
-                              setShowInvoiceModal(true)
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (showInvoiceDropdown === order.id) {
+                                setShowInvoiceDropdown(null)
+                              } else {
+                                setSelectedOrderForAction(order)
+                                setShowInvoiceDropdown(order.id)
+                                // Müşteriye ait faturaları yükle
+                                const loadCustomerInvoices = async () => {
+                                  try {
+                                    setCustomerInvoicesLoading(true)
+                                    const response = await api.get<ApiResponse<any[]>>('/admin/invoices')
+                                    if (response.success && response.data) {
+                                      const customerEmail = (order as any).customerEmail || (order as any).userEmail || ''
+                                      const customerName = (order as any).customerName || (order as any).userName || ''
+                                      const orderId = order.id
+                                      
+                                      const filteredInvoices = response.data.filter((inv: any) => {
+                                        if (inv.orderId === orderId) return true
+                                        if (customerEmail && inv.customerEmail && 
+                                            inv.customerEmail.toLowerCase() === customerEmail.toLowerCase()) return true
+                                        if (customerName && inv.customerName && 
+                                            inv.customerName.toLowerCase().trim() === customerName.toLowerCase().trim()) return true
+                                        return false
+                                      })
+                                      
+                                      setCustomerInvoices(filteredInvoices)
+                                      if (filteredInvoices.length > 0 && !selectedInvoiceId) {
+                                        setSelectedInvoiceId(filteredInvoices[0].id)
+                                      }
+                                    }
+                                  } catch (err: any) {
+                                    console.error('Faturalar yüklenemedi:', err)
+                                  } finally {
+                                    setCustomerInvoicesLoading(false)
+                                  }
+                                }
+                                loadCustomerInvoices()
+                              }
                             }}
                             className="p-2 hover:bg-green-50 rounded-lg transition-colors group"
-                            title="Fatura İşlemleri"
+                            title="Fatura Seç"
                           >
                             <FileText className="w-5 h-5 text-slate-400 group-hover:text-green-600" />
                           </button>
-                        )}
+                          {showInvoiceDropdown === order.id && customerInvoices.length > 0 && (
+                            <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
+                              <div className="p-2">
+                                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 px-2">Müşteri Faturaları</p>
+                                {customerInvoices.map((invoice: any) => (
+                                  <button
+                                    key={invoice.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedInvoiceId(invoice.id)
+                                      setSelectedOrderForAction(order)
+                                      setShowInvoiceDropdown(null)
+                                      setShowInvoiceModal(true)
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition-colors ${
+                                      selectedInvoiceId === invoice.id
+                                        ? 'bg-green-100 dark:bg-green-900/30'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                          #{invoice.invoiceNumber || invoice.id}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                          {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('tr-TR') : '—'}
+                                        </p>
+                                      </div>
+                                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                                        ₺{invoice.totalAmount?.toLocaleString('tr-TR') || '0'}
+                                      </p>
+                                    </div>
+                                  </button>
+                                ))}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedOrderForAction(order)
+                                    setShowInvoiceDropdown(null)
+                                    setShowInvoiceModal(true)
+                                  }}
+                                  className="w-full mt-2 px-3 py-2 text-sm text-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                >
+                                  Tümünü Gör
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </motion.tr>
@@ -693,8 +832,8 @@ export default function Orders() {
                       <input value={cargoCompany} onChange={(e)=>setCargoCompany(e.target.value)} placeholder={selectedOrderForAction.cargoCompany || 'Kargo Firması'} className="w-full px-3 py-2 border border-purple-200 dark:border-purple-800 rounded-lg dark:bg-slate-800 dark:text-slate-300" />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Takip Numarası</p>
-                      <input value={trackingNumber} onChange={(e)=>setTrackingNumber(e.target.value)} placeholder={selectedOrderForAction.trackingNumber || 'Takip No'} className="w-full px-3 py-2 border border-purple-200 dark:border-purple-800 rounded-lg font-mono dark:bg-slate-800 dark:text-slate-300" />
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Kargo Takip Kodu</p>
+                      <input value={trackingNumber} onChange={(e)=>setTrackingNumber(e.target.value)} placeholder={selectedOrderForAction.trackingNumber || 'Kargo Takip Kodu'} className="w-full px-3 py-2 border border-purple-200 dark:border-purple-800 rounded-lg font-mono dark:bg-slate-800 dark:text-slate-300" />
                     </div>
                   </div>
                   <div className="mt-4 flex items-center space-x-2">
@@ -831,25 +970,49 @@ export default function Orders() {
               </div>
 
               <div className="p-6 space-y-6">
-                {/* Fatura Başlık */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura No</p>
-                      <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedOrderForAction.invoiceNumber}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura Tarihi</p>
-                      <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{selectedOrderForAction.invoiceDate}</p>
-                    </div>
+                {/* Seçili Fatura Detayları */}
+                {selectedInvoiceId && customerInvoices.length > 0 ? (
+                  (() => {
+                    const selectedInvoice = customerInvoices.find((inv: any) => inv.id === selectedInvoiceId)
+                    if (!selectedInvoice) {
+                      return (
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+                          <p className="text-center text-slate-500 dark:text-slate-400">Fatura bulunamadı.</p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura No</p>
+                            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                              {selectedInvoice.invoiceNumber || selectedInvoice.id}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura Tarihi</p>
+                            <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                              {selectedInvoice.invoiceDate ? new Date(selectedInvoice.invoiceDate).toLocaleDateString('tr-TR') : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedInvoice.taxNumber && (
+                          <div className="pt-4 border-t border-green-200 dark:border-green-800">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Vergi Numarası</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-100">{selectedInvoice.taxNumber}</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
+                ) : customerInvoicesLoading ? (
+                  <div className="text-center py-4 text-slate-500 dark:text-slate-400">Faturalar yükleniyor...</div>
+                ) : (
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+                    <p className="text-center text-slate-500 dark:text-slate-400">Bu müşteri için fatura bulunamadı.</p>
                   </div>
-                  {selectedOrderForAction.taxNumber && (
-                    <div className="pt-4 border-t border-green-200 dark:border-green-800">
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Vergi Numarası</p>
-                      <p className="font-semibold text-slate-800 dark:text-slate-100">{selectedOrderForAction.taxNumber}</p>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* Müşteri Bilgileri */}
                 <div className="grid grid-cols-2 gap-4">

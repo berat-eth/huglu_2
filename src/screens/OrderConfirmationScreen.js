@@ -68,9 +68,26 @@ export default function OrderConfirmationScreen({ navigation, route }) {
 
       // Sipariş verilerini hazırla
       const address = shippingAddress || {};
-      const fullAddressString = address.fullAddress 
-        ? `${address.fullAddress}\n${address.city || ''}${address.district ? `, ${address.district}` : ''} ${address.postalCode || ''}`.trim()
-        : 'Adres bilgisi bulunamadı';
+      
+      // Adres bilgilerini kontrol et
+      if (!address || (!address.fullAddress && !address.address)) {
+        setErrorMessage('Lütfen teslimat adresi seçin');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Tam adres string'ini oluştur
+      const addressLine = address.fullAddress || address.address || '';
+      const city = address.city || '';
+      const district = address.district || '';
+      const postalCode = address.postalCode || '';
+      
+      const fullAddressString = [
+        addressLine,
+        city && district ? `${city}, ${district}` : (city || district),
+        postalCode
+      ].filter(Boolean).join('\n').trim() || addressLine;
       
       // Seçilen ödeme yöntemini belirle
       let finalPaymentMethod = paymentMethod || 'card';
@@ -90,11 +107,11 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         status: 'pending',
         shippingAddress: fullAddressString,
         paymentMethod: finalPaymentMethod,
-        city: address.city || '',
-        district: address.district || '',
-        fullAddress: address.fullAddress || '',
-        customerName: customerInfo.name || address.fullName || '',
-        customerEmail: customerInfo.email || '',
+        city: city,
+        district: district,
+        fullAddress: addressLine,
+        customerName: customerInfo.name || address.fullName || address.customerName || '',
+        customerEmail: customerInfo.email || address.email || '',
         customerPhone: customerInfo.phone || address.phone || '',
         items: cartItems.map(item => ({
           productId: item.productId,

@@ -16462,10 +16462,18 @@ app.post('/api/orders', tenantCache, async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!userId || !totalAmount || !shippingAddress || !paymentMethod) {
+    if (!userId || !totalAmount || !paymentMethod) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Missing required fields: userId, totalAmount, or paymentMethod'
+      });
+    }
+
+    // Validate shipping address
+    if (!shippingAddress || shippingAddress.trim() === '' || shippingAddress === 'Adres bilgisi bulunamadı') {
+      return res.status(400).json({
+        success: false,
+        message: 'Teslimat adresi gereklidir. Lütfen geçerli bir adres seçin.'
       });
     }
 
@@ -16520,11 +16528,21 @@ app.post('/api/orders', tenantCache, async (req, res) => {
         console.log(`💰 Wallet payment processed: ${totalAmount} TL deducted from user ${userId}`);
       }
 
-      // Create order
+      // Create order - shippingAddress'i temizle ve doğrula
+      const cleanShippingAddress = shippingAddress.trim() || (fullAddress ? fullAddress.trim() : null);
+      if (!cleanShippingAddress || cleanShippingAddress === 'Adres bilgisi bulunamadı') {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Teslimat adresi boş olamaz. Lütfen geçerli bir adres seçin.'
+        });
+      }
+
       const [orderResult] = await connection.execute(
         `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [tenantId, userId, totalAmount, status || 'pending', shippingAddress, paymentMethod, city || null, district || null, fullAddress || null, customerName || null, customerEmail || null, customerPhone || null]
+        [tenantId, userId, totalAmount, status || 'pending', cleanShippingAddress, paymentMethod, city || null, district || null, fullAddress || cleanShippingAddress, customerName || null, customerEmail || null, customerPhone || null]
       );
 
       const orderId = orderResult.insertId;
