@@ -19210,6 +19210,202 @@ app.get('/api/reviews/product/:productId', async (req, res) => {
   }
 });
 
+// ==================== PRODUCT QUESTIONS API ====================
+
+// Create product_questions table if not exists
+async function createProductQuestionsTable() {
+  try {
+    await poolWrapper.execute(`
+      CREATE TABLE IF NOT EXISTS product_questions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        productId INT NOT NULL,
+        userId INT NOT NULL,
+        tenantId INT NOT NULL,
+        question TEXT NOT NULL,
+        answer TEXT NULL,
+        answeredBy VARCHAR(100) NULL,
+        answeredAt TIMESTAMP NULL,
+        helpfulCount INT DEFAULT 0,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_product (productId, tenantId),
+        INDEX idx_user (userId),
+        INDEX idx_tenant (tenantId),
+        INDEX idx_created (createdAt)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('✅ product_questions table created/verified');
+  } catch (error) {
+    console.error('❌ Error creating product_questions table:', error);
+  }
+}
+
+// Get product questions
+app.get('/api/product-questions', async (req, res) => {
+  try {
+    const { productId } = req.query;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: 'productId is required'
+      });
+    }
+
+    const [questions] = await poolWrapper.execute(
+      `SELECT q.*, u.name as userName, u.id as userId
+       FROM product_questions q
+       LEFT JOIN users u ON q.userId = u.id
+       WHERE q.productId = ? AND q.tenantId = ?
+       ORDER BY q.createdAt DESC`,
+      [productId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: questions,
+      questions: questions
+    });
+  } catch (error) {
+    console.error('❌ Error getting product questions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting product questions'
+    });
+  }
+});
+
+// Create product question
+app.post('/api/product-questions', async (req, res) => {
+  try {
+    const { productId, userId, question } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!productId || !userId || !question || !question.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'productId, userId, and question are required'
+      });
+    }
+
+    // Ensure table exists
+    await createProductQuestionsTable();
+
+    const [result] = await poolWrapper.execute(
+      `INSERT INTO product_questions (productId, userId, tenantId, question)
+       VALUES (?, ?, ?, ?)`,
+      [productId, userId, tenantId, question.trim()]
+    );
+
+    // Get created question with user info
+    const [newQuestion] = await poolWrapper.execute(
+      `SELECT q.*, u.name as userName
+       FROM product_questions q
+       LEFT JOIN users u ON q.userId = u.id
+       WHERE q.id = ?`,
+      [result.insertId]
+    );
+
+    res.json({
+      success: true,
+      data: newQuestion[0],
+      question: newQuestion[0],
+      message: 'Question created successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error creating product question:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating product question'
+    });
+  }
+});
+
+// Answer product question
+app.post('/api/product-questions/:questionId/answer', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { answer, answeredBy } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!answer || !answer.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'answer is required'
+      });
+    }
+
+    await poolWrapper.execute(
+      `UPDATE product_questions
+       SET answer = ?, answeredBy = ?, answeredAt = NOW()
+       WHERE id = ? AND tenantId = ?`,
+      [answer.trim(), answeredBy || 'seller', questionId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Answer added successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error answering product question:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error answering product question'
+    });
+  }
+});
+
+// Delete product question
+app.delete('/api/product-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    await poolWrapper.execute(
+      `DELETE FROM product_questions WHERE id = ? AND tenantId = ?`,
+      [questionId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Question deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting product question:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting product question'
+    });
+  }
+});
+
+// Mark question as helpful
+app.post('/api/product-questions/:questionId/helpful', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    await poolWrapper.execute(
+      `UPDATE product_questions
+       SET helpfulCount = helpfulCount + 1
+       WHERE id = ? AND tenantId = ?`,
+      [questionId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Question marked as helpful'
+    });
+  } catch (error) {
+    console.error('❌ Error marking question as helpful:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error marking question as helpful'
+    });
+  }
+});
+
 // GÜVENLİK: Dosya yükleme endpoint'i - Magic bytes kontrolü ile güvenli
 app.post('/api/reviews/upload', upload.array('media', 5), async (req, res) => {
   try {
@@ -19798,6 +19994,7 @@ async function startServer() {
 
   // Initialize flash deals table
   await createFlashDealsTable();
+  await createProductQuestionsTable();
 
   // Cart endpoints (apply relaxed limiter)
   app.use('/api/cart', relaxedCartLimiter);

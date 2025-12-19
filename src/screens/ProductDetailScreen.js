@@ -718,6 +718,18 @@ export default function ProductDetailScreen({ navigation, route }) {
         setQuestions([newQuestionData, ...questions]);
         setShowQuestionModal(false);
         setNewQuestion('');
+        
+        // Soruları yeniden yükle (güncel liste için)
+        try {
+          const questionsResponse = await productQuestionsAPI.getByProduct(productId);
+          if (questionsResponse.data?.success) {
+            const questionsData = questionsResponse.data.data || questionsResponse.data.questions || [];
+            setQuestions(questionsData);
+          }
+        } catch (refreshError) {
+          console.log('Sorular yeniden yüklenemedi:', refreshError);
+        }
+        
         Alert.alert('Başarılı', 'Sorunuz gönderildi! Satıcı en kısa sürede yanıtlayacaktır.');
       } else {
         Alert.alert('Hata', response.data?.message || 'Soru gönderilemedi');
