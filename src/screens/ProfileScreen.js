@@ -241,6 +241,111 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.dashboardTitle}>In the Wild</Text>
             <Text style={styles.dashboardSubtitle}>Topluluk</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Günlük ödüller için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('DailyReward');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="gift-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>Günlük Ödül</Text>
+            <Text style={styles.dashboardSubtitle}>Her Gün Kazan</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>YENİ</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Görevler için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('Quest');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="trophy-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>Görevler</Text>
+            <Text style={styles.dashboardSubtitle}>Puan Kazan</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>YENİ</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Rozetler için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('Badges');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="medal-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>Rozetler</Text>
+            <Text style={styles.dashboardSubtitle}>Başarılar</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>YENİ</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('VIP programı için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('VIPProgram');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="diamond-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>VIP Program</Text>
+            <Text style={styles.dashboardSubtitle}>Özel Avantajlar</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>YENİ</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Abonelikler için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('Subscription');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="repeat-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>Abonelikler</Text>
+            <Text style={styles.dashboardSubtitle}>Otomatik Sipariş</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>YENİ</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Account Settings */}

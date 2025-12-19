@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, Share, Modal, TextInput } from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, Share, Modal, TextInput, Animated } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,13 +19,23 @@ const { width } = Dimensions.get('window');
 // İsim maskeleme fonksiyonu: "Berat Şimşek" -> "Be****** Şi*******"
 // Her kelime için: ilk 2 harf + geri kalanı yıldız (minimum 6 yıldız)
 const maskUserName = (name) => {
-  if (!name || !name.trim()) return 'Kullanıcı';
+  // Null, undefined veya boş string kontrolü
+  if (!name) return 'Kullanıcı';
   
-  const parts = name.trim().split(/\s+/);
+  // String'e çevir ve trim yap
+  const nameStr = String(name).trim();
+  if (!nameStr || nameStr === '') return 'Kullanıcı';
+  
+  // Kelimelere ayır
+  const parts = nameStr.split(/\s+/).filter(part => part.length > 0);
+  if (parts.length === 0) return 'Kullanıcı';
+  
+  // Her kelimeyi maskele
   return parts.map(part => {
     if (part.length <= 2) {
       return part + '******';
     }
+    // İlk 2 karakteri al (Türkçe karakterler dahil)
     const firstTwo = part.substring(0, 2);
     // Orijinal kelime uzunluğuna göre yıldız sayısı, minimum 6
     const remainingLength = Math.max(part.length - 2, 6);
@@ -46,6 +56,10 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
   const [loginRequiredMessage, setLoginRequiredMessage] = useState('');
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
+  const [showSimilarModal, setShowSimilarModal] = useState(false);
+  const [showTipsModal, setShowTipsModal] = useState(false);
+  const [showARNotAvailableModal, setShowARNotAvailableModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [showARViewer, setShowARViewer] = useState(false);
@@ -53,6 +67,9 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [botTyping, setBotTyping] = useState(false);
+  const typingAnim1 = useRef(new Animated.Value(0)).current;
+  const typingAnim2 = useRef(new Animated.Value(0)).current;
+  const typingAnim3 = useRef(new Animated.Value(0)).current;
   const [showReviewImageViewer, setShowReviewImageViewer] = useState(false);
   const [reviewImageViewerIndex, setReviewImageViewerIndex] = useState(0);
   const [reviewImageViewerImages, setReviewImageViewerImages] = useState([]);
@@ -181,7 +198,20 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         if (response.data?.success) {
           const questionsData = response.data.data || response.data.questions || [];
-          setQuestions(questionsData);
+          // Kullanıcı isimlerini maskele
+          const maskedQuestions = questionsData.map(q => {
+            // Tüm olası isim alanlarını kontrol et
+            const originalName = q.userName || q.user?.name || q.name || '';
+            const maskedName = maskUserName(originalName);
+            
+            return {
+              ...q,
+              userName: maskedName,
+              // user objesi varsa onu da güncelle
+              user: q.user ? { ...q.user, name: maskedName } : q.user
+            };
+          });
+          setQuestions(maskedQuestions);
         }
       } catch (error) {
         console.error('Sorular yüklenemedi:', error);
@@ -464,6 +494,39 @@ export default function ProductDetailScreen({ navigation, route }) {
     }
   };
 
+  const startTypingAnimation = () => {
+    const createAnimation = (animValue, delay) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    createAnimation(typingAnim1, 0).start();
+    createAnimation(typingAnim2, 200).start();
+    createAnimation(typingAnim3, 400).start();
+  };
+
+  const stopTypingAnimation = () => {
+    typingAnim1.stopAnimation();
+    typingAnim2.stopAnimation();
+    typingAnim3.stopAnimation();
+    typingAnim1.setValue(0);
+    typingAnim2.setValue(0);
+    typingAnim3.setValue(0);
+  };
+
   const handleAIAssistant = () => {
     setShowAIModal(true);
   };
@@ -499,10 +562,12 @@ export default function ProductDetailScreen({ navigation, route }) {
 
     // Typing indicator
     setBotTyping(true);
+    startTypingAnimation();
 
     // Simüle bot yanıtı (gerçek API entegrasyonu için chatbotAPI kullanılabilir)
     setTimeout(() => {
       setBotTyping(false);
+      stopTypingAnimation();
       const response = getBotResponse(messageText);
       const botResponse = {
         id: chatMessages.length + 2,
@@ -630,28 +695,13 @@ export default function ProductDetailScreen({ navigation, route }) {
     setTimeout(() => {
       switch(option) {
         case 'features':
-          Alert.alert(
-            'Ürün Özellikleri',
-            `${product?.name || 'Ürün'}\n\n${product?.description || 'Açıklama bulunmuyor.'}\n\nFiyat: ${parseFloat(product?.price || 0).toFixed(0)}₺\nKategori: ${product?.category || 'Belirtilmemiş'}`,
-            [{ text: 'Tamam' }]
-          );
+          setShowFeaturesModal(true);
           break;
         case 'similar':
-          Alert.alert(
-            'Benzer Ürünler',
-            'Benzer ürünleri görmek için ürün listesine gidin.',
-            [
-              { text: 'İptal', style: 'cancel' },
-              { text: 'Ürünlere Git', onPress: () => navigation.navigate('Shop') }
-            ]
-          );
+          setShowSimilarModal(true);
           break;
         case 'tips':
-          Alert.alert(
-            'Kullanım Önerileri',
-            `${product?.name || 'Bu ürün'} için öneriler:\n\n• Ürünü kullanmadan önce etiketini okuyun\n• Bakım talimatlarına uyun\n• Orijinal ambalajında saklayın`,
-            [{ text: 'Tamam' }]
-          );
+          setShowTipsModal(true);
           break;
       }
     }, 300);
@@ -733,7 +783,13 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       if (response.data?.success) {
         const newQuestionData = response.data.data || response.data.question;
-        setQuestions([newQuestionData, ...questions]);
+        // Yeni sorunun kullanıcı ismini maskele
+        const maskedNewQuestion = {
+          ...newQuestionData,
+          userName: maskUserName(newQuestionData.userName || newQuestionData.user?.name),
+          user: newQuestionData.user ? { ...newQuestionData.user, name: maskUserName(newQuestionData.user.name) } : newQuestionData.user
+        };
+        setQuestions([maskedNewQuestion, ...questions]);
         setShowQuestionModal(false);
         setNewQuestion('');
         
@@ -742,7 +798,13 @@ export default function ProductDetailScreen({ navigation, route }) {
           const questionsResponse = await productQuestionsAPI.getByProduct(productId);
           if (questionsResponse.data?.success) {
             const questionsData = questionsResponse.data.data || questionsResponse.data.questions || [];
-            setQuestions(questionsData);
+            // Kullanıcı isimlerini maskele
+            const maskedQuestions = questionsData.map(q => ({
+              ...q,
+              userName: maskUserName(q.userName || q.user?.name),
+              user: q.user ? { ...q.user, name: maskUserName(q.user.name) } : q.user
+            }));
+            setQuestions(maskedQuestions);
           }
         } catch (refreshError) {
           console.log('Sorular yeniden yüklenemedi:', refreshError);
@@ -770,11 +832,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     if (product?.model3D || product?.arModel || product?.glbModel) {
       setShowARViewer(true);
     } else {
-      Alert.alert(
-        'AR Görünümü',
-        'Bu ürün için 3D model henüz mevcut değil.',
-        [{ text: 'Tamam' }]
-      );
+      setShowARNotAvailableModal(true);
     }
   };
 
@@ -1309,7 +1367,15 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Ionicons name="person-circle-outline" size={32} color={COLORS.gray400} />
                       <View style={styles.questionUserInfo}>
                         <Text style={styles.questionUserName}>
-                          {maskUserName(question.userName || question.user?.name)}
+                          {(() => {
+                            // Tüm olası isim kaynaklarını kontrol et
+                            const name = question.userName || question.user?.name || question.name || '';
+                            const masked = maskUserName(name);
+                            
+                            // Eğer maskeleme "Kullanıcı" döndürdüyse, yine de göster
+                            // Çünkü backend'den veri gelmemiş olabilir
+                            return masked;
+                          })()}
                         </Text>
                         <Text style={styles.questionDate}>
                           {question.createdAt ? new Date(question.createdAt).toLocaleDateString('tr-TR') : 'Yakın zamanda'}
@@ -1469,17 +1535,25 @@ export default function ProductDetailScreen({ navigation, route }) {
         <SafeAreaView style={styles.chatbotContainer} edges={['top', 'bottom']}>
           {/* Chatbot Header */}
           <View style={styles.chatbotHeader}>
-            <TouchableOpacity onPress={() => setShowChatbot(false)}>
+            <TouchableOpacity 
+              onPress={() => setShowChatbot(false)}
+              style={styles.chatbotBackButton}
+            >
               <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
             </TouchableOpacity>
             <View style={styles.chatbotHeaderInfo}>
-              <Text style={styles.chatbotHeaderTitle}>Huğlu AI</Text>
+              <View style={styles.chatbotHeaderTitleRow}>
+                <View style={styles.chatbotHeaderIcon}>
+                  <Ionicons name="sparkles" size={20} color={COLORS.primary} />
+                </View>
+                <Text style={styles.chatbotHeaderTitle}>Huğlu AI</Text>
+              </View>
               <View style={styles.chatbotOnlineStatus}>
                 <View style={styles.chatbotOnlineDot} />
                 <Text style={styles.chatbotOnlineText}>Online</Text>
               </View>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity style={styles.chatbotMenuButton}>
               <Ionicons name="ellipsis-vertical" size={24} color={COLORS.textMain} />
             </TouchableOpacity>
           </View>
@@ -1523,7 +1597,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 </View>
                 {message.type === 'user' && (
                   <Text style={styles.chatbotMessageTime}>
-                    Read {message.timestamp.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    {message.timestamp.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 )}
               </View>
@@ -1540,9 +1614,51 @@ export default function ProductDetailScreen({ navigation, route }) {
                 </View>
                 <View style={[styles.chatbotMessage, styles.chatbotMessageBot]}>
                   <View style={styles.typingIndicator}>
-                    <View style={[styles.typingDot, styles.typingDot1]} />
-                    <View style={[styles.typingDot, styles.typingDot2]} />
-                    <View style={[styles.typingDot, styles.typingDot3]} />
+                    <Animated.View style={[
+                      styles.typingDot,
+                      {
+                        opacity: typingAnim1.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 1],
+                        }),
+                        transform: [{
+                          scale: typingAnim1.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1],
+                          }),
+                        }],
+                      },
+                    ]} />
+                    <Animated.View style={[
+                      styles.typingDot,
+                      {
+                        opacity: typingAnim2.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 1],
+                        }),
+                        transform: [{
+                          scale: typingAnim2.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1],
+                          }),
+                        }],
+                      },
+                    ]} />
+                    <Animated.View style={[
+                      styles.typingDot,
+                      {
+                        opacity: typingAnim3.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 1],
+                        }),
+                        transform: [{
+                          scale: typingAnim3.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1],
+                          }),
+                        }],
+                      },
+                    ]} />
                   </View>
                 </View>
               </View>
@@ -1579,7 +1695,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             </TouchableOpacity>
             <TextInput
               style={styles.chatbotInput}
-              placeholder="Type a message..."
+              placeholder="Mesaj yazın..."
               placeholderTextColor={COLORS.gray400}
               value={chatInput}
               onChangeText={setChatInput}
@@ -1789,16 +1905,23 @@ export default function ProductDetailScreen({ navigation, route }) {
                 style={styles.arViewerCloseButton}
                 onPress={() => setShowARViewer(false)}
               >
-                <Ionicons name="close" size={28} color={COLORS.white} />
+                <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
               </TouchableOpacity>
-              <Text style={styles.arViewerTitle}>AR Görünümü</Text>
+              <View style={styles.arViewerHeaderInfo}>
+                <View style={styles.arViewerHeaderIcon}>
+                  <Ionicons name="cube" size={20} color={COLORS.primary} />
+                </View>
+                <Text style={styles.arViewerTitle}>AR Görünümü</Text>
+              </View>
               <View style={{ width: 44 }} />
             </View>
           </SafeAreaView>
 
           <View style={styles.arViewerContent}>
             <View style={styles.arPlaceholder}>
-              <Ionicons name="cube" size={80} color={COLORS.primary} />
+              <View style={styles.arPlaceholderIconContainer}>
+                <Ionicons name="cube" size={64} color={COLORS.primary} />
+              </View>
               <Text style={styles.arPlaceholderTitle}>3D Model Yükleniyor...</Text>
               <Text style={styles.arPlaceholderText}>
                 Ürünü gerçek ortamınızda görmek için kameranızı kullanın
@@ -1808,15 +1931,21 @@ export default function ProductDetailScreen({ navigation, route }) {
             {/* AR Controls */}
             <View style={styles.arControls}>
               <TouchableOpacity style={styles.arControlButton}>
-                <Ionicons name="refresh" size={24} color={COLORS.white} />
+                <View style={styles.arControlIconContainer}>
+                  <Ionicons name="refresh" size={20} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arControlText}>Sıfırla</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.arControlButton}>
-                <Ionicons name="resize" size={24} color={COLORS.white} />
+                <View style={styles.arControlIconContainer}>
+                  <Ionicons name="resize" size={20} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arControlText}>Boyut</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.arControlButton}>
-                <Ionicons name="sync" size={24} color={COLORS.white} />
+                <View style={styles.arControlIconContainer}>
+                  <Ionicons name="sync" size={20} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arControlText}>Döndür</Text>
               </TouchableOpacity>
             </View>
@@ -1824,15 +1953,21 @@ export default function ProductDetailScreen({ navigation, route }) {
             {/* AR Instructions */}
             <View style={styles.arInstructions}>
               <View style={styles.arInstructionItem}>
-                <Ionicons name="hand-left-outline" size={20} color={COLORS.white} />
+                <View style={styles.arInstructionIcon}>
+                  <Ionicons name="hand-left-outline" size={18} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arInstructionText}>Sürükle: Taşı</Text>
               </View>
               <View style={styles.arInstructionItem}>
-                <Ionicons name="expand-outline" size={20} color={COLORS.white} />
+                <View style={styles.arInstructionIcon}>
+                  <Ionicons name="expand-outline" size={18} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arInstructionText}>Pinch: Boyutlandır</Text>
               </View>
               <View style={styles.arInstructionItem}>
-                <Ionicons name="sync-outline" size={20} color={COLORS.white} />
+                <View style={styles.arInstructionIcon}>
+                  <Ionicons name="sync-outline" size={18} color={COLORS.primary} />
+                </View>
                 <Text style={styles.arInstructionText}>İki parmak: Döndür</Text>
               </View>
             </View>
@@ -2000,6 +2135,123 @@ export default function ProductDetailScreen({ navigation, route }) {
           description="Ürünü en iyi şekilde kullanın"
           onPress={() => handleAIOption('tips')}
         />
+      </CustomModal>
+
+      {/* Product Features Modal */}
+      <CustomModal
+        visible={showFeaturesModal}
+        onClose={() => setShowFeaturesModal(false)}
+        title="Ürün Özellikleri"
+        icon="information-circle"
+        iconColor={COLORS.primary}
+        actionButton
+        actionButtonText="Tamam"
+        onActionPress={() => setShowFeaturesModal(false)}
+        scrollable={true}
+      >
+        <View style={styles.featuresModalContent}>
+          <Text style={styles.featuresProductName}>{product?.name || 'Ürün'}</Text>
+          <Text style={styles.featuresDescription}>
+            {product?.description || 'Açıklama bulunmuyor.'}
+          </Text>
+          <View style={styles.featuresInfoRow}>
+            <Ionicons name="pricetag" size={18} color={COLORS.primary} />
+            <Text style={styles.featuresInfoText}>
+              Fiyat: {parseFloat(product?.price || 0).toFixed(0)}₺
+            </Text>
+          </View>
+          <View style={styles.featuresInfoRow}>
+            <Ionicons name="folder" size={18} color={COLORS.primary} />
+            <Text style={styles.featuresInfoText}>
+              Kategori: {product?.category || 'Belirtilmemiş'}
+            </Text>
+          </View>
+        </View>
+      </CustomModal>
+
+      {/* Similar Products Modal */}
+      <CustomModal
+        visible={showSimilarModal}
+        onClose={() => setShowSimilarModal(false)}
+        title="Benzer Ürünler"
+        icon="grid"
+        iconColor={COLORS.primary}
+        scrollable={false}
+      >
+        <View style={styles.similarModalContent}>
+          <Text style={styles.similarModalText}>
+            Benzer ürünleri görmek için ürün listesine gidin.
+          </Text>
+          <View style={styles.similarModalActions}>
+            <TouchableOpacity
+              style={styles.similarModalCancelButton}
+              onPress={() => setShowSimilarModal(false)}
+            >
+              <Text style={styles.similarModalCancelText}>İptal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.similarModalActionButton}
+              onPress={() => {
+                setShowSimilarModal(false);
+                navigation.navigate('Shop');
+              }}
+            >
+              <Text style={styles.similarModalActionText}>Ürünlere Git</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </CustomModal>
+
+      {/* Usage Tips Modal */}
+      <CustomModal
+        visible={showTipsModal}
+        onClose={() => setShowTipsModal(false)}
+        title="Kullanım Önerileri"
+        icon="bulb"
+        iconColor={COLORS.primary}
+        actionButton
+        actionButtonText="Tamam"
+        onActionPress={() => setShowTipsModal(false)}
+        scrollable={true}
+      >
+        <View style={styles.tipsModalContent}>
+          <Text style={styles.tipsProductName}>
+            {product?.name || 'Bu ürün'} için öneriler:
+          </Text>
+          <View style={styles.tipsList}>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.tipText}>Ürünü kullanmadan önce etiketini okuyun</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.tipText}>Bakım talimatlarına uyun</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.tipText}>Orijinal ambalajında saklayın</Text>
+            </View>
+          </View>
+        </View>
+      </CustomModal>
+
+      {/* AR Not Available Modal */}
+      <CustomModal
+        visible={showARNotAvailableModal}
+        onClose={() => setShowARNotAvailableModal(false)}
+        title="AR Görünümü"
+        icon="cube"
+        iconColor={COLORS.primary}
+        actionButton
+        actionButtonText="Tamam"
+        onActionPress={() => setShowARNotAvailableModal(false)}
+        scrollable={false}
+      >
+        <View style={styles.arNotAvailableContent}>
+          <Text style={styles.arNotAvailableText}>
+            Bu ürün için 3D model henüz mevcut değil.
+          </Text>
+        </View>
       </CustomModal>
 
       {/* Add to Cart Success Modal */}
@@ -2765,7 +3017,7 @@ const styles = StyleSheet.create({
   },
   arViewerContainer: {
     flex: 1,
-    backgroundColor: COLORS.textMain,
+    backgroundColor: COLORS.backgroundLight,
   },
   arViewerSafeArea: {
     zIndex: 10,
@@ -2776,40 +3028,77 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   arViewerCloseButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arViewerHeaderInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  arViewerHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${COLORS.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
   },
   arViewerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.white,
+    fontWeight: 'bold',
+    color: COLORS.textMain,
   },
   arViewerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.backgroundLight,
   },
   arPlaceholder: {
     alignItems: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 48,
+  },
+  arPlaceholderIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   arPlaceholderTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.white,
-    marginTop: 24,
-    marginBottom: 12,
+    fontWeight: 'bold',
+    color: COLORS.textMain,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   arPlaceholderText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: COLORS.gray600,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -2820,16 +3109,37 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
+    gap: 16,
+    paddingHorizontal: 16,
   },
   arControlButton: {
     alignItems: 'center',
     gap: 8,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    minWidth: 80,
+  },
+  arControlIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   arControlText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.white,
+    color: COLORS.textMain,
   },
   arInstructions: {
     position: 'absolute',
@@ -2838,22 +3148,38 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    gap: 12,
     paddingHorizontal: 16,
+    flexWrap: 'wrap',
   },
   arInstructionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: COLORS.white,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  arInstructionIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   arInstructionText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.white,
+    fontWeight: '500',
+    color: COLORS.textMain,
   },
   // Question Styles
   askQuestionButton: {
@@ -2881,6 +3207,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gray100,
     marginBottom: 12,
+    position: 'relative',
+    zIndex: 1,
   },
   questionHeader: {
     flexDirection: 'row',
@@ -2891,15 +3219,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    position: 'relative',
+    zIndex: 1,
   },
   questionUserInfo: {
     flex: 1,
+    position: 'relative',
+    zIndex: 1,
   },
   questionUserName: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.textMain,
+    color: '#1f2937', // Koyu gri - görünürlük için garantili
     marginBottom: 2,
+    position: 'relative',
+    zIndex: 2,
   },
   questionDate: {
     fontSize: 12,
@@ -3108,7 +3442,7 @@ const styles = StyleSheet.create({
   },
   chatbotContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.backgroundLight,
   },
   chatbotHeader: {
     flexDirection: 'row',
@@ -3119,15 +3453,47 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.gray200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chatbotBackButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
   },
   chatbotHeaderInfo: {
     flex: 1,
     alignItems: 'center',
   },
+  chatbotHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chatbotHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   chatbotHeaderTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: COLORS.textMain,
+  },
+  chatbotMenuButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
   },
   chatbotOnlineStatus: {
     flexDirection: 'row',
@@ -3162,12 +3528,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   chatbotAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: `${COLORS.primary}20`,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${COLORS.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}30`,
   },
   chatbotMessageLabel: {
     fontSize: 12,
@@ -3176,13 +3544,20 @@ const styles = StyleSheet.create({
   },
   chatbotMessage: {
     maxWidth: '80%',
-    padding: 12,
+    padding: 14,
     borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   chatbotMessageBot: {
     backgroundColor: COLORS.white,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.gray100,
   },
   chatbotMessageUser: {
     backgroundColor: COLORS.primary,
@@ -3209,16 +3584,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray200,
   },
   chatbotQuickAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 16,
+    gap: 6,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.gray300,
+    borderColor: COLORS.gray200,
     backgroundColor: COLORS.white,
   },
   chatbotQuickActionPrimary: {
@@ -3270,13 +3647,15 @@ const styles = StyleSheet.create({
   },
   chatbotInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 14,
     color: COLORS.textMain,
     maxHeight: 100,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
   },
   chatbotVoiceButton: {
     padding: 4,
@@ -3288,27 +3667,133 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 4,
   },
   typingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.gray400,
+    backgroundColor: COLORS.gray500,
   },
-  typingDot1: {
-    animation: 'typing 1.4s infinite',
+  // AI Modal Styles
+  featuresModalContent: {
+    gap: 16,
   },
-  typingDot2: {
-    animation: 'typing 1.4s infinite 0.2s',
+  featuresProductName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.textMain,
+    marginBottom: 8,
   },
-  typingDot3: {
-    animation: 'typing 1.4s infinite 0.4s',
+  featuresDescription: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  featuresInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray200,
+  },
+  featuresInfoText: {
+    fontSize: 14,
+    color: COLORS.textMain,
+    fontWeight: '500',
+  },
+  similarModalContent: {
+    gap: 20,
+  },
+  similarModalText: {
+    fontSize: 15,
+    color: COLORS.gray600,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  similarModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  similarModalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+    alignItems: 'center',
+  },
+  similarModalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  similarModalActionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  similarModalActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  tipsModalContent: {
+    gap: 16,
+  },
+  tipsProductName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 8,
+  },
+  tipsList: {
+    gap: 12,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.gray600,
+    lineHeight: 20,
+  },
+  arNotAvailableContent: {
+    paddingVertical: 8,
+  },
+  arNotAvailableText: {
+    fontSize: 15,
+    color: COLORS.gray600,
+    lineHeight: 22,
+    textAlign: 'center',
   },
 
 });

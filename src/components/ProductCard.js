@@ -10,6 +10,10 @@ export default function ProductCard({ product, onPress, onFavorite }) {
                        product.inStock === 0 ||
                        product.stockStatus === 'out_of_stock' ||
                        product.stockStatus === 'outofstock';
+  
+  // Stok sayısını kontrol et (10'dan az ise sınırlı stok)
+  const stockQuantity = parseInt(product.stock) || 0;
+  const isLimitedStock = !isOutOfStock && stockQuantity > 0 && stockQuantity < 10;
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.95}>
@@ -32,7 +36,18 @@ export default function ProductCard({ product, onPress, onFavorite }) {
             <Text style={styles.badgeText}>{product.badge}</Text>
           </View>
         )}
-        <TouchableOpacity style={styles.favoriteButton} onPress={onFavorite} activeOpacity={0.8}>
+        {/* Sınırlı Stok Badge - Sol üst köşe (çapraz) */}
+        {isLimitedStock && (
+          <View style={styles.limitedStockBadge}>
+            <Ionicons name="alarm-outline" size={12} color={COLORS.white} style={styles.limitedStockIcon} />
+            <Text style={styles.limitedStockText}>SINIRLI STOK</Text>
+          </View>
+        )}
+        <TouchableOpacity 
+          style={styles.favoriteButton} 
+          onPress={onFavorite} 
+          activeOpacity={0.8}
+        >
           <Ionicons
             name={product.isFavorite ? 'heart' : 'heart-outline'}
             size={20}
@@ -137,6 +152,35 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  limitedStockBadge: {
+    position: 'absolute',
+    top: 16, // Biraz daha aşağıya indirildi
+    left: 8,
+    backgroundColor: 'rgba(245, 105, 11, 0.95)', // Turuncu/sarı renk
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 2,
+    transform: [{ rotate: '-15deg' }], // Çapraz yap
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  limitedStockIcon: {
+    marginRight: 2,
+  },
+  limitedStockText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   favoriteButton: {
     position: 'absolute',
     top: 8,
@@ -152,6 +196,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    zIndex: 3, // Favori butonu en üstte olmalı
   },
   content: {
     paddingTop: 12,

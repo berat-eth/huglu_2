@@ -426,6 +426,98 @@ export const communityAPI = {
   getFollowing: (userId) => api.get(`/community/users/${userId}/following`),
 };
 
+// ==================== GAMIFICATION API ====================
+export const gamificationAPI = {
+  // Daily Rewards
+  getDailyReward: (userId) => api.get(`/gamification/daily-reward/${userId}`),
+  claimDailyReward: (userId) => api.post(`/gamification/daily-reward/${userId}/claim`),
+  getStreak: (userId) => api.get(`/gamification/daily-reward/${userId}/streak`),
+  
+  // Quests
+  getQuests: (userId) => api.get(`/gamification/quests/${userId}`),
+  getQuestById: (questId, userId) => api.get(`/gamification/quests/${questId}`, { params: { userId } }),
+  claimQuestReward: (questId, userId) => api.post(`/gamification/quests/${questId}/claim`, { userId }),
+  trackQuestProgress: (questId, userId, progress) => api.post(`/gamification/quests/${questId}/progress`, { userId, progress }),
+  
+  // Badges
+  getBadges: (userId) => api.get(`/gamification/badges/${userId}`),
+  getBadgeById: (badgeId, userId) => api.get(`/gamification/badges/${badgeId}`, { params: { userId } }),
+  
+  // Lucky Draw
+  getLuckyDrawInfo: (userId) => api.get(`/gamification/lucky-draw/${userId}`),
+  spinLuckyDraw: (userId, points) => api.post(`/gamification/lucky-draw/${userId}/spin`, { points }),
+};
+
+// ==================== WELCOME BONUS API ====================
+export const welcomeBonusAPI = {
+  checkEligibility: (userId) => api.get(`/welcome-bonus/${userId}/eligibility`),
+  claimWelcomeBonus: (userId) => api.post(`/welcome-bonus/${userId}/claim`),
+  getWelcomePackages: () => api.get('/welcome-bonus/packages'),
+};
+
+// ==================== VIP PROGRAM API ====================
+export const vipAPI = {
+  getVIPStatus: (userId) => api.get(`/vip/${userId}/status`),
+  getVIPBenefits: (userId) => api.get(`/vip/${userId}/benefits`),
+  getExclusiveProducts: (userId) => api.get(`/vip/${userId}/exclusive-products`),
+  getPersonalConsultant: (userId) => api.get(`/vip/${userId}/consultant`),
+  getUpcomingEvents: (userId) => api.get(`/vip/${userId}/events`),
+  convertExpToCoupon: (userId, expAmount) => api.post(`/vip/${userId}/convert-exp`, { expAmount }),
+};
+
+// ==================== SUBSCRIPTION API ====================
+export const subscriptionAPI = {
+  getSubscriptions: (userId) => api.get(`/subscriptions/${userId}`),
+  createSubscription: (subscriptionData) => api.post('/subscriptions', subscriptionData),
+  updateSubscription: (subscriptionId, subscriptionData) => api.put(`/subscriptions/${subscriptionId}`, subscriptionData),
+  cancelSubscription: (subscriptionId) => api.delete(`/subscriptions/${subscriptionId}`),
+  pauseSubscription: (subscriptionId) => api.post(`/subscriptions/${subscriptionId}/pause`),
+  resumeSubscription: (subscriptionId) => api.post(`/subscriptions/${subscriptionId}/resume`),
+  getFrequentOrders: (userId) => api.get(`/subscriptions/${userId}/frequent-orders`),
+};
+
+// ==================== SOCIAL SHARING API ====================
+export const socialSharingAPI = {
+  shareProduct: (userId, productId, platform) => api.post('/social-sharing/product', { userId, productId, platform }),
+  shareWishlist: (userId, platform) => api.post('/social-sharing/wishlist', { userId, platform }),
+  shareExperience: (userId, content, platform) => api.post('/social-sharing/experience', { userId, content, platform }),
+  getShareRewards: (userId) => api.get(`/social-sharing/${userId}/rewards`),
+  submitUGC: (userId, productId, imageUri, caption) => {
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('productId', productId);
+    formData.append('caption', caption);
+    formData.append('image', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'ugc.jpg',
+    });
+    return api.post('/social-sharing/ugc', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// ==================== FREE SAMPLES API ====================
+export const freeSamplesAPI = {
+  getAvailableSamples: () => api.get('/free-samples/available'),
+  requestSample: (userId, productId) => api.post('/free-samples/request', { userId, productId }),
+  getMySamples: (userId) => api.get(`/free-samples/${userId}`),
+};
+
+// ==================== CART ABANDONMENT API ====================
+export const cartAbandonmentAPI = {
+  getAbandonedCart: (userId) => api.get(`/cart-abandonment/${userId}`),
+  sendReminder: (userId, cartId) => api.post(`/cart-abandonment/${userId}/reminder`, { cartId }),
+  applyAbandonedCartOffer: (userId, cartId, offerCode) => api.post(`/cart-abandonment/${userId}/apply-offer`, { cartId, offerCode }),
+};
+
+// ==================== WIN-BACK CAMPAIGNS API ====================
+export const winBackAPI = {
+  getWinBackOffers: (userId) => api.get(`/win-back/${userId}/offers`),
+  claimWinBackOffer: (userId, offerId) => api.post(`/win-back/${userId}/claim`, { offerId }),
+};
+
 // ==================== HEALTH CHECK & MAINTENANCE ====================
 export const healthAPI = {
   check: () => api.get('/health'),

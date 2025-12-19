@@ -108,7 +108,7 @@ async function hashPassword(password) {
     const hashedPassword = await bcrypt.hash(password, salt);
     return hashedPassword;
   } catch (error) {
-    console.error('❌ Error hashing password:', error);
+    console.error(' Error hashing password:', error);
     throw new Error('Password hashing failed');
   }
 }
@@ -118,7 +118,7 @@ async function verifyPassword(password, hashedPassword) {
   try {
     return await bcrypt.compare(password, hashedPassword);
   } catch (error) {
-    console.error('❌ Error verifying password:', error);
+    console.error(' Error verifying password:', error);
     return false;
   }
 }
@@ -603,9 +603,9 @@ try {
   // Also serve shared assets for admin panel
   const assetsPath = path.join(__dirname, '../assets');
   app.use('/admin/assets', require('express').static(assetsPath));
-  console.log('✅ Admin panel static hosting enabled at /admin');
+  console.log(' Admin panel static hosting enabled at /admin');
 } catch (e) {
-  console.warn('⚠️ Could not enable admin panel static hosting:', e.message);
+  console.warn(' Could not enable admin panel static hosting:', e.message);
 }
 
 // Helper: resolve numeric internal user id from external/userId string
@@ -633,7 +633,7 @@ if (process.env.NODE_ENV !== 'production') {
     if (req.method !== 'GET' && req.body) {
       console.log(`\n🔍 [${new Date().toISOString()}] ${req.method} ${req.path}`);
       const sanitizedBody = sanitizeLogData(req.body);
-      console.log('📤 Request Body:', JSON.stringify(sanitizedBody, null, 2));
+      console.log(' Request Body:', JSON.stringify(sanitizedBody, null, 2));
     }
     next();
   });
@@ -724,7 +724,7 @@ app.use((req, res, next) => {
       console.log(`\n🔍 [${new Date().toISOString()}] ${req.method} ${req.path}`);
       if (req.body && Object.keys(req.body).length > 0) {
         const sanitizedBody = sanitizeLogData(req.body);
-        console.log('📤 Request Body:', JSON.stringify(sanitizedBody, null, 2));
+        console.log(' Request Body:', JSON.stringify(sanitizedBody, null, 2));
       }
     }
     originalSend.call(this, data);
@@ -862,11 +862,11 @@ const invoiceStorage = multer.diskStorage({
       
       // Yazma iznini kontrol et
       fs.accessSync(invoicesDir, fs.constants.W_OK);
-      console.log('✅ Invoices directory is accessible for upload:', invoicesDir);
+      console.log(' Invoices directory is accessible for upload:', invoicesDir);
       cb(null, invoicesDir);
     } catch (error) {
-      console.error('❌ Error accessing invoices directory:', error);
-      console.error('❌ Directory path:', invoicesDir);
+      console.error(' Error accessing invoices directory:', error);
+      console.error(' Directory path:', invoicesDir);
       cb(error, null);
     }
   },
@@ -877,9 +877,9 @@ const invoiceStorage = multer.diskStorage({
       // Latin1 olarak okunmuş string'i UTF-8'e çevir
       const buf = Buffer.from(file.originalname, 'latin1');
       decoded = buf.toString('utf8');
-      console.log('📝 Decoded from Latin1:', decoded);
+      console.log(' Decoded from Latin1:', decoded);
     } catch (error) {
-      console.warn('⚠️ Latin1 decode error, using original:', error);
+      console.warn(' Latin1 decode error, using original:', error);
       decoded = file.originalname;
     }
     
@@ -918,9 +918,9 @@ const invoiceStorage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const filename = `${baseName}-${uniqueSuffix}${ext}`;
     
-    console.log('📝 Original filename (from Multer):', file.originalname);
-    console.log('📝 Decoded filename (Latin1→UTF8):', decoded);
-    console.log('📝 Safe filename (for filesystem):', filename);
+    console.log(' Original filename (from Multer):', file.originalname);
+    console.log(' Decoded filename (Latin1→UTF8):', decoded);
+    console.log(' Safe filename (for filesystem):', filename);
     
     // Decode edilmiş orijinal ismi req'e ekle (veritabanına kaydetmek için)
     req.decodedOriginalName = decoded;
@@ -1162,7 +1162,7 @@ app.use('/api', (req, res, next) => {
         next();
       }).catch(err => {
         // GÜVENLİK: Log mesajı - saldırganları yanıltmak için detay gizlendi
-        console.error('❌ Authentication error:', err);
+        console.error(' Authentication error:', err);
         // CORS header'larını set et
         const origin = req.headers.origin;
         if (origin) {
@@ -1396,7 +1396,7 @@ const poolWrapper = {
       };
 
       connection.commit = async function () {
-        console.log('✅ Transaction committed');
+        console.log(' Transaction committed');
         return await originalCommit.call(this);
       };
 
@@ -1420,7 +1420,7 @@ global.poolWrapper = poolWrapper;
 async function createUserExpTransactionsTable() {
   try {
     if (!poolWrapper) {
-      console.error('❌ poolWrapper not initialized yet');
+      console.error(' poolWrapper not initialized yet');
       return;
     }
     await poolWrapper.execute(`
@@ -1438,9 +1438,9 @@ async function createUserExpTransactionsTable() {
         INDEX idx_timestamp (timestamp)
       )
     `);
-    console.log('✅ user_exp_transactions table created/verified');
+    console.log(' user_exp_transactions table created/verified');
   } catch (error) {
-    console.error('❌ Error creating user_exp_transactions table:', error);
+    console.error(' Error creating user_exp_transactions table:', error);
   }
 }
 
@@ -1558,12 +1558,12 @@ async function initializeDatabase() {
 
           console.log(`🕒 Profiles refreshed: ${userTenants.length} users (optimized)`);
         } catch (e) {
-          console.warn('⚠️ Profile scheduler error:', e.message);
+          console.warn(' Profile scheduler error:', e.message);
         }
       }, 30 * 60 * 1000);
-      console.log('⏱️ Profile Scheduler started (every 30 minutes)');
+      console.log(' Profile Scheduler started (every 30 minutes)');
     } catch (e) {
-      console.warn('⚠️ Could not start Profile Scheduler:', e.message);
+      console.warn(' Could not start Profile Scheduler:', e.message);
     }
 
     // Initialize Analytics Aggregation Scheduler
@@ -1583,7 +1583,7 @@ async function initializeDatabase() {
         // İlk çalıştırma
         aggregationService.aggregateAllTenantsDaily().catch(err => {
           if (err.message !== 'Pool is closed') {
-            console.error('❌ Daily aggregation error:', err);
+            console.error(' Daily aggregation error:', err);
           }
         });
 
@@ -1591,7 +1591,7 @@ async function initializeDatabase() {
         scheduledTasks.dailyAggregationInterval = setInterval(() => {
           aggregationService.aggregateAllTenantsDaily().catch(err => {
             if (err.message !== 'Pool is closed') {
-              console.error('❌ Daily aggregation error:', err);
+              console.error(' Daily aggregation error:', err);
             }
           });
         }, dailyAggregationInterval);
@@ -1610,7 +1610,7 @@ async function initializeDatabase() {
         // İlk çalıştırma
         aggregationService.aggregateAllTenantsWeekly().catch(err => {
           if (err.message !== 'Pool is closed') {
-            console.error('❌ Weekly aggregation error:', err);
+            console.error(' Weekly aggregation error:', err);
           }
         });
 
@@ -1618,7 +1618,7 @@ async function initializeDatabase() {
         scheduledTasks.weeklyAggregationInterval = setInterval(() => {
           aggregationService.aggregateAllTenantsWeekly().catch(err => {
             if (err.message !== 'Pool is closed') {
-              console.error('❌ Weekly aggregation error:', err);
+              console.error(' Weekly aggregation error:', err);
             }
           });
         }, weeklyAggregationInterval);
@@ -1643,7 +1643,7 @@ async function initializeDatabase() {
         // İlk çalıştırma
         aggregationService.aggregateAllTenantsMonthly().catch(err => {
           if (err.message !== 'Pool is closed') {
-            console.error('❌ Monthly aggregation error:', err);
+            console.error(' Monthly aggregation error:', err);
           }
         });
 
@@ -1653,15 +1653,15 @@ async function initializeDatabase() {
         scheduledTasks.monthlyAggregationInterval = setInterval(() => {
           aggregationService.aggregateAllTenantsMonthly().catch(err => {
             if (err.message !== 'Pool is closed') {
-              console.error('❌ Monthly aggregation error:', err);
+              console.error(' Monthly aggregation error:', err);
             }
           });
         }, monthlyInterval);
       }, msUntilNextMonth);
 
-      console.log('⏱️ Analytics Aggregation Scheduler started');
+      console.log(' Analytics Aggregation Scheduler started');
     } catch (e) {
-      console.warn('⚠️ Could not start Analytics Aggregation Scheduler:', e.message);
+      console.warn(' Could not start Analytics Aggregation Scheduler:', e.message);
     }
 
     // Log security initialization
@@ -1673,9 +1673,9 @@ async function initializeDatabase() {
     // Create homepage products table once DB/pool is ready
     try {
       await ensureHomepageProductsTable();
-      console.log('✅ user_homepage_products table ready');
+      console.log(' user_homepage_products table ready');
     } catch (e) {
-      console.warn('⚠️ ensureHomepageProductsTable warning:', e.message);
+      console.warn(' ensureHomepageProductsTable warning:', e.message);
     }
 
   } catch (error) {
@@ -1699,9 +1699,9 @@ async function ensureDefaultTenantApiKey() {
        ON DUPLICATE KEY UPDATE apiKey = VALUES(apiKey), isActive = 1, name = VALUES(name)`,
       [DEFAULT_NAME, DEFAULT_KEY]
     );
-    console.log('✅ Default tenant API key ensured/updated');
+    console.log(' Default tenant API key ensured/updated');
   } catch (error) {
-    console.warn('⚠️ Could not ensure default tenant API key:', error.message);
+    console.warn(' Could not ensure default tenant API key:', error.message);
   }
 }
 
@@ -1711,7 +1711,7 @@ async function ensureTestUser() {
     // Get active tenant ID
     const [tenants] = await poolWrapper.execute('SELECT id FROM tenants WHERE isActive = true ORDER BY id ASC LIMIT 1');
     if (tenants.length === 0) {
-      console.warn('⚠️ No active tenant found, skipping test user creation');
+      console.warn(' No active tenant found, skipping test user creation');
       return;
     }
     const tenantId = tenants[0].id;
@@ -1736,11 +1736,11 @@ async function ensureTestUser() {
       );
       // GÜVENLİK: Sensitive data logging - Production'da password loglanmaz
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Test user created successfully');
+        console.log(' Test user created successfully');
         console.log(`   Email: ${TEST_EMAIL}`);
         console.log(`   Password: ${TEST_PASSWORD} (development only)`);
       } else {
-        console.log('✅ Test user created successfully');
+        console.log(' Test user created successfully');
         console.log(`   Email: ${TEST_EMAIL}`);
         // Production'da password loglanmaz
       }
@@ -1753,17 +1753,17 @@ async function ensureTestUser() {
       );
       // GÜVENLİK: Sensitive data logging - Production'da password loglanmaz
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Test user password reset');
+        console.log(' Test user password reset');
         console.log(`   Email: ${TEST_EMAIL}`);
         console.log(`   Password: ${TEST_PASSWORD} (development only)`);
       } else {
-        console.log('✅ Test user password reset');
+        console.log(' Test user password reset');
         console.log(`   Email: ${TEST_EMAIL}`);
         // Production'da password loglanmaz
       }
     }
   } catch (error) {
-    console.warn('⚠️ Could not ensure test user:', error.message);
+    console.warn(' Could not ensure test user:', error.message);
   }
 }
 
@@ -1874,7 +1874,7 @@ app.get('/api/maintenance/status', async (req, res) => {
       data: maintenanceMode
     });
   } catch (error) {
-    console.error('❌ Maintenance status check error:', error);
+    console.error(' Maintenance status check error:', error);
     res.json({
       success: true,
       data: {
@@ -1935,7 +1935,7 @@ app.post('/api/admin/maintenance/toggle', authenticateAdmin, async (req, res) =>
       data: maintenanceConfig
     });
   } catch (e) {
-    console.error('❌ Maintenance toggle error:', e);
+    console.error(' Maintenance toggle error:', e);
     res.status(500).json({
       success: false,
       message: 'Bakım modu ayarı kaydedilemedi'
@@ -2189,22 +2189,22 @@ try {
       const recommendationService = new RecommendationService(poolWrapper);
       const recRouter = recRoutesFactory(poolWrapper, recommendationService, authenticateTenant);
       app.use('/api/recommendations', recRouter);
-      console.log('✅ Recommendations routes mounted at /api/recommendations');
+      console.log(' Recommendations routes mounted at /api/recommendations');
     } catch (e) {
-      console.warn('⚠️ Failed to mount recommendations routes:', e.message);
+      console.warn(' Failed to mount recommendations routes:', e.message);
     }
   });
 } catch (e) {
-  console.warn('⚠️ Recommendations routes could not be required:', e.message);
+  console.warn(' Recommendations routes could not be required:', e.message);
 }
 
 // Dealership Applications Routes
 try {
   const dealershipRoutes = require('./routes/dealership');
   app.use('/api/dealership', dealershipRoutes);
-  console.log('✅ Dealership routes mounted at /api/dealership');
+  console.log(' Dealership routes mounted at /api/dealership');
 } catch (e) {
-  console.warn('⚠️ Dealership routes could not be mounted:', e.message);
+  console.warn(' Dealership routes could not be mounted:', e.message);
 }
 
 // Stories Routes
@@ -2216,13 +2216,13 @@ try {
       const storiesRouter = storiesRoutesFactory(poolWrapper);
       app.use('/api/admin/stories', storiesRouter);
       app.use('/api/stories', storiesRouter); // Public endpoint for mobile app
-      console.log('✅ Stories routes mounted at /api/admin/stories and /api/stories');
+      console.log(' Stories routes mounted at /api/admin/stories and /api/stories');
     } catch (e) {
-      console.warn('⚠️ Failed to mount stories routes:', e.message);
+      console.warn(' Failed to mount stories routes:', e.message);
     }
   });
 } catch (e) {
-  console.warn('⚠️ Stories routes could not be required:', e.message);
+  console.warn(' Stories routes could not be required:', e.message);
 }
 
 
@@ -2235,13 +2235,13 @@ try {
       const slidersRouter = slidersRoutesFactory(poolWrapper);
       app.use('/api/admin/sliders', slidersRouter);
       app.use('/api/sliders', slidersRouter); // Public endpoint for mobile app
-      console.log('✅ Sliders routes mounted at /api/admin/sliders and /api/sliders');
+      console.log(' Sliders routes mounted at /api/admin/sliders and /api/sliders');
     } catch (e) {
-      console.warn('⚠️ Failed to mount sliders routes:', e.message);
+      console.warn(' Failed to mount sliders routes:', e.message);
     }
   });
 } catch (e) {
-  console.warn('⚠️ Sliders routes could not be required:', e.message);
+  console.warn(' Sliders routes could not be required:', e.message);
 }
 
 // Popups Routes
@@ -2253,13 +2253,13 @@ try {
       const popupsRouter = popupsRoutesFactory(poolWrapper);
       app.use('/api/admin/popups', popupsRouter);
       app.use('/api/popups', popupsRouter); // Public endpoint for mobile app
-      console.log('✅ Popups routes mounted at /api/admin/popups and /api/popups');
+      console.log(' Popups routes mounted at /api/admin/popups and /api/popups');
     } catch (e) {
-      console.warn('⚠️ Failed to mount popups routes:', e.message);
+      console.warn(' Failed to mount popups routes:', e.message);
     }
   });
 } catch (e) {
-  console.warn('⚠️ Popups routes could not be required:', e.message);
+  console.warn(' Popups routes could not be required:', e.message);
 }
 
 // Flash Deals Routes
@@ -2268,9 +2268,9 @@ try {
   const flashDealsRoutes = createFlashDealsRouter(poolWrapper);
   app.use('/api/admin/flash-deals', flashDealsRoutes);
   app.use('/api/flash-deals', flashDealsRoutes);
-  console.log('✅ Flash deals routes mounted at /api/admin/flash-deals and /api/flash-deals');
+  console.log(' Flash deals routes mounted at /api/admin/flash-deals and /api/flash-deals');
 } catch (e) {
-  console.warn('⚠️ Flash deals routes could not be mounted:', e.message);
+  console.warn(' Flash deals routes could not be mounted:', e.message);
 }
 
 // Live Users Routes
@@ -2278,45 +2278,45 @@ try {
   const liveUsersRoutes = require('./routes/live-users');
   app.use('/api/admin/live-users', liveUsersRoutes);
   app.use('/api/live-users', liveUsersRoutes);
-  console.log('✅ Live users routes mounted at /api/admin/live-users and /api/live-users');
+  console.log(' Live users routes mounted at /api/admin/live-users and /api/live-users');
 } catch (e) {
-  console.warn('⚠️ Live users routes could not be mounted:', e.message);
+  console.warn(' Live users routes could not be mounted:', e.message);
 }
 
 // Backup Routes
 try {
   const backupRoutes = require('./routes/backup');
   app.use('/api/admin/backup', backupRoutes);
-  console.log('✅ Backup routes mounted at /api/admin/backup');
+  console.log(' Backup routes mounted at /api/admin/backup');
 } catch (e) {
-  console.warn('⚠️ Backup routes could not be mounted:', e.message);
+  console.warn(' Backup routes could not be mounted:', e.message);
 }
 
 // Scrapers Routes
 try {
   const scrapersRoutes = require('./routes/scrapers');
   app.use('/api/admin/scrapers', scrapersRoutes);
-  console.log('✅ Scrapers routes mounted at /api/admin/scrapers');
+  console.log(' Scrapers routes mounted at /api/admin/scrapers');
 } catch (e) {
-  console.warn('⚠️ Scrapers routes could not be mounted:', e.message);
+  console.warn(' Scrapers routes could not be mounted:', e.message);
 }
 
 // Analytics Routes
 try {
   const analyticsRoutes = require('./routes/analytics');
   app.use('/api/admin/analytics', analyticsRoutes);
-  console.log('✅ Analytics routes mounted at /api/admin/analytics');
+  console.log(' Analytics routes mounted at /api/admin/analytics');
 } catch (e) {
-  console.warn('⚠️ Analytics routes could not be mounted:', e.message);
+  console.warn(' Analytics routes could not be mounted:', e.message);
 }
 
 // ML Routes
 try {
   const mlRoutes = require('./routes/ml');
   app.use('/api/admin/ml', mlRoutes);
-  console.log('✅ ML routes mounted at /api/admin/ml');
+  console.log(' ML routes mounted at /api/admin/ml');
 } catch (e) {
-  console.warn('⚠️ ML routes could not be mounted:', e.message);
+  console.warn(' ML routes could not be mounted:', e.message);
 }
 
 // Helper: generate unique 8-digit user_id
@@ -2382,7 +2382,7 @@ app.post('/api/admin/users/reset-user-ids', async (req, res) => {
 
     res.json({ success: true, data: { updated: updatedCount, mapping } });
   } catch (error) {
-    console.error('❌ Error resetting user IDs:', error);
+    console.error(' Error resetting user IDs:', error);
     res.status(500).json({ success: false, message: 'Error resetting user IDs' });
   }
 });
@@ -2397,7 +2397,7 @@ app.post('/api/admin/users/:id/ensure-user-id', async (req, res) => {
     const user_id = await ensureUserHasExternalId(userPk);
     res.json({ success: true, data: { id: userPk, user_id } });
   } catch (error) {
-    console.error('❌ ensure-user-id error:', error);
+    console.error(' ensure-user-id error:', error);
     res.status(500).json({ success: false, message: 'ensure-user-id failed' });
   }
 });
@@ -2416,7 +2416,7 @@ app.post('/api/admin/users/ensure-missing-user-ids', async (req, res) => {
     }
     res.json({ success: true, data: { updated, mapping } });
   } catch (error) {
-    console.error('❌ ensure-missing-user-ids error:', error);
+    console.error(' ensure-missing-user-ids error:', error);
     res.status(500).json({ success: false, message: 'ensure-missing-user-ids failed' });
   }
 });
@@ -2449,7 +2449,7 @@ app.get('/api/user-addresses', async (req, res) => {
 
     res.json({ success: true, data: addresses });
   } catch (error) {
-    console.error('❌ Error fetching user addresses:', error);
+    console.error(' Error fetching user addresses:', error);
     res.status(500).json({ success: false, message: 'Error fetching addresses' });
   }
 });
@@ -2495,7 +2495,7 @@ app.post('/api/user-addresses', validateUserIdMatch('body'), async (req, res) =>
       message: 'Address created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating address:', error);
+    console.error(' Error creating address:', error);
     res.status(500).json({ success: false, message: 'Error creating address' });
   }
 });
@@ -2536,7 +2536,7 @@ app.put('/api/user-addresses/:id', requireUserOwnership('address', 'params'), as
 
     res.json({ success: true, message: 'Address updated successfully' });
   } catch (error) {
-    console.error('❌ Error updating address:', error);
+    console.error(' Error updating address:', error);
     res.status(500).json({ success: false, message: 'Error updating address' });
   }
 });
@@ -2553,7 +2553,7 @@ app.delete('/api/user-addresses/:id', requireUserOwnership('address', 'params'),
 
     res.json({ success: true, message: 'Address deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting address:', error);
+    console.error(' Error deleting address:', error);
     res.status(500).json({ success: false, message: 'Error deleting address' });
   }
 });
@@ -2589,7 +2589,7 @@ app.put('/api/user-addresses/:id/set-default', async (req, res) => {
 
     res.json({ success: true, message: 'Default address updated successfully' });
   } catch (error) {
-    console.error('❌ Error setting default address:', error);
+    console.error(' Error setting default address:', error);
     res.status(500).json({ success: false, message: 'Error setting default address' });
   }
 });
@@ -2687,9 +2687,9 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
     // Start transaction
     console.log('🔄 Starting wallet transfer transaction...');
     const connection = await poolWrapper.getConnection();
-    console.log('✅ Database connection obtained');
+    console.log(' Database connection obtained');
     await connection.beginTransaction();
-    console.log('✅ Transaction started');
+    console.log(' Transaction started');
 
     try {
       // Deduct from sender
@@ -2698,7 +2698,7 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
         'UPDATE user_wallets SET balance = balance - ?, updatedAt = NOW() WHERE userId = ? AND tenantId = ?',
         [parsedAmount, resolvedFromId, req.tenant.id]
       );
-      console.log('✅ Sender balance deducted');
+      console.log(' Sender balance deducted');
 
       // Add to receiver (create wallet if doesn't exist)
       console.log('🔄 Adding to receiver...');
@@ -2707,7 +2707,7 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
         VALUES (?, ?, ?, NOW(), NOW())
         ON DUPLICATE KEY UPDATE balance = balance + ?, updatedAt = NOW()
       `, [resolvedToId, req.tenant.id, parsedAmount, parsedAmount]);
-      console.log('✅ Receiver balance updated');
+      console.log(' Receiver balance updated');
 
       // Record outgoing transaction for sender
       console.log('🔄 Recording outgoing transaction...');
@@ -2715,7 +2715,7 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
         INSERT INTO wallet_transactions (userId, tenantId, type, amount, description, createdAt)
         VALUES (?, ?, 'debit', ?, ?, NOW())
       `, [resolvedFromId, req.tenant.id, parsedAmount, (description || `Transfer to ${toUser[0].name}`)]);
-      console.log('✅ Outgoing transaction recorded');
+      console.log(' Outgoing transaction recorded');
 
       // Record incoming transaction for receiver
       console.log('🔄 Recording incoming transaction...');
@@ -2723,11 +2723,11 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
         INSERT INTO wallet_transactions (userId, tenantId, type, amount, description, createdAt)
         VALUES (?, ?, 'credit', ?, ?, NOW())
       `, [resolvedToId, req.tenant.id, parsedAmount, (description || `Transfer from ${fromUser[0].name}`)]);
-      console.log('✅ Incoming transaction recorded');
+      console.log(' Incoming transaction recorded');
 
       console.log('🔄 Committing transaction...');
       await connection.commit();
-      console.log('✅ Transaction committed successfully');
+      console.log(' Transaction committed successfully');
 
       res.json({
         success: true,
@@ -2740,14 +2740,14 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
         }
       });
     } catch (error) {
-      console.error('❌ Transaction error, rolling back...', error.message);
+      console.error(' Transaction error, rolling back...', error.message);
       await connection.rollback();
-      console.log('✅ Transaction rolled back');
+      console.log(' Transaction rolled back');
       throw error;
     } finally {
       console.log('🔄 Releasing database connection...');
       connection.release();
-      console.log('✅ Database connection released');
+      console.log(' Database connection released');
     }
   } catch (error) {
     // GÜVENLİK: Error information disclosure - Production'da stack trace ve detaylı error mesajları gizlenir
@@ -2756,8 +2756,8 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
     
     // GÜVENLİK: Production'da sensitive data loglanmaz
     if (process.env.NODE_ENV !== 'production') {
-      console.error('❌ Error processing transfer:', error);
-      console.error('❌ Error details:', {
+      console.error(' Error processing transfer:', error);
+      console.error(' Error details:', {
         message: error.message,
         stack: error.stack,
         fromUserId: req.body?.fromUserId,
@@ -2817,9 +2817,9 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
     // Start transaction
     console.log('🔄 Starting gift card creation transaction...');
     const connection = await poolWrapper.getConnection();
-    console.log('✅ Database connection obtained');
+    console.log(' Database connection obtained');
     await connection.beginTransaction();
-    console.log('✅ Transaction started');
+    console.log(' Transaction started');
 
     try {
       // Deduct from sender
@@ -2828,7 +2828,7 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
         'UPDATE user_wallets SET balance = balance - ?, updatedAt = NOW() WHERE userId = ? AND tenantId = ?',
         [amount, fromUserId, req.tenant.id]
       );
-      console.log('✅ Sender balance deducted for gift card');
+      console.log(' Sender balance deducted for gift card');
 
       // Create gift card record
       console.log('🔄 Creating gift card record...');
@@ -2840,7 +2840,7 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
         INSERT INTO gift_cards (code, fromUserId, recipient, recipientUserId, amount, message, status, tenantId, createdAt, expiresAt)
         VALUES (?, ?, ?, ?, ?, ?, 'active', ?, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR))
       `, [giftCardCode, fromUserId, recipient, recipientUserId, amount, message || '', req.tenant.id]);
-      console.log('✅ Gift card record created');
+      console.log(' Gift card record created');
 
       // Record transaction for sender
       console.log('🔄 Recording gift card transaction...');
@@ -2848,11 +2848,11 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
         INSERT INTO wallet_transactions (userId, tenantId, type, amount, description, createdAt)
         VALUES (?, ?, 'debit', ?, ?, NOW())
       `, [fromUserId, req.tenant.id, amount, `Hediye çeki oluşturuldu - ${recipient}`]);
-      console.log('✅ Gift card transaction recorded');
+      console.log(' Gift card transaction recorded');
 
       console.log('🔄 Committing gift card transaction...');
       await connection.commit();
-      console.log('✅ Gift card transaction committed successfully');
+      console.log(' Gift card transaction committed successfully');
 
       res.json({
         success: true,
@@ -2866,14 +2866,14 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
         }
       });
     } catch (error) {
-      console.error('❌ Gift card transaction error, rolling back...', error.message);
+      console.error(' Gift card transaction error, rolling back...', error.message);
       await connection.rollback();
-      console.log('✅ Gift card transaction rolled back');
+      console.log(' Gift card transaction rolled back');
       throw error;
     } finally {
       console.log('🔄 Releasing database connection...');
       connection.release();
-      console.log('✅ Database connection released');
+      console.log(' Database connection released');
     }
   } catch (error) {
     // GÜVENLİK: Error information disclosure - Production'da stack trace ve detaylı error mesajları gizlenir
@@ -2881,8 +2881,8 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
     
     // GÜVENLİK: Production'da sensitive data loglanmaz
     if (process.env.NODE_ENV !== 'production') {
-      console.error('❌ Error creating gift card:', error);
-      console.error('❌ Error details:', {
+      console.error(' Error creating gift card:', error);
+      console.error(' Error details:', {
         message: error.message,
         stack: error.stack,
         amount,
@@ -2943,9 +2943,9 @@ app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, r
     // Start transaction
     console.log('🔄 Starting gift card usage transaction...');
     const connection = await poolWrapper.getConnection();
-    console.log('✅ Database connection obtained');
+    console.log(' Database connection obtained');
     await connection.beginTransaction();
-    console.log('✅ Transaction started');
+    console.log(' Transaction started');
 
     try {
       // Add amount to user's wallet
@@ -2955,7 +2955,7 @@ app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, r
         VALUES (?, ?, ?, NOW(), NOW())
         ON DUPLICATE KEY UPDATE balance = balance + ?, updatedAt = NOW()
       `, [userId, req.tenant.id, giftCard.amount, giftCard.amount]);
-      console.log('✅ Gift card amount added to wallet');
+      console.log(' Gift card amount added to wallet');
 
       // Update gift card status
       console.log('🔄 Updating gift card status...');
@@ -2963,7 +2963,7 @@ app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, r
         'UPDATE gift_cards SET status = "used", usedAt = NOW(), usedBy = ? WHERE code = ? AND tenantId = ?',
         [userId, giftCardCode, req.tenant.id]
       );
-      console.log('✅ Gift card status updated');
+      console.log(' Gift card status updated');
 
       // Record transaction
       console.log('🔄 Recording gift card usage transaction...');
@@ -2971,11 +2971,11 @@ app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, r
         INSERT INTO wallet_transactions (userId, tenantId, type, amount, description, createdAt)
         VALUES (?, ?, 'credit', ?, ?, NOW())
       `, [userId, req.tenant.id, giftCard.amount, `Hediye çeki kullanıldı - ${giftCardCode}`]);
-      console.log('✅ Gift card usage transaction recorded');
+      console.log(' Gift card usage transaction recorded');
 
       console.log('🔄 Committing gift card usage transaction...');
       await connection.commit();
-      console.log('✅ Gift card usage transaction committed successfully');
+      console.log(' Gift card usage transaction committed successfully');
 
       res.json({
         success: true,
@@ -2987,18 +2987,18 @@ app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, r
         }
       });
     } catch (error) {
-      console.error('❌ Gift card usage transaction error, rolling back...', error.message);
+      console.error(' Gift card usage transaction error, rolling back...', error.message);
       await connection.rollback();
-      console.log('✅ Gift card usage transaction rolled back');
+      console.log(' Gift card usage transaction rolled back');
       throw error;
     } finally {
       console.log('🔄 Releasing database connection...');
       connection.release();
-      console.log('✅ Database connection released');
+      console.log(' Database connection released');
     }
   } catch (error) {
-    console.error('❌ Error using gift card:', error);
-    console.error('❌ Error details:', {
+    console.error(' Error using gift card:', error);
+    console.error(' Error details:', {
       message: error.message,
       stack: error.stack,
       giftCardCode: req.body.giftCardCode,
@@ -3051,7 +3051,7 @@ app.get('/api/wallet/transfers', async (req, res) => {
 
     res.json({ success: true, data: transfers });
   } catch (error) {
-    console.error('❌ Error fetching transfers:', error);
+    console.error(' Error fetching transfers:', error);
     res.status(500).json({ success: false, message: 'Error fetching transfers' });
   }
 });
@@ -3087,7 +3087,7 @@ app.get('/api/users/search', async (req, res) => {
 
     res.json({ success: true, data: users });
   } catch (error) {
-    console.error('❌ Error searching users:', error);
+    console.error(' Error searching users:', error);
     res.status(500).json({ success: false, message: 'Error searching users' });
   }
 });
@@ -3120,7 +3120,7 @@ app.get('/api/return-requests', async (req, res) => {
 
     res.json({ success: true, data: returnRequests });
   } catch (error) {
-    console.error('❌ Error fetching return requests:', error);
+    console.error(' Error fetching return requests:', error);
     res.status(500).json({ success: false, message: 'Error fetching return requests' });
   }
 });
@@ -3189,7 +3189,7 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
       message: 'İade talebi başarıyla oluşturuldu'
     });
   } catch (error) {
-    console.error('❌ Error creating return request:', error);
+    console.error(' Error creating return request:', error);
     res.status(500).json({ success: false, message: 'Error creating return request' });
   }
 });
@@ -3222,7 +3222,7 @@ app.get('/api/returns/user/:userId', async (req, res) => {
 
     res.json({ success: true, data: returnRequests || [] });
   } catch (error) {
-    console.error('❌ Error fetching return requests:', error);
+    console.error(' Error fetching return requests:', error);
     res.status(500).json({ success: false, message: 'Error fetching return requests' });
   }
 });
@@ -3284,7 +3284,7 @@ app.get('/api/returns/returnable-orders/:userId', async (req, res) => {
     const result = Object.values(ordersMap);
     res.json({ success: true, data: result || [] });
   } catch (error) {
-    console.error('❌ Error fetching returnable orders:', error);
+    console.error(' Error fetching returnable orders:', error);
     res.status(500).json({ success: false, message: 'Error fetching returnable orders' });
   }
 });
@@ -3421,7 +3421,7 @@ app.post('/api/returns', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error creating return request:', error);
+    console.error(' Error creating return request:', error);
     res.status(500).json({ success: false, message: 'Error creating return request' });
   }
 });
@@ -3465,7 +3465,7 @@ app.put('/api/returns/:returnRequestId/cancel', async (req, res) => {
 
     res.json({ success: true, message: 'İade talebi iptal edildi' });
   } catch (error) {
-    console.error('❌ Error cancelling return request:', error);
+    console.error(' Error cancelling return request:', error);
     res.status(500).json({ success: false, message: 'Error cancelling return request' });
   }
 });
@@ -3508,7 +3508,7 @@ app.put('/api/return-requests/:id/cancel', requireUserOwnership('return_request'
 
     res.json({ success: true, message: 'İade talebi iptal edildi' });
   } catch (error) {
-    console.error('❌ Error cancelling return request:', error);
+    console.error(' Error cancelling return request:', error);
     res.status(500).json({ success: false, message: 'Error cancelling return request' });
   }
 });
@@ -3697,11 +3697,11 @@ app.post('/api/payments/process', async (req, res) => {
           }
         }
       } catch (bonusError) {
-        console.warn('⚠️ Hpay+ bonus eklenemedi:', bonusError.message);
+        console.warn(' Hpay+ bonus eklenemedi:', bonusError.message);
       }
 
-      console.log('✅ Payment successful for order:', orderId);
-      console.log('✅ Card data processed and discarded - NOT stored in database');
+      console.log(' Payment successful for order:', orderId);
+      console.log(' Card data processed and discarded - NOT stored in database');
 
       res.json({
         success: true,
@@ -3739,7 +3739,7 @@ app.post('/api/payments/process', async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Payment processing error:', error);
+    console.error(' Payment processing error:', error);
     // GÜVENLİK: Error information disclosure - Production'da detaylı error mesajları gizlenir
     logError(error, 'PAYMENT_PROCESSING');
     const errorResponse = createSafeErrorResponse(error, 'Payment processing failed');
@@ -3796,7 +3796,7 @@ app.get('/api/payments/:paymentId/status', async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Error getting payment status:', error);
+    console.error(' Error getting payment status:', error);
     res.status(500).json({
       success: false,
       message: 'Error retrieving payment status'
@@ -3875,7 +3875,7 @@ app.get('/api/orders/returnable', async (req, res) => {
     const result = Object.values(ordersMap);
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error('❌ Error fetching returnable orders:', error);
+    console.error(' Error fetching returnable orders:', error);
     res.status(500).json({ success: false, message: 'Error fetching returnable orders' });
   }
 });
@@ -4008,7 +4008,7 @@ app.post('/api/admin/login', async (req, res) => {
         return res.json({ success: true, token: ADMIN_TOKEN });
       }
     } catch (dbErr) {
-      console.error('❌ Admin DB auth error:', dbErr);
+      console.error(' Admin DB auth error:', dbErr);
     }
     // Hatalı şifre: sayacı artır ve gerekirse kilitle
     rec.count = (rec.count || 0) + 1;
@@ -4066,7 +4066,7 @@ app.put('/api/admin/return-requests/:id/status', authenticateAdmin, async (req, 
 
     res.json({ success: true, message: 'Return request status updated' });
   } catch (error) {
-    console.error('❌ Error updating return request status:', error);
+    console.error(' Error updating return request status:', error);
     res.status(500).json({ success: false, message: 'Error updating return request status' });
   }
 });
@@ -4074,7 +4074,7 @@ app.put('/api/admin/return-requests/:id/status', authenticateAdmin, async (req, 
 // Admin Dashboard Stats
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
   try {
-    console.log('📊 Admin stats requested');
+    console.log(' Admin stats requested');
     const rangeDays = Math.max(1, Math.min(365, parseInt(req.query.range || '30')));
 
     // Kullanıcı sayısı
@@ -4116,14 +4116,14 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
       monthlyOrders: recentOrders[0].count || 0
     };
 
-    console.log('📊 Stats calculated:', stats);
+    console.log(' Stats calculated:', stats);
 
     res.json({
       success: true,
       data: stats
     });
   } catch (error) {
-    console.error('❌ Error getting admin stats:', error);
+    console.error(' Error getting admin stats:', error);
     // GÜVENLİK: Error information disclosure - Production'da detaylı error mesajları gizlenir
     logError(error, 'GET_STATS');
     const errorResponse = createSafeErrorResponse(error, 'Error getting stats');
@@ -4182,7 +4182,7 @@ app.get('/api/admin/reports', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: orders });
   } catch (error) {
-    console.error('❌ Error getting reports data:', error);
+    console.error(' Error getting reports data:', error);
     logError(error, 'GET_REPORTS');
     const errorResponse = createSafeErrorResponse(error, 'Error getting reports data');
     res.status(500).json(errorResponse);
@@ -4248,7 +4248,7 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
 
 
     if (!logContent && !foundPath) {
-      console.warn('⚠️ Snort log dosyası bulunamadı.');
+      console.warn(' Snort log dosyası bulunamadı.');
       console.warn('   Kontrol edilen yollar:', possiblePaths.join(', '));
       return res.json({ 
         success: true, 
@@ -4356,7 +4356,7 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
         }
       } catch (parseError) {
         // Parse hatası olursa bu satırı atla
-        console.warn('⚠️ Log satırı parse edilemedi:', line.substring(0, 100));
+        console.warn(' Log satırı parse edilemedi:', line.substring(0, 100));
         continue;
       }
     }
@@ -4402,7 +4402,7 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
           }
         });
       } catch (regexError) {
-        console.warn('⚠️ Regex hatası:', regexError.message);
+        console.warn(' Regex hatası:', regexError.message);
       }
     }
 
@@ -4420,7 +4420,7 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
     console.log(`✅ Snort logları okundu: ${limitedLogs.length} log (filtrelenmiş ${filteredLogs.length}, toplam ${parsedLogs.length}, limit: ${limit}) (${foundPath})`);
     return res.json({ success: true, data: limitedLogs });
   } catch (error) {
-    console.error('❌ Error getting snort logs:', error);
+    console.error(' Error getting snort logs:', error);
     return res.status(500).json({ success: false, message: 'Error getting snort logs: ' + error.message });
   }
 });
@@ -4467,7 +4467,7 @@ app.post('/api/admin/ip/block', authenticateAdmin, async (req, res) => {
       data: { ip, reason: reason || 'Manual block', timestamp: new Date().toISOString() }
     });
   } catch (error) {
-    console.error('❌ Error blocking IP:', error);
+    console.error(' Error blocking IP:', error);
     return res.status(500).json({ success: false, message: 'IP engelleme hatası: ' + error.message });
   }
 });
@@ -4505,7 +4505,7 @@ app.post('/api/admin/ip/unblock', authenticateAdmin, async (req, res) => {
       data: { ip, timestamp: new Date().toISOString() }
     });
   } catch (error) {
-    console.error('❌ Error unblocking IP:', error);
+    console.error(' Error unblocking IP:', error);
     return res.status(500).json({ success: false, message: 'IP engeli kaldırma hatası: ' + error.message });
   }
 });
@@ -4670,7 +4670,7 @@ app.get('/api/admin/snort/logs/stats', authenticateAdmin, async (req, res) => {
 
     return res.json({ success: true, data: statsArray });
   } catch (error) {
-    console.error('❌ Error getting snort stats:', error);
+    console.error(' Error getting snort stats:', error);
     return res.status(500).json({ success: false, message: 'Error getting stats: ' + error.message });
   }
 });
@@ -4752,7 +4752,7 @@ app.get('/api/admin/snort/logs/top-attackers', authenticateAdmin, async (req, re
 
     return res.json({ success: true, data: topAttackers });
   } catch (error) {
-    console.error('❌ Error getting top attackers:', error);
+    console.error(' Error getting top attackers:', error);
     return res.status(500).json({ success: false, message: 'Error getting top attackers: ' + error.message });
   }
 });
@@ -4823,7 +4823,7 @@ app.get('/api/admin/snort/logs/protocol-stats', authenticateAdmin, async (req, r
 
     return res.json({ success: true, data: stats });
   } catch (error) {
-    console.error('❌ Error getting protocol stats:', error);
+    console.error(' Error getting protocol stats:', error);
     return res.status(500).json({ success: false, message: 'Error getting protocol stats: ' + error.message });
   }
 });
@@ -4877,7 +4877,7 @@ app.post('/api/admin/snort/logs/bulk-block', authenticateAdmin, async (req, res)
       data: results
     });
   } catch (error) {
-    console.error('❌ Error bulk blocking IPs:', error);
+    console.error(' Error bulk blocking IPs:', error);
     return res.status(500).json({ success: false, message: 'Toplu IP engelleme hatası: ' + error.message });
   }
 });
@@ -4888,7 +4888,7 @@ app.get('/api/admin/snort/rules', authenticateAdmin, (req, res) => {
     const rules = snortAutomation.getRules();
     return res.json({ success: true, data: rules });
   } catch (error) {
-    console.error('❌ Error getting rules:', error);
+    console.error(' Error getting rules:', error);
     return res.status(500).json({ success: false, message: 'Error getting rules: ' + error.message });
   }
 });
@@ -4898,7 +4898,7 @@ app.post('/api/admin/snort/rules', authenticateAdmin, (req, res) => {
     const rule = snortAutomation.addRule(req.body);
     return res.json({ success: true, data: rule });
   } catch (error) {
-    console.error('❌ Error adding rule:', error);
+    console.error(' Error adding rule:', error);
     return res.status(500).json({ success: false, message: 'Error adding rule: ' + error.message });
   }
 });
@@ -4912,7 +4912,7 @@ app.put('/api/admin/snort/rules/:id', authenticateAdmin, (req, res) => {
     }
     return res.status(404).json({ success: false, message: 'Kural bulunamadı' });
   } catch (error) {
-    console.error('❌ Error updating rule:', error);
+    console.error(' Error updating rule:', error);
     return res.status(500).json({ success: false, message: 'Error updating rule: ' + error.message });
   }
 });
@@ -4926,7 +4926,7 @@ app.delete('/api/admin/snort/rules/:id', authenticateAdmin, (req, res) => {
     }
     return res.status(404).json({ success: false, message: 'Kural bulunamadı' });
   } catch (error) {
-    console.error('❌ Error deleting rule:', error);
+    console.error(' Error deleting rule:', error);
     return res.status(500).json({ success: false, message: 'Error deleting rule: ' + error.message });
   }
 });
@@ -4937,7 +4937,7 @@ app.get('/api/admin/snort/whitelist', authenticateAdmin, (req, res) => {
     const whitelist = snortAutomation.getWhitelist();
     return res.json({ success: true, data: whitelist });
   } catch (error) {
-    console.error('❌ Error getting whitelist:', error);
+    console.error(' Error getting whitelist:', error);
     return res.status(500).json({ success: false, message: 'Error getting whitelist: ' + error.message });
   }
 });
@@ -4951,7 +4951,7 @@ app.post('/api/admin/snort/whitelist', authenticateAdmin, async (req, res) => {
     const result = await snortAutomation.addToWhitelist(ip, reason);
     return res.json({ success: true, data: result });
   } catch (error) {
-    console.error('❌ Error adding to whitelist:', error);
+    console.error(' Error adding to whitelist:', error);
     return res.status(500).json({ success: false, message: 'Error adding to whitelist: ' + error.message });
   }
 });
@@ -4962,7 +4962,7 @@ app.delete('/api/admin/snort/whitelist/:ip', authenticateAdmin, async (req, res)
     await snortAutomation.removeFromWhitelist(ip);
     return res.json({ success: true, message: 'Whitelist\'ten kaldırıldı' });
   } catch (error) {
-    console.error('❌ Error removing from whitelist:', error);
+    console.error(' Error removing from whitelist:', error);
     return res.status(500).json({ success: false, message: 'Error removing from whitelist: ' + error.message });
   }
 });
@@ -5050,7 +5050,7 @@ app.post('/api/admin/snort/logs/export/pdf', authenticateAdmin, async (req, res)
     res.setHeader('Content-Disposition', `attachment; filename="${report.filename}"`);
     res.sendFile(report.filepath);
   } catch (error) {
-    console.error('❌ Error exporting PDF:', error);
+    console.error(' Error exporting PDF:', error);
     return res.status(500).json({ success: false, message: 'PDF export hatası: ' + error.message });
   }
 });
@@ -5061,7 +5061,7 @@ app.get('/api/admin/snort/reports', authenticateAdmin, (req, res) => {
     const reports = snortReporting.listReports();
     return res.json({ success: true, data: reports });
   } catch (error) {
-    console.error('❌ Error listing reports:', error);
+    console.error(' Error listing reports:', error);
     return res.status(500).json({ success: false, message: 'Error listing reports: ' + error.message });
   }
 });
@@ -5080,7 +5080,7 @@ app.get('/api/admin/ip/blocked', authenticateAdmin, async (req, res) => {
       count: blockedIPs.length
     });
   } catch (error) {
-    console.error('❌ Error getting blocked IPs:', error);
+    console.error(' Error getting blocked IPs:', error);
     return res.status(500).json({ success: false, message: 'Engellenmiş IP listesi alınamadı: ' + error.message });
   }
 });
@@ -5105,7 +5105,7 @@ app.get('/api/admin/ip/check/:ip', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error checking IP status:', error);
+    console.error(' Error checking IP status:', error);
     return res.status(500).json({ success: false, message: 'IP durumu kontrol edilemedi: ' + error.message });
   }
 });
@@ -5136,7 +5136,7 @@ app.get('/api/admin/redis/stats', authenticateAdmin, async (req, res) => {
     const uptime = `${days}g ${hours % 24}s`;
     return res.json({ success: true, data: { available: true, memoryMb, opsPerSec, hitRate, status, uptime, load } });
   } catch (error) {
-    console.error('❌ Redis stats error:', error);
+    console.error(' Redis stats error:', error);
     return res.status(500).json({ success: false, message: 'Error getting redis stats' });
   }
 });
@@ -5232,7 +5232,7 @@ app.get('/api/admin/charts', authenticateAdmin, async (req, res) => {
       data: chartData
     });
   } catch (error) {
-    console.error('❌ Error getting chart data:', error);
+    console.error(' Error getting chart data:', error);
     // GÜVENLİK: Error information disclosure - Production'da detaylı error mesajları gizlenir
     logError(error, 'GET_CHART_DATA');
     const errorResponse = createSafeErrorResponse(error, 'Error getting chart data');
@@ -5281,7 +5281,7 @@ app.get('/api/admin/analytics/monthly', authenticateAdmin, async (req, res) => {
       data: monthlyData || []
     });
   } catch (error) {
-    console.error('❌ Error getting monthly analytics:', error);
+    console.error(' Error getting monthly analytics:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting monthly analytics',
@@ -5347,7 +5347,7 @@ app.get('/api/admin/analytics/customer-behavior', authenticateAdmin, async (req,
       data: behaviorData
     });
   } catch (error) {
-    console.error('❌ Error getting customer behavior:', error);
+    console.error(' Error getting customer behavior:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting customer behavior',
@@ -5384,7 +5384,7 @@ app.get('/api/admin/analytics/category-performance', authenticateAdmin, async (r
       data: categoryData || []
     });
   } catch (error) {
-    console.error('❌ Error getting category performance:', error);
+    console.error(' Error getting category performance:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting category performance',
@@ -5443,7 +5443,7 @@ app.get('/api/admin/analytics/customer-segments', authenticateAdmin, async (req,
       data: segmentsWithColors
     });
   } catch (error) {
-    console.error('❌ Error getting customer segments:', error);
+    console.error(' Error getting customer segments:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting customer segments',
@@ -5510,7 +5510,7 @@ app.get('/api/admin/analytics/conversion', authenticateAdmin, async (req, res) =
       }
     });
   } catch (error) {
-    console.error('❌ Error getting conversion metrics:', error);
+    console.error(' Error getting conversion metrics:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting conversion metrics',
@@ -5561,7 +5561,7 @@ app.post('/api/admin/scrapers/google-maps', authenticateAdmin, async (req, res) 
 
     return res.json({ success: true, data: filtered });
   } catch (error) {
-    console.error('❌ Google Maps scraper error:', error);
+    console.error(' Google Maps scraper error:', error);
     return res.status(500).json({ success: false, message: 'Scraper error' });
   }
 });
@@ -5629,7 +5629,7 @@ app.get('/api/admin/security/login-attempts', authenticateAdmin, async (req, res
     }));
     res.json({ success: true, data });
   } catch (e) {
-    console.error('❌ Error listing security events:', e);
+    console.error(' Error listing security events:', e);
     res.status(500).json({ success: false, message: 'Security events could not be loaded' });
   }
 });
@@ -5654,7 +5654,7 @@ app.get('/api/admin/security/server-stats', authenticateAdmin, async (req, res) 
       }
     });
   } catch (e) {
-    console.error('❌ Error getting server stats:', e);
+    console.error(' Error getting server stats:', e);
     res.status(500).json({ success: false, message: 'Failed to read server stats' });
   }
 });
@@ -5681,7 +5681,7 @@ app.get('/api/admin/top-customers', authenticateAdmin, async (req, res) => {
     `, [limit]);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting top customers:', error);
+    console.error(' Error getting top customers:', error);
     res.status(500).json({ success: false, message: 'Error getting top customers' });
   }
 });
@@ -5697,10 +5697,10 @@ app.get('/api/admin/users/admins', authenticateAdmin, async (req, res) => {
       `);
       if (cols.length === 0) {
         await poolWrapper.execute('ALTER TABLE users ADD COLUMN permissions JSON NULL AFTER role');
-        console.log('✅ Added permissions column to users table');
+        console.log(' Added permissions column to users table');
       }
     } catch (e) {
-      console.warn('⚠️ Could not check/add permissions column:', e.message);
+      console.warn(' Could not check/add permissions column:', e.message);
     }
     
     const [rows] = await poolWrapper.execute(`
@@ -5734,7 +5734,7 @@ app.get('/api/admin/users/admins', authenticateAdmin, async (req, res) => {
     
     res.json({ success: true, data: admins });
   } catch (error) {
-    console.error('❌ Error getting admin users:', error);
+    console.error(' Error getting admin users:', error);
     res.status(500).json({ success: false, message: 'Admin kullanıcıları alınamadı' });
   }
 });
@@ -5786,7 +5786,7 @@ app.post('/api/admin/users', authenticateAdmin, async (req, res) => {
       data: { id: result.insertId, name, email, role: role || 'admin' }
     });
   } catch (error) {
-    console.error('❌ Error creating admin user:', error);
+    console.error(' Error creating admin user:', error);
     res.status(500).json({ success: false, message: 'Admin kullanıcı oluşturulamadı' });
   }
 });
@@ -5849,7 +5849,7 @@ app.put('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
     
     res.json({ success: true, message: 'Admin kullanıcı güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating admin user:', error);
+    console.error(' Error updating admin user:', error);
     res.status(500).json({ success: false, message: 'Admin kullanıcı güncellenemedi' });
   }
 });
@@ -5889,7 +5889,7 @@ app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
     
     res.json({ success: true, message: 'Admin kullanıcı silindi' });
   } catch (error) {
-    console.error('❌ Error deleting admin user:', error);
+    console.error(' Error deleting admin user:', error);
     res.status(500).json({ success: false, message: 'Admin kullanıcı silinemedi' });
   }
 });
@@ -5905,7 +5905,7 @@ app.put('/api/admin/users/:id/role', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
     res.json({ success: true, message: 'Kullanıcı rolü güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating user role:', error);
+    console.error(' Error updating user role:', error);
     res.status(500).json({ success: false, message: 'Error updating user role' });
   }
 });
@@ -5918,7 +5918,7 @@ app.put('/api/admin/users/:id/status', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('UPDATE users SET isActive = ? WHERE id = ?', [activeVal, userId]);
     res.json({ success: true, message: 'Kullanıcı durumu güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating user status:', error);
+    console.error(' Error updating user status:', error);
     res.status(500).json({ success: false, message: 'Error updating user status' });
   }
 });
@@ -5932,7 +5932,7 @@ app.post('/api/admin/users/:id/reset-password', authenticateAdmin, async (req, r
     await poolWrapper.execute('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
     res.json({ success: true, message: 'Şifre sıfırlandı', data: { newPassword } });
   } catch (error) {
-    console.error('❌ Error resetting password:', error);
+    console.error(' Error resetting password:', error);
     res.status(500).json({ success: false, message: 'Error resetting password' });
   }
 });
@@ -5973,7 +5973,7 @@ app.get('/api/admin/profile', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error getting admin profile:', error);
+    console.error(' Error getting admin profile:', error);
     res.status(500).json({ success: false, message: 'Profil bilgileri alınamadı' });
   }
 });
@@ -6007,7 +6007,7 @@ app.put('/api/admin/profile', authenticateAdmin, async (req, res) => {
     
     res.json({ success: true, message: 'Profil güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating admin profile:', error);
+    console.error(' Error updating admin profile:', error);
     res.status(500).json({ success: false, message: 'Profil güncellenemedi' });
   }
 });
@@ -6027,7 +6027,7 @@ app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('UPDATE users SET password = ? WHERE id = ?', [hashedNew, rows[0].id]);
     return res.json({ success: true, message: 'Şifre güncellendi' });
   } catch (error) {
-    console.error('❌ change-password error:', error);
+    console.error(' change-password error:', error);
     res.status(500).json({ success: false, message: 'Şifre güncellenemedi' });
   }
 });
@@ -6099,7 +6099,7 @@ app.get('/api/admin/backup', authenticateAdmin, async (req, res) => {
     }
     return res.json({ success: true, tenantId, exportedAt: new Date().toISOString(), data });
   } catch (error) {
-    console.error('❌ Backup error:', error);
+    console.error(' Backup error:', error);
     res.status(500).json({ success: false, message: 'Backup alınamadı' });
   }
 });
@@ -6188,7 +6188,7 @@ app.post('/api/admin/restore', authenticateAdmin, async (req, res) => {
     res.json({ success: true, message: 'Veriler geri yüklendi' });
   } catch (error) {
     try { await conn.rollback(); } catch (_) { }
-    console.error('❌ Restore error:', error);
+    console.error(' Restore error:', error);
     res.status(500).json({ success: false, message: 'Geri yükleme başarısız' });
   } finally {
     try { await conn.release(); } catch (_) { }
@@ -6208,7 +6208,7 @@ app.get('/api/admin/carts', authenticateAdmin, async (req, res) => {
     `);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error listing carts:', error);
+    console.error(' Error listing carts:', error);
     res.status(500).json({ success: false, message: 'Error listing carts' });
   }
 });
@@ -6228,7 +6228,7 @@ app.get('/api/admin/gift-cards', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting gift cards:', error);
+    console.error(' Error getting gift cards:', error);
     res.status(500).json({ success: false, message: 'Error getting gift cards' });
   }
 });
@@ -6247,7 +6247,7 @@ app.post('/api/admin/gift-cards', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating gift card:', error);
+    console.error(' Error creating gift card:', error);
     res.status(500).json({ success: false, message: 'Error creating gift card' });
   }
 });
@@ -6267,7 +6267,7 @@ app.put('/api/admin/gift-cards/:id/status', authenticateAdmin, async (req, res) 
     );
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating gift card status:', error);
+    console.error(' Error updating gift card status:', error);
     res.status(500).json({ success: false, message: 'Error updating gift card status' });
   }
 });
@@ -6287,7 +6287,7 @@ app.get('/api/admin/payment-transactions', authenticateAdmin, async (req, res) =
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting payment transactions:', error);
+    console.error(' Error getting payment transactions:', error);
     res.status(500).json({ success: false, message: 'Error getting payment transactions' });
   }
 });
@@ -6304,7 +6304,7 @@ app.patch('/api/admin/orders/:orderId/status', authenticateAdmin, async (req, re
     await poolWrapper.execute(`UPDATE orders SET status = ?, updatedAt = NOW() WHERE id = ? AND tenantId = ?`, [status, orderId, req.tenant?.id || 1]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating order status:', error);
+    console.error(' Error updating order status:', error);
     res.status(500).json({ success: false, message: 'Error updating order status' });
   }
 });
@@ -6326,7 +6326,7 @@ app.patch('/api/admin/orders/:orderId/shipping', authenticateAdmin, async (req, 
     } catch (updateError) {
       // If trackingNumber column doesn't exist, update only cargoProvider and status
       if (updateError.message && updateError.message.includes('trackingNumber')) {
-        console.warn('⚠️ trackingNumber column not found, using cargoProvider only');
+        console.warn(' trackingNumber column not found, using cargoProvider only');
         await poolWrapper.execute(
           `UPDATE orders SET cargoProvider = ?, status = ?, updatedAt = NOW() WHERE id = ? AND tenantId = ?`,
           [cargoCompany || null, cargoStatus || null, orderId, tenantId]
@@ -6338,7 +6338,7 @@ app.patch('/api/admin/orders/:orderId/shipping', authenticateAdmin, async (req, 
     
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating shipping info:', error);
+    console.error(' Error updating shipping info:', error);
     res.status(500).json({ success: false, message: 'Error updating shipping info' });
   }
 });
@@ -6360,7 +6360,7 @@ app.get('/api/admin/return-requests', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting return requests:', error);
+    console.error(' Error getting return requests:', error);
     res.status(500).json({ success: false, message: 'Error getting return requests' });
   }
 });
@@ -6381,7 +6381,7 @@ app.get('/api/admin/user-discount-codes', authenticateAdmin, async (req, res) =>
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting user discount codes:', error);
+    console.error(' Error getting user discount codes:', error);
     res.status(500).json({ success: false, message: 'Error getting user discount codes' });
   }
 });
@@ -6414,7 +6414,7 @@ app.post('/api/admin/user-discount-codes', authenticateAdmin, async (req, res) =
     );
     res.json({ success: true, data: { code: genCode } });
   } catch (error) {
-    console.error('❌ Error creating user discount code:', error);
+    console.error(' Error creating user discount code:', error);
     res.status(500).json({ success: false, message: 'Error creating discount code' });
   }
 });
@@ -6437,7 +6437,7 @@ app.get('/api/admin/wallet-recharge-requests', authenticateAdmin, async (req, re
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting wallet recharge requests:', error);
+    console.error(' Error getting wallet recharge requests:', error);
     res.status(500).json({ success: false, message: 'Error getting wallet recharge requests' });
   }
 });
@@ -6466,14 +6466,14 @@ app.get('/api/admin/wallet-withdraw-requests', authenticateAdmin, async (req, re
     } catch (tableError) {
       // Tablo yoksa boş array döndür
       if (tableError.code === 'ER_NO_SUCH_TABLE') {
-        console.warn('⚠️ wallet_withdraw_requests table does not exist yet');
+        console.warn(' wallet_withdraw_requests table does not exist yet');
         res.json({ success: true, data: [] });
       } else {
         throw tableError;
       }
     }
   } catch (error) {
-    console.error('❌ Error getting wallet withdraw requests:', error);
+    console.error(' Error getting wallet withdraw requests:', error);
     res.json({ success: true, data: [] });
   }
 });
@@ -6581,7 +6581,7 @@ app.post('/api/wallet/withdraw-request', validateUserIdMatch('body'), async (req
       }
     });
   } catch (error) {
-    console.error('❌ Create withdraw request error:', error);
+    console.error(' Create withdraw request error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Çekim talebi oluşturulurken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata')
@@ -6666,7 +6666,7 @@ app.post('/api/admin/wallet-withdraw-requests/:id/status', authenticateAdmin, as
       }
     }
   } catch (error) {
-    console.error('❌ Error updating wallet withdraw request status:', error);
+    console.error(' Error updating wallet withdraw request status:', error);
     res.status(500).json({ success: false, message: 'Error updating status' });
   }
 });
@@ -6717,7 +6717,7 @@ async function handleRechargeStatus(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating recharge request:', error);
+    console.error(' Error updating recharge request:', error);
     res.status(500).json({ success: false, message: 'Error updating status' });
   }
 }
@@ -6743,7 +6743,7 @@ app.get('/api/admin/referral-earnings', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting referral earnings:', error);
+    console.error(' Error getting referral earnings:', error);
     res.status(500).json({ success: false, message: 'Error getting referral earnings' });
   }
 });
@@ -6764,7 +6764,7 @@ app.get('/api/admin/discount-wheel-spins', authenticateAdmin, async (req, res) =
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting wheel spins:', error);
+    console.error(' Error getting wheel spins:', error);
     res.status(500).json({ success: false, message: 'Error getting wheel spins' });
   }
 });
@@ -6785,7 +6785,7 @@ app.get('/api/admin/user-events', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting user events:', error);
+    console.error(' Error getting user events:', error);
     res.status(500).json({ success: false, message: 'Error getting user events' });
   }
 });
@@ -6819,7 +6819,7 @@ app.get('/api/notifications', async (req, res) => {
     const [rows] = await poolWrapper.execute(query, params);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting notifications:', error);
+    console.error(' Error getting notifications:', error);
     res.status(500).json({ success: false, message: 'Error getting notifications' });
   }
 });
@@ -6841,7 +6841,7 @@ app.get('/api/notifications/unread-count', async (req, res) => {
 
     res.json({ success: true, count: result[0]?.count || 0 });
   } catch (error) {
-    console.error('❌ Error getting unread count:', error);
+    console.error(' Error getting unread count:', error);
     res.status(500).json({ success: false, message: 'Error getting unread count' });
   }
 });
@@ -6865,7 +6865,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 
     res.json({ success: true, message: 'Notification marked as read' });
   } catch (error) {
-    console.error('❌ Error marking notification as read:', error);
+    console.error(' Error marking notification as read:', error);
     res.status(500).json({ success: false, message: 'Error marking notification as read' });
   }
 });
@@ -6888,7 +6888,7 @@ app.put('/api/notifications/read-all', validateUserIdMatch('body'), async (req, 
 
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
-    console.error('❌ Error marking all notifications as read:', error);
+    console.error(' Error marking all notifications as read:', error);
     res.status(500).json({ success: false, message: 'Error marking all notifications as read' });
   }
 });
@@ -6946,7 +6946,7 @@ app.post('/api/admin/notifications/send', authenticateAdmin, async (req, res) =>
       sentCount: users.length
     });
   } catch (error) {
-    console.error('❌ Error sending notification:', error);
+    console.error(' Error sending notification:', error);
     res.status(500).json({ success: false, message: 'Error sending notification' });
   }
 });
@@ -6975,7 +6975,7 @@ app.get('/api/admin/notifications', authenticateAdmin, async (req, res) => {
     const [rows] = await poolWrapper.execute(query, params);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting admin notifications:', error);
+    console.error(' Error getting admin notifications:', error);
     res.status(500).json({ success: false, message: 'Error getting notifications' });
   }
 });
@@ -6996,7 +6996,7 @@ app.get('/api/admin/customer-analytics', authenticateAdmin, async (req, res) => 
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting customer analytics:', error);
+    console.error(' Error getting customer analytics:', error);
     res.status(500).json({ success: false, message: 'Error getting customer analytics' });
   }
 });
@@ -7105,7 +7105,7 @@ app.get('/api/admin/recommendations', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: enrichedRows });
   } catch (error) {
-    console.error('❌ Error getting recommendations:', error);
+    console.error(' Error getting recommendations:', error);
     res.status(500).json({ success: false, message: 'Error getting recommendations' });
   }
 });
@@ -7126,7 +7126,7 @@ app.get('/api/admin/user-profiles', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting user profiles:', error);
+    console.error(' Error getting user profiles:', error);
     res.status(500).json({ success: false, message: 'Error getting user profiles' });
   }
 });
@@ -7254,7 +7254,7 @@ app.get('/api/admin/server-stats', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Server stats error:', error);
+    console.error(' Server stats error:', error);
     res.status(500).json({ success: false, message: 'Server stats unavailable' });
   }
 });
@@ -7497,7 +7497,7 @@ app.get('/api/admin/speedtest', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Speedtest error:', error);
+    console.error(' Speedtest error:', error);
     
     // Hata mesajını kontrol et
     let errorMessage = 'Speedtest çalıştırılamadı';
@@ -7537,7 +7537,7 @@ app.get('/api/admin/panel-config', authenticateAdmin, async (req, res) => {
     }
     return res.json({ success: true, data: cfg });
   } catch (e) {
-    console.error('❌ Read panel-config error:', e);
+    console.error(' Read panel-config error:', e);
     res.status(500).json({ success: false, message: 'Config okunamadı' });
   }
 });
@@ -7552,7 +7552,7 @@ app.post('/api/admin/panel-config', authenticateAdmin, async (req, res) => {
     fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2), 'utf-8');
     return res.json({ success: true, message: 'Config kaydedildi', data: merged });
   } catch (e) {
-    console.error('❌ Write panel-config error:', e);
+    console.error(' Write panel-config error:', e);
     res.status(500).json({ success: false, message: 'Config kaydedilemedi' });
   }
 });
@@ -7580,7 +7580,7 @@ app.get('/api/admin/ftp-backup/config', authenticateAdmin, async (req, res) => {
     };
     return res.json({ success: true, data: effective });
   } catch (e) {
-    console.error('❌ Read FTP config error:', e);
+    console.error(' Read FTP config error:', e);
     res.status(500).json({ success: false, message: 'FTP config okunamadı' });
   }
 });
@@ -7620,7 +7620,7 @@ app.post('/api/admin/ftp-backup/config', authenticateAdmin, async (req, res) => 
 
     return res.json({ success: true, message: 'FTP config kaydedildi' });
   } catch (e) {
-    console.error('❌ Write FTP config error:', e);
+    console.error(' Write FTP config error:', e);
     res.status(500).json({ success: false, message: 'FTP config kaydedilemedi' });
   }
 });
@@ -7670,7 +7670,7 @@ app.post('/api/admin/ftp-backup/run', authenticateAdmin, async (req, res) => {
       __ftpBackupConfig = prev;
     }
   } catch (e) {
-    console.error('❌ FTP run error:', e);
+    console.error(' FTP run error:', e);
     res.status(500).json({ success: false, message: 'Yedek gönderme hatası' });
   }
 });
@@ -7692,7 +7692,7 @@ app.get('/api/admin/carts/:userId', authenticateAdmin, async (req, res) => {
     const totalQuantity = items.reduce((s, i) => s + (i.quantity || 0), 0);
     res.json({ success: true, data: { user: userRows[0], items, totalQuantity } });
   } catch (error) {
-    console.error('❌ Error getting user cart:', error);
+    console.error(' Error getting user cart:', error);
     res.status(500).json({ success: false, message: 'Error getting user cart' });
   }
 });
@@ -7711,7 +7711,7 @@ app.get('/api/admin/wallets', authenticateAdmin, async (req, res) => {
     `, [tenantId, tenantId]);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error listing wallets:', error);
+    console.error(' Error listing wallets:', error);
     res.status(500).json({ success: false, message: 'Error listing wallets' });
   }
 });
@@ -7734,7 +7734,7 @@ app.get('/api/admin/wallets/summary', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { totalBalance: bal.totalBalance || 0, totalCredit: cr.totalCredit || 0, totalDebit: db.totalDebit || 0 } });
   } catch (error) {
-    console.error('❌ Error getting wallets summary:', error);
+    console.error(' Error getting wallets summary:', error);
     res.status(500).json({ success: false, message: 'Error getting wallets summary' });
   }
 });
@@ -7762,7 +7762,7 @@ app.post('/api/admin/wallets/adjust', authenticateAdmin, async (req, res) => {
     `, [1, userId, adj >= 0 ? 'credit' : 'debit', Math.abs(adj), reason || 'Admin adjustment']);
     res.json({ success: true, message: 'Balance adjusted' });
   } catch (error) {
-    console.error('❌ Error adjusting wallet:', error);
+    console.error(' Error adjusting wallet:', error);
     res.status(500).json({ success: false, message: 'Error adjusting wallet' });
   }
 });
@@ -7790,7 +7790,7 @@ app.post('/api/admin/wallets/add', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, message: 'Balance increased' });
   } catch (error) {
-    console.error('❌ Error wallet add:', error);
+    console.error(' Error wallet add:', error);
     res.status(500).json({ success: false, message: 'Error increasing balance' });
   }
 });
@@ -7816,7 +7816,7 @@ app.post('/api/admin/wallets/remove', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, message: 'Balance decreased' });
   } catch (error) {
-    console.error('❌ Error wallet remove:', error);
+    console.error(' Error wallet remove:', error);
     res.status(500).json({ success: false, message: 'Error decreasing balance' });
   }
 });
@@ -7854,7 +7854,7 @@ app.post('/api/admin/wallets/transfer', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, message: 'Transfer completed' });
   } catch (error) {
-    console.error('❌ Error wallet transfer:', error);
+    console.error(' Error wallet transfer:', error);
     res.status(500).json({ success: false, message: 'Error transferring balance' });
   }
 });
@@ -7911,7 +7911,7 @@ app.get('/api/admin/visitor-ips', authenticateAdmin, async (req, res) => {
       })
     });
   } catch (error) {
-    console.error('❌ Error getting visitor IPs:', error);
+    console.error(' Error getting visitor IPs:', error);
     res.status(500).json({ success: false, message: 'Visitor IPs alınamadı' });
   }
 });
@@ -7938,7 +7938,7 @@ app.get('/api/admin/live-views', authenticateAdmin, async (req, res) => {
     }));
     res.json({ success: true, data: views });
   } catch (error) {
-    console.error('❌ Error reading live views:', error);
+    console.error(' Error reading live views:', error);
     res.status(500).json({ success: false, message: 'Error reading live views' });
   }
 });
@@ -7986,7 +7986,7 @@ app.get('/api/admin/custom-production-requests', authenticateAdmin, async (req, 
     
     res.json({ success: true, data: requestsWithItems });
   } catch (error) {
-    console.error('❌ Error getting custom production requests:', error);
+    console.error(' Error getting custom production requests:', error);
     res.status(500).json({ success: false, message: 'Error getting custom production requests' });
   }
 });
@@ -8017,7 +8017,7 @@ app.get('/api/admin/custom-production/messages', authenticateAdmin, async (req, 
     
     res.json({ success: true, data: rows || [] });
   } catch (error) {
-    console.error('❌ Error getting custom production messages:', error);
+    console.error(' Error getting custom production messages:', error);
     res.status(500).json({ success: false, message: 'Mesajlar alınamadı' });
   }
 });
@@ -8038,7 +8038,7 @@ app.get('/api/admin/custom-production/requests/:id/messages', authenticateAdmin,
     
     res.json({ success: true, data: rows || [] });
   } catch (error) {
-    console.error('❌ Error getting custom production request messages:', error);
+    console.error(' Error getting custom production request messages:', error);
     res.status(500).json({ success: false, message: 'Mesajlar alınamadı' });
   }
 });
@@ -8051,7 +8051,7 @@ app.get('/api/admin/custom-production-requests/:id', authenticateAdmin, async (r
     const [items] = await poolWrapper.execute('SELECT * FROM custom_production_items WHERE requestId = ?', [id]);
     res.json({ success: true, data: { ...rows[0], items } });
   } catch (error) {
-    console.error('❌ Error getting custom production request:', error);
+    console.error(' Error getting custom production request:', error);
     res.status(500).json({ success: false, message: 'Error getting request' });
   }
 });
@@ -8073,7 +8073,7 @@ app.put('/api/admin/custom-production-requests/:id/status', authenticateAdmin, a
     await poolWrapper.execute(`UPDATE custom_production_requests SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, params);
     res.json({ success: true, message: 'Durum güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating custom production status:', error);
+    console.error(' Error updating custom production status:', error);
     res.status(500).json({ success: false, message: 'Error updating status' });
   }
 });
@@ -8110,7 +8110,7 @@ app.post('/api/admin/custom-production-requests/:id/quote', authenticateAdmin, a
     `, [parseFloat(quoteAmount), quoteCurrency, quoteNotes, quoteValidUntil || null, id]);
     res.json({ success: true, message: 'Teklif gönderildi' });
   } catch (error) {
-    console.error('❌ Error setting quote:', error);
+    console.error(' Error setting quote:', error);
     res.status(500).json({ success: false, message: 'Error setting quote' });
   }
 });
@@ -8225,7 +8225,7 @@ app.post('/api/admin/custom-production-requests/:id/proforma-quote', authenticat
       }
     });
   } catch (error) {
-    console.error('❌ Error saving proforma quote:', error);
+    console.error(' Error saving proforma quote:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Proforma teklif kaydedilemedi: ' + (error.message || 'Bilinmeyen hata')
@@ -8274,7 +8274,7 @@ app.put('/api/admin/custom-production-requests/:id/request-revision', authentica
 
     res.json({ success: true, message: 'Revizyon talebi gönderildi' });
   } catch (error) {
-    console.error('❌ Error requesting revision:', error);
+    console.error(' Error requesting revision:', error);
     res.status(500).json({ success: false, message: 'Revizyon talebi gönderilemedi' });
   }
 });
@@ -8414,7 +8414,7 @@ app.post('/api/admin/custom-production-requests/manual', authenticateAdmin, asyn
       throw error;
     }
   } catch (error) {
-    console.error('❌ Error creating manual invoice:', error);
+    console.error(' Error creating manual invoice:', error);
     res.status(500).json({
       success: false,
       message: 'Manuel fatura oluşturulamadı: ' + (error.message || 'Bilinmeyen hata')
@@ -8437,7 +8437,7 @@ app.put('/api/admin/custom-production-requests/:id/approve-proforma', authentica
 
     res.json({ success: true, message: 'Proforma onaylandı' });
   } catch (error) {
-    console.error('❌ Error approving proforma:', error);
+    console.error(' Error approving proforma:', error);
     res.status(500).json({ success: false, message: 'Proforma onaylanamadı' });
   }
 });
@@ -8486,7 +8486,7 @@ app.delete('/api/admin/custom-production-requests/:id', authenticateAdmin, async
     console.log(`✅ Custom production request ${id} deleted successfully`)
     res.json({ success: true, message: 'Talep başarıyla silindi' })
   } catch (error) {
-    console.error('❌ Error deleting custom production request:', error)
+    console.error(' Error deleting custom production request:', error)
     res.status(500).json({ success: false, message: 'Talep silinirken hata oluştu: ' + (error?.message || 'Bilinmeyen hata') })
   }
 })
@@ -8522,7 +8522,7 @@ app.put('/api/custom-production-requests/:requestId/quote-status', async (req, r
 
     res.json({ success: true, message: `Teklif ${status === 'accepted' ? 'onaylandı' : 'reddedildi'}` });
   } catch (error) {
-    console.error('❌ Error updating quote status:', error);
+    console.error(' Error updating quote status:', error);
     res.status(500).json({ success: false, message: 'Error updating quote status' });
   }
 });
@@ -8667,7 +8667,7 @@ app.post('/api/quote-requests', async (req, res) => {
       }
     } catch (e) {
       // Migration hatası olursa devam et
-      console.warn('⚠️ Could not migrate userId column:', e.message);
+      console.warn(' Could not migrate userId column:', e.message);
     }
 
     // Create custom production request (userId null olabilir, çünkü form dolduran kullanıcı giriş yapmamış olabilir)
@@ -8702,7 +8702,7 @@ app.post('/api/quote-requests', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error creating quote request:', error);
+    console.error(' Error creating quote request:', error);
     res.status(500).json({
       success: false,
       message: 'Teklif talebi oluşturulamadı: ' + (error.message || 'Bilinmeyen hata')
@@ -8726,7 +8726,7 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting users:', error);
+    console.error(' Error getting users:', error);
     res.status(500).json({ success: false, message: 'Error getting users' });
   }
 });
@@ -8748,7 +8748,7 @@ app.get('/api/admin/users/export', authenticateAdmin, async (req, res) => {
     }
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error exporting users:', error);
+    console.error(' Error exporting users:', error);
     res.status(500).json({ success: false, message: 'Error exporting users' });
   }
 });
@@ -8775,7 +8775,7 @@ app.get('/api/admin/leads', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching leads:', error);
+    console.error(' Error fetching leads:', error);
     res.status(500).json({ success: false, message: 'Error fetching leads' });
   }
 });
@@ -8791,7 +8791,7 @@ app.post('/api/admin/leads', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating lead:', error);
+    console.error(' Error creating lead:', error);
     res.status(500).json({ success: false, message: 'Error creating lead' });
   }
 });
@@ -8809,7 +8809,7 @@ app.put('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute(`UPDATE crm_leads SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating lead:', error);
+    console.error(' Error updating lead:', error);
     res.status(500).json({ success: false, message: 'Error updating lead' });
   }
 });
@@ -8821,7 +8821,7 @@ app.delete('/api/admin/leads/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_leads WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting lead:', error);
+    console.error(' Error deleting lead:', error);
     res.status(500).json({ success: false, message: 'Error deleting lead' });
   }
 });
@@ -8844,7 +8844,7 @@ app.get('/api/admin/contacts', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching contacts:', error);
+    console.error(' Error fetching contacts:', error);
     res.status(500).json({ success: false, message: 'Error fetching contacts' });
   }
 });
@@ -8859,7 +8859,7 @@ app.post('/api/admin/contacts', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating contact:', error);
+    console.error(' Error creating contact:', error);
     res.status(500).json({ success: false, message: 'Error creating contact' });
   }
 });
@@ -8876,7 +8876,7 @@ app.put('/api/admin/contacts/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute(`UPDATE crm_contacts SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating contact:', error);
+    console.error(' Error updating contact:', error);
     res.status(500).json({ success: false, message: 'Error updating contact' });
   }
 });
@@ -8887,7 +8887,7 @@ app.delete('/api/admin/contacts/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_contacts WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting contact:', error);
+    console.error(' Error deleting contact:', error);
     res.status(500).json({ success: false, message: 'Error deleting contact' });
   }
 });
@@ -8917,7 +8917,7 @@ app.get('/api/admin/integrations', authenticateAdmin, async (req, res) => {
     }));
     res.json({ success: true, data: processedRows });
   } catch (error) {
-    console.error('❌ Error fetching integrations:', error);
+    console.error(' Error fetching integrations:', error);
     res.status(500).json({ success: false, message: 'Error fetching integrations' });
   }
 });
@@ -8944,15 +8944,15 @@ app.post('/api/admin/integrations', authenticateAdmin, async (req, res) => {
     
     // Uzunluk kontrolü ve log
     if (cleanApiKey) {
-      console.log('📝 Yeni Integration - API Key uzunluk:', cleanApiKey.length);
+      console.log(' Yeni Integration - API Key uzunluk:', cleanApiKey.length);
       if (cleanApiKey.length < 10) {
-        console.warn('⚠️ API Key çok kısa! Trendyol API Key genellikle 20+ karakter olur.');
+        console.warn(' API Key çok kısa! Trendyol API Key genellikle 20+ karakter olur.');
       }
     }
     if (cleanApiSecret) {
-      console.log('📝 Yeni Integration - API Secret uzunluk:', cleanApiSecret.length);
+      console.log(' Yeni Integration - API Secret uzunluk:', cleanApiSecret.length);
       if (cleanApiSecret.length < 10) {
-        console.warn('⚠️ API Secret çok kısa! Trendyol API Secret genellikle 30+ karakter olur.');
+        console.warn(' API Secret çok kısa! Trendyol API Secret genellikle 30+ karakter olur.');
       }
     }
     
@@ -8970,21 +8970,21 @@ app.post('/api/admin/integrations', authenticateAdmin, async (req, res) => {
     );
     if (verifyRows.length > 0) {
       const saved = verifyRows[0];
-      console.log('✅ Integration kaydedildi - Doğrulama:');
+      console.log(' Integration kaydedildi - Doğrulama:');
       console.log('  Kaydedilen API Key uzunluk:', saved.apiKey ? saved.apiKey.length : 0);
       console.log('  Kaydedilen API Secret uzunluk:', saved.apiSecret ? saved.apiSecret.length : 0);
       
       if (cleanApiKey && saved.apiKey && saved.apiKey.length !== cleanApiKey.length) {
-        console.error('❌ API Key uzunluğu eşleşmiyor! Veritabanına kaydedilirken kesilmiş olabilir.');
+        console.error(' API Key uzunluğu eşleşmiyor! Veritabanına kaydedilirken kesilmiş olabilir.');
       }
       if (cleanApiSecret && saved.apiSecret && saved.apiSecret.length !== cleanApiSecret.length) {
-        console.error('❌ API Secret uzunluğu eşleşmiyor! Veritabanına kaydedilirken kesilmiş olabilir.');
+        console.error(' API Secret uzunluğu eşleşmiyor! Veritabanına kaydedilirken kesilmiş olabilir.');
       }
     }
     
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating integration:', error);
+    console.error(' Error creating integration:', error);
     res.status(500).json({ success: false, message: 'Error creating integration' });
   }
 });
@@ -9005,9 +9005,9 @@ app.put('/api/admin/integrations/:id', authenticateAdmin, async (req, res) => {
     if (apiKey !== undefined) {
       let cleanApiKey = String(apiKey).trim();
       cleanApiKey = cleanApiKey.replace(/[\r\n\t]/g, '');
-      console.log('📝 Integration Güncelleme - API Key uzunluk:', cleanApiKey.length);
+      console.log(' Integration Güncelleme - API Key uzunluk:', cleanApiKey.length);
       if (cleanApiKey.length < 10) {
-        console.warn('⚠️ API Key çok kısa! Trendyol API Key genellikle 20+ karakter olur.');
+        console.warn(' API Key çok kısa! Trendyol API Key genellikle 20+ karakter olur.');
       }
       fields.push('apiKey = ?');
       params.push(cleanApiKey);
@@ -9015,9 +9015,9 @@ app.put('/api/admin/integrations/:id', authenticateAdmin, async (req, res) => {
     if (apiSecret !== undefined) {
       let cleanApiSecret = String(apiSecret).trim();
       cleanApiSecret = cleanApiSecret.replace(/[\r\n\t]/g, '');
-      console.log('📝 Integration Güncelleme - API Secret uzunluk:', cleanApiSecret.length);
+      console.log(' Integration Güncelleme - API Secret uzunluk:', cleanApiSecret.length);
       if (cleanApiSecret.length < 10) {
-        console.warn('⚠️ API Secret çok kısa! Trendyol API Secret genellikle 30+ karakter olur.');
+        console.warn(' API Secret çok kısa! Trendyol API Secret genellikle 30+ karakter olur.');
       }
       fields.push('apiSecret = ?');
       params.push(cleanApiSecret);
@@ -9041,14 +9041,14 @@ app.put('/api/admin/integrations/:id', authenticateAdmin, async (req, res) => {
     );
     if (verifyRows.length > 0) {
       const saved = verifyRows[0];
-      console.log('✅ Integration güncellendi - Doğrulama:');
+      console.log(' Integration güncellendi - Doğrulama:');
       console.log('  Güncellenen API Key uzunluk:', saved.apiKey ? saved.apiKey.length : 0);
       console.log('  Güncellenen API Secret uzunluk:', saved.apiSecret ? saved.apiSecret.length : 0);
     }
     
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating integration:', error);
+    console.error(' Error updating integration:', error);
     res.status(500).json({ success: false, message: 'Error updating integration' });
   }
 });
@@ -9060,7 +9060,7 @@ app.delete('/api/admin/integrations/:id', authenticateAdmin, async (req, res) =>
     await poolWrapper.execute('DELETE FROM integrations WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting integration:', error);
+    console.error(' Error deleting integration:', error);
     res.status(500).json({ success: false, message: 'Error deleting integration' });
   }
 });
@@ -9141,7 +9141,7 @@ async function convertProductToTrendyolFormat(product, integration) {
     
     return trendyolProduct;
   } catch (error) {
-    console.error('❌ Ürün dönüşüm hatası:', error);
+    console.error(' Ürün dönüşüm hatası:', error);
     throw error;
   }
 }
@@ -9260,7 +9260,7 @@ app.post('/api/admin/integrations/:id/test', authenticateAdmin, async (req, res)
     );
     res.json({ success: true, data: { success: testResult === 'success', message: testMessage } });
   } catch (error) {
-    console.error('❌ Error testing integration:', error);
+    console.error(' Error testing integration:', error);
     res.status(500).json({ success: false, message: 'Error testing integration' });
   }
 });
@@ -9363,14 +9363,14 @@ app.post('/api/admin/trendyol/transfer-product', authenticateAdmin, async (req, 
         });
       }
     } catch (error) {
-      console.error('❌ Trendyol API hatası:', error);
+      console.error(' Trendyol API hatası:', error);
       return res.status(500).json({ 
         success: false, 
         message: error.error || error.message || 'Trendyol API hatası' 
       });
     }
   } catch (error) {
-    console.error('❌ Error transferring product to Trendyol:', error);
+    console.error(' Error transferring product to Trendyol:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ürün transferi başarısız' 
@@ -9555,14 +9555,14 @@ app.get('/api/admin/trendyol/products', authenticateAdmin, async (req, res) => {
         });
       }
     } catch (error) {
-      console.error('❌ Trendyol API hatası:', error);
+      console.error(' Trendyol API hatası:', error);
       return res.status(500).json({ 
         success: false, 
         message: error.error || error.message || 'Trendyol API hatası' 
       });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol products:', error);
+    console.error(' Error fetching Trendyol products:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ürün listesi alınamadı' 
@@ -9614,7 +9614,7 @@ app.get('/api/admin/trendyol/brands', authenticateAdmin, async (req, res) => {
       return res.status(500).json({ success: false, message: error.error || error.message || 'Trendyol API hatası' });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol brands:', error);
+    console.error(' Error fetching Trendyol brands:', error);
     res.status(500).json({ success: false, message: error.message || 'Marka listesi alınamadı' });
   }
 });
@@ -9663,7 +9663,7 @@ app.get('/api/admin/trendyol/categories', authenticateAdmin, async (req, res) =>
       return res.status(500).json({ success: false, message: error.error || error.message || 'Trendyol API hatası' });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol categories:', error);
+    console.error(' Error fetching Trendyol categories:', error);
     res.status(500).json({ success: false, message: error.message || 'Kategori listesi alınamadı' });
   }
 });
@@ -9713,7 +9713,7 @@ app.get('/api/admin/trendyol/category-attributes', authenticateAdmin, async (req
       return res.status(500).json({ success: false, message: error.error || error.message || 'Trendyol API hatası' });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol category attributes:', error);
+    console.error(' Error fetching Trendyol category attributes:', error);
     res.status(500).json({ success: false, message: error.message || 'Kategori özellikleri alınamadı' });
   }
 });
@@ -9763,7 +9763,7 @@ app.get('/api/admin/trendyol/batch-request', authenticateAdmin, async (req, res)
       return res.status(500).json({ success: false, message: error.error || error.message || 'Trendyol API hatası' });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol batch request:', error);
+    console.error(' Error fetching Trendyol batch request:', error);
     res.status(500).json({ success: false, message: error.message || 'Toplu işlem kontrolü başarısız' });
   }
 });
@@ -9998,7 +9998,7 @@ app.post('/api/admin/trendyol/sync-products', authenticateAdmin, async (req, res
       }
     });
   } catch (error) {
-    console.error('❌ Error syncing Trendyol products:', error);
+    console.error(' Error syncing Trendyol products:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ürün senkronizasyonu başarısız' 
@@ -10064,7 +10064,7 @@ app.get('/api/admin/trendyol/products-db', authenticateAdmin, async (req, res) =
       }
     });
   } catch (error) {
-    console.error('❌ Error fetching Trendyol products from DB:', error);
+    console.error(' Error fetching Trendyol products from DB:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ürünler getirilemedi' 
@@ -10192,14 +10192,14 @@ app.post('/api/admin/trendyol/update-price-inventory', authenticateAdmin, async 
                 });
               }
             } catch (error) {
-              console.error('❌ Trendyol API hatası:', error);
+              console.error(' Trendyol API hatası:', error);
               return res.status(500).json({ 
                 success: false, 
                 message: error.error || error.message || 'Trendyol API hatası' 
               });
             }
   } catch (error) {
-    console.error('❌ Error updating price and inventory:', error);
+    console.error(' Error updating price and inventory:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Stok ve fiyat güncellemesi başarısız' 
@@ -10251,7 +10251,7 @@ app.get('/api/admin/trendyol/addresses', authenticateAdmin, async (req, res) => 
       return res.status(500).json({ success: false, message: error.error || error.message || 'Trendyol API hatası' });
     }
   } catch (error) {
-    console.error('❌ Error fetching Trendyol addresses:', error);
+    console.error(' Error fetching Trendyol addresses:', error);
     res.status(500).json({ success: false, message: error.message || 'Adres bilgileri alınamadı' });
   }
 });
@@ -10279,7 +10279,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
     }
     
     const integration = rows[0];
-    console.log('✅ Integration bulundu:');
+    console.log(' Integration bulundu:');
     console.log('  Provider:', integration.provider);
     console.log('  Type:', integration.type);
     
@@ -10314,7 +10314,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
     
     // Uzunluk uyarısı
     if (apiKeyLength < 10 || apiSecretLength < 10) {
-      console.error('❌ UYARI: API Key veya Secret çok kısa!');
+      console.error(' UYARI: API Key veya Secret çok kısa!');
       console.error('  Trendyol API Key genellikle 20+ karakter olur.');
       console.error('  Trendyol API Secret genellikle 30+ karakter olur.');
       console.error('  Lütfen Trendyol Partner Panel\'den tam değerleri kopyaladığınızdan emin olun.');
@@ -10378,7 +10378,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
 
     if (integration.provider === 'Trendyol') {
       const supplierId = config.supplierId;
-      console.log('📦 Trendyol Sipariş Çekme Başlatılıyor...');
+      console.log(' Trendyol Sipariş Çekme Başlatılıyor...');
       console.log('  Supplier ID:', supplierId);
       
       if (!supplierId) {
@@ -10390,7 +10390,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
       }
       
       const TrendyolAPIService = require('./services/trendyol-api');
-      console.log('📤 Trendyol API Servisi çağrılıyor...');
+      console.log(' Trendyol API Servisi çağrılıyor...');
       
       // Tüm durumlardaki siparişleri çekmek için tüm bilinen durumları tek tek çekiyoruz
       // Trendyol API'de bilinen durumlar: Created, Pending, Processing, Shipped, Delivered, Cancelled, Returned
@@ -10524,7 +10524,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
           return order;
         });
       } else {
-        console.log('✅ Tüm siparişlerde yeterli bilgi mevcut, detay çekmeye gerek yok');
+        console.log(' Tüm siparişlerde yeterli bilgi mevcut, detay çekmeye gerek yok');
       }
       
       ordersResponse = {
@@ -10541,7 +10541,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
       console.log(`  Toplam ${ordersWithDetails.length} sipariş (Created + Pending)`);
     } else if (integration.provider === 'HepsiBurada') {
       const merchantId = config.merchantId;
-      console.log('📦 HepsiBurada Sipariş Çekme Başlatılıyor...');
+      console.log(' HepsiBurada Sipariş Çekme Başlatılıyor...');
       console.log('  Merchant ID:', merchantId);
       
       if (!merchantId) {
@@ -10553,7 +10553,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
       }
       
       const HepsiBuradaAPIService = require('./services/hepsiburada-api');
-      console.log('📤 HepsiBurada API Servisi çağrılıyor...');
+      console.log(' HepsiBurada API Servisi çağrılıyor...');
       ordersResponse = await HepsiBuradaAPIService.getOrders(
         merchantId,
         integration.apiKey,
@@ -10577,7 +10577,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
       });
     }
     
-    console.log('✅ API Yanıtı başarılı, siparişler işleniyor...');
+    console.log(' API Yanıtı başarılı, siparişler işleniyor...');
     const marketplaceOrders = ordersResponse.data.content || ordersResponse.data || [];
     console.log('  Toplam sipariş sayısı:', marketplaceOrders.length);
     let syncedCount = 0;
@@ -10769,7 +10769,7 @@ app.post('/api/admin/integrations/:id/sync-orders', authenticateAdmin, async (re
       message: `${syncedCount} sipariş senkronize edildi, ${skippedCount} sipariş atlandı`
     });
   } catch (error) {
-    console.error('❌ Error syncing Trendyol orders:', error);
+    console.error(' Error syncing Trendyol orders:', error);
     res.status(500).json({ 
       success: false, 
       message: error.error || error.message || 'Sipariş senkronizasyonu başarısız' 
@@ -10802,10 +10802,10 @@ app.get('/api/admin/marketplace-orders', authenticateAdmin, async (req, res) => 
           ALTER TABLE marketplace_orders 
           ADD COLUMN cargoSlipPrintedAt TIMESTAMP NULL AFTER customerPhone
         `);
-        console.log('✅ cargoSlipPrintedAt sütunu eklendi');
+        console.log(' cargoSlipPrintedAt sütunu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
+      console.error(' cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
       // Hata olsa bile devam et
     }
 
@@ -10870,7 +10870,7 @@ app.get('/api/admin/marketplace-orders', authenticateAdmin, async (req, res) => 
 
     res.json({ success: true, data: orders, total, totalAmount });
   } catch (error) {
-    console.error('❌ Error getting marketplace orders:', error);
+    console.error(' Error getting marketplace orders:', error);
     res.status(500).json({ success: false, message: 'Error getting marketplace orders' });
   }
 });
@@ -11225,7 +11225,7 @@ app.post('/api/admin/hepsiburada-orders/import', authenticateAdmin, async (req, 
       }
     });
   } catch (error) {
-    console.error('❌ Error importing hepsiburada orders:', error);
+    console.error(' Error importing hepsiburada orders:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Sipariş import hatası'
@@ -11257,10 +11257,10 @@ app.get('/api/admin/hepsiburada-orders', authenticateAdmin, async (req, res) => 
           ALTER TABLE hepsiburada_orders 
           ADD COLUMN barcode VARCHAR(100) NULL AFTER cargoTrackingNumber
         `);
-        console.log('✅ barcode sütunu eklendi');
+        console.log(' barcode sütunu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ barcode sütunu kontrolü/ekleme hatası:', alterError);
+      console.error(' barcode sütunu kontrolü/ekleme hatası:', alterError);
       // Hata olsa bile devam et
     }
 
@@ -11281,10 +11281,10 @@ app.get('/api/admin/hepsiburada-orders', authenticateAdmin, async (req, res) => 
           ALTER TABLE hepsiburada_orders 
           ADD COLUMN cargoSlipPrintedAt TIMESTAMP NULL AFTER isReturned
         `);
-        console.log('✅ cargoSlipPrintedAt sütunu eklendi');
+        console.log(' cargoSlipPrintedAt sütunu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
+      console.error(' cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
       // Hata olsa bile devam et
     }
 
@@ -11383,7 +11383,7 @@ app.get('/api/admin/hepsiburada-orders', authenticateAdmin, async (req, res) => 
 
     res.json({ success: true, data: orders, total, totalAmount });
   } catch (error) {
-    console.error('❌ Error getting hepsiburada orders:', error);
+    console.error(' Error getting hepsiburada orders:', error);
     res.status(500).json({ success: false, message: 'Error getting hepsiburada orders' });
   }
 });
@@ -11402,7 +11402,7 @@ app.delete('/api/admin/hepsiburada-orders/:id', authenticateAdmin, async (req, r
 
     res.json({ success: true, message: 'Sipariş başarıyla silindi' });
   } catch (error) {
-    console.error('❌ Error deleting hepsiburada order:', error);
+    console.error(' Error deleting hepsiburada order:', error);
     res.status(500).json({ success: false, message: 'Sipariş silinirken hata oluştu' });
   }
 });
@@ -11685,7 +11685,7 @@ app.post('/api/admin/ticimax-orders/import', authenticateAdmin, multer({ storage
       }
     });
   } catch (error) {
-    console.error('❌ Error importing ticimax orders:', error);
+    console.error(' Error importing ticimax orders:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Sipariş import hatası'
@@ -11758,7 +11758,7 @@ app.get('/api/admin/ticimax-orders', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: orders, total, totalAmount });
   } catch (error) {
-    console.error('❌ Error getting ticimax orders:', error);
+    console.error(' Error getting ticimax orders:', error);
     res.status(500).json({ success: false, message: 'Error getting ticimax orders' });
   }
 });
@@ -11776,7 +11776,7 @@ app.delete('/api/admin/ticimax-orders/:id', authenticateAdmin, async (req, res) 
 
     res.json({ success: true, message: 'Sipariş başarıyla silindi' });
   } catch (error) {
-    console.error('❌ Error deleting ticimax order:', error);
+    console.error(' Error deleting ticimax order:', error);
     res.status(500).json({ success: false, message: 'Sipariş silinirken hata oluştu' });
   }
 });
@@ -11784,13 +11784,13 @@ app.delete('/api/admin/ticimax-orders/:id', authenticateAdmin, async (req, res) 
 // Multer error handler - endpoint'lerden önce tanımlanmalı
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    console.error('❌ Multer error:', err);
+    console.error(' Multer error:', err);
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ success: false, message: 'Dosya boyutu çok büyük (maksimum 50MB)' });
     }
     return res.status(400).json({ success: false, message: 'Dosya yükleme hatası: ' + err.message });
   } else if (err) {
-    console.error('❌ File upload error:', err);
+    console.error(' File upload error:', err);
     return res.status(400).json({ success: false, message: err.message || 'Dosya yükleme hatası' });
   }
   next();
@@ -11824,7 +11824,7 @@ app.get('/api/admin/invoices', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching invoices:', error);
+    console.error(' Error fetching invoices:', error);
     res.status(500).json({ success: false, message: 'Error fetching invoices' });
   }
 });
@@ -11896,7 +11896,7 @@ app.post('/api/admin/invoices', authenticateAdmin, invoiceUpload.single('file'),
       let actualPath = multerPath;
       if (!fs.existsSync(multerPath)) {
         // Multer path yoksa, expected path'i kontrol et
-        console.warn('⚠️ Multer path does not exist, checking expected path');
+        console.warn(' Multer path does not exist, checking expected path');
         actualPath = expectedPath;
       }
       
@@ -11905,11 +11905,11 @@ app.post('/api/admin/invoices', authenticateAdmin, invoiceUpload.single('file'),
       console.log('📄 Actual file path:', actualPath);
       
       if (!fileExists) {
-        console.error('❌ File was not saved to disk!');
-        console.error('❌ Multer path:', multerPath);
-        console.error('❌ Expected path:', expectedPath);
-        console.error('❌ Directory exists:', fs.existsSync(invoicesDir));
-        console.error('❌ Directory is writable:', (() => {
+        console.error(' File was not saved to disk!');
+        console.error(' Multer path:', multerPath);
+        console.error(' Expected path:', expectedPath);
+        console.error(' Directory exists:', fs.existsSync(invoicesDir));
+        console.error(' Directory is writable:', (() => {
           try {
             fs.accessSync(invoicesDir, fs.constants.W_OK);
             return true;
@@ -11934,14 +11934,14 @@ app.post('/api/admin/invoices', authenticateAdmin, invoiceUpload.single('file'),
       fileName = req.decodedOriginalName || req.file.originalname;
       fileSize = req.file.size;
       
-      console.log('✅ File uploaded successfully:', {
+      console.log(' File uploaded successfully:', {
         filePath,
         fileName,
         fileSize,
         actualPath
       });
     } else {
-      console.warn('⚠️ No file in request');
+      console.warn(' No file in request');
     }
 
     const [result] = await poolWrapper.execute(
@@ -11974,13 +11974,13 @@ app.post('/api/admin/invoices', authenticateAdmin, invoiceUpload.single('file'),
 
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating invoice:', error);
+    console.error(' Error creating invoice:', error);
     // Yüklenen dosyayı sil
     if (req.file) {
       try {
         fs.unlinkSync(path.join(invoicesDir, req.file.filename));
       } catch (unlinkError) {
-        console.error('❌ Error deleting uploaded file:', unlinkError);
+        console.error(' Error deleting uploaded file:', unlinkError);
       }
     }
     res.status(500).json({ success: false, message: 'Error creating invoice' });
@@ -12056,7 +12056,7 @@ app.put('/api/admin/invoices/:id', authenticateAdmin, invoiceUpload.single('file
             fs.unlinkSync(oldFilePath);
           }
         } catch (unlinkError) {
-          console.error('❌ Error deleting old file:', unlinkError);
+          console.error(' Error deleting old file:', unlinkError);
         }
       }
 
@@ -12075,7 +12075,7 @@ app.put('/api/admin/invoices/:id', authenticateAdmin, invoiceUpload.single('file
       let actualPath = multerPath;
       if (!fs.existsSync(multerPath)) {
         // Multer path yoksa, expected path'i kontrol et
-        console.warn('⚠️ Multer path does not exist, checking expected path');
+        console.warn(' Multer path does not exist, checking expected path');
         actualPath = expectedPath;
       }
       
@@ -12084,11 +12084,11 @@ app.put('/api/admin/invoices/:id', authenticateAdmin, invoiceUpload.single('file
       console.log('📄 Actual file path:', actualPath);
       
       if (!fileExists) {
-        console.error('❌ File was not saved to disk!');
-        console.error('❌ Multer path:', multerPath);
-        console.error('❌ Expected path:', expectedPath);
-        console.error('❌ Directory exists:', fs.existsSync(invoicesDir));
-        console.error('❌ Directory is writable:', (() => {
+        console.error(' File was not saved to disk!');
+        console.error(' Multer path:', multerPath);
+        console.error(' Expected path:', expectedPath);
+        console.error(' Directory exists:', fs.existsSync(invoicesDir));
+        console.error(' Directory is writable:', (() => {
           try {
             fs.accessSync(invoicesDir, fs.constants.W_OK);
             return true;
@@ -12114,7 +12114,7 @@ app.put('/api/admin/invoices/:id', authenticateAdmin, invoiceUpload.single('file
       fields.push('fileName = ?'); params.push(updatedFileName);
       fields.push('fileSize = ?'); params.push(req.file.size);
       
-      console.log('✅ File uploaded successfully:', {
+      console.log(' File uploaded successfully:', {
         filePath,
         fileName: req.file.originalname,
         fileSize: req.file.size,
@@ -12136,12 +12136,12 @@ app.put('/api/admin/invoices/:id', authenticateAdmin, invoiceUpload.single('file
 
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating invoice:', error);
+    console.error(' Error updating invoice:', error);
     if (req.file) {
       try {
         fs.unlinkSync(path.join(invoicesDir, req.file.filename));
       } catch (unlinkError) {
-        console.error('❌ Error deleting uploaded file:', unlinkError);
+        console.error(' Error deleting uploaded file:', unlinkError);
       }
     }
     res.status(500).json({ success: false, message: 'Error updating invoice' });
@@ -12166,14 +12166,14 @@ app.delete('/api/admin/invoices/:id', authenticateAdmin, async (req, res) => {
           fs.unlinkSync(filePath);
         }
       } catch (unlinkError) {
-        console.error('❌ Error deleting invoice file:', unlinkError);
+        console.error(' Error deleting invoice file:', unlinkError);
       }
     }
 
     await poolWrapper.execute('DELETE FROM invoices WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting invoice:', error);
+    console.error(' Error deleting invoice:', error);
     res.status(500).json({ success: false, message: 'Error deleting invoice' });
   }
 });
@@ -12217,7 +12217,7 @@ app.get('/api/admin/invoices/:id/download', authenticateAdmin, async (req, res) 
         if (fs.existsSync(altPath2)) {
           filePath = altPath2;
         } else {
-          console.error('❌ Invoice file not found at any path:', {
+          console.error(' Invoice file not found at any path:', {
             original: rows[0].filePath,
             normalized: filePath,
             tried1: altPath1,
@@ -12237,7 +12237,7 @@ app.get('/api/admin/invoices/:id/download', authenticateAdmin, async (req, res) 
     res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
     res.sendFile(filePath);
   } catch (error) {
-    console.error('❌ Error downloading invoice:', error);
+    console.error(' Error downloading invoice:', error);
     res.status(500).json({ success: false, message: 'Error downloading invoice' });
   }
 });
@@ -12262,7 +12262,7 @@ app.get('/api/invoices/share/:token', async (req, res) => {
     const invoice = rows[0];
     res.json({ success: true, data: invoice });
   } catch (error) {
-    console.error('❌ Error fetching shared invoice:', error);
+    console.error(' Error fetching shared invoice:', error);
     res.status(500).json({ success: false, message: 'Error fetching invoice' });
   }
 });
@@ -12304,7 +12304,7 @@ app.get('/api/invoices/share/:token/download', async (req, res) => {
         if (fs.existsSync(altPath2)) {
           filePath = altPath2;
         } else {
-          console.error('❌ Invoice file not found at any path:', {
+          console.error(' Invoice file not found at any path:', {
             original: rows[0].filePath,
             normalized: filePath,
             tried1: altPath1,
@@ -12324,7 +12324,7 @@ app.get('/api/invoices/share/:token/download', async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
     res.sendFile(filePath);
   } catch (error) {
-    console.error('❌ Error downloading invoice:', error);
+    console.error(' Error downloading invoice:', error);
     res.status(500).json({ success: false, message: 'Error downloading invoice' });
   }
 });
@@ -12381,7 +12381,7 @@ app.get('/api/admin/fonts/:fontName', async (req, res) => {
       res.status(404).json({ success: false, message: 'Font dosyası bulunamadı' })
     }
   } catch (error) {
-    console.error('❌ Font endpoint hatası:', error)
+    console.error(' Font endpoint hatası:', error)
     res.status(500).json({ success: false, message: 'Font yüklenemedi' })
   }
 })
@@ -12461,14 +12461,14 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
             // Public share URL'ine çevir
             const baseUrl = `${req.protocol}://${req.get('host')}`;
             finalInvoiceUrl = `${baseUrl}/api/invoices/share/${invoiceRows[0].shareToken}/download`;
-            console.log('✅ Invoice URL converted to public share URL:', finalInvoiceUrl);
+            console.log(' Invoice URL converted to public share URL:', finalInvoiceUrl);
           } else {
-            console.warn('⚠️ Share token not found for invoice ID:', invoiceId);
+            console.warn(' Share token not found for invoice ID:', invoiceId);
             // Share token yoksa, orijinal URL'i kullan (hata olabilir ama devam et)
             finalInvoiceUrl = invoiceUrl;
           }
         } catch (error) {
-          console.error('❌ Error converting invoice URL to share URL:', error);
+          console.error(' Error converting invoice URL to share URL:', error);
           // Hata durumunda orijinal URL'i kullan
           finalInvoiceUrl = invoiceUrl;
         }
@@ -12477,7 +12477,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
         finalInvoiceUrl = invoiceUrl;
       }
     } else {
-      console.warn('⚠️ invoiceUrl is empty or invalid');
+      console.warn(' invoiceUrl is empty or invalid');
       finalInvoiceUrl = null;
     }
     
@@ -12488,7 +12488,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     try {
       PDFDocument = require('pdfkit');
     } catch (error) {
-      console.error('❌ PDFKit yüklenemedi:', error);
+      console.error(' PDFKit yüklenemedi:', error);
       return res.status(500).json({ 
         success: false, 
         message: 'PDFKit kütüphanesi bulunamadı. Lütfen npm install pdfkit yapın.' 
@@ -12516,7 +12516,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
         customFontPath = dejaVuPath;
         customFontAvailable = true;
         customFontName = 'DejaVuSans';
-        console.log('✅ DejaVuSans fontu bulundu:', dejaVuPath);
+        console.log(' DejaVuSans fontu bulundu:', dejaVuPath);
         break;
       }
     }
@@ -12536,7 +12536,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
           customFontPath = robotoPath;
           customFontAvailable = true;
           customFontName = 'Roboto';
-          console.log('✅ Roboto fontu bulundu:', robotoPath);
+          console.log(' Roboto fontu bulundu:', robotoPath);
           break;
         }
       }
@@ -12544,11 +12544,11 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     
     // 3. Hiçbiri bulunamazsa uyarı ver
     if (!customFontAvailable) {
-      console.warn('⚠️ DejaVuSans veya Roboto fontu bulunamadı');
-      console.warn('⚠️ Font dosyalarını şu konumlara ekleyebilirsiniz:');
+      console.warn(' DejaVuSans veya Roboto fontu bulunamadı');
+      console.warn(' Font dosyalarını şu konumlara ekleyebilirsiniz:');
       console.warn('   - server/Fonts/DejaVuSans.ttf');
       console.warn('   - server/Fonts/Roboto-Regular.ttf');
-      console.warn('⚠️ Helvetica fallback kullanılacak');
+      console.warn(' Helvetica fallback kullanılacak');
     } else {
       // Font dosyası boyutunu kontrol et
       const fontStats = fs.statSync(customFontPath);
@@ -12565,7 +12565,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     try {
       QRCode = require('qrcode');
     } catch (error) {
-      console.error('❌ QRCode yüklenemedi:', error);
+      console.error(' QRCode yüklenemedi:', error);
       return res.status(500).json({ 
         success: false, 
         message: 'QRCode kütüphanesi bulunamadı. Lütfen npm install qrcode yapın.' 
@@ -12577,7 +12577,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     try {
       bwipjs = require('bwip-js');
     } catch (error) {
-      console.error('❌ bwip-js yüklenemedi:', error);
+      console.error(' bwip-js yüklenemedi:', error);
       // Fallback: QR kod kullanılacak
       bwipjs = null;
     }
@@ -12627,7 +12627,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
       }
     } else {
       doc.font('Helvetica'); // Fallback
-      console.warn('⚠️ Özel font bulunamadı, Helvetica kullanılıyor');
+      console.warn(' Özel font bulunamadı, Helvetica kullanılıyor');
     }
     
     // Font path'ini global olarak sakla (tüm kodda kullanmak için)
@@ -12646,12 +12646,12 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
         doc.font(fontPathOrName);
         return true;
       } catch (error) {
-        console.warn('⚠️ Font ayarlanamadı, Helvetica kullanılıyor:', error.message);
+        console.warn(' Font ayarlanamadı, Helvetica kullanılıyor:', error.message);
         try {
           doc.font('Helvetica');
           return false;
         } catch (fallbackError) {
-          console.error('❌ Helvetica font da ayarlanamadı:', fallbackError.message);
+          console.error(' Helvetica font da ayarlanamadı:', fallbackError.message);
           return false;
         }
       }
@@ -12712,7 +12712,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
           normalized: c.normalize('NFC') !== c || c.normalize('NFD') !== c
         })) : [];
         
-        console.error('❌ Text encoding hatası:', {
+        console.error(' Text encoding hatası:', {
           error: error.message,
           text: textStr ? textStr.substring(0, 50) : 'null',
           x,
@@ -12725,7 +12725,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
           setFontSafely('Helvetica');
           doc.text(String(text), x, y, options);
         } catch (fallbackError) {
-          console.error('❌ Fallback text ekleme de başarısız:', fallbackError.message);
+          console.error(' Fallback text ekleme de başarısız:', fallbackError.message);
         }
       }
     };
@@ -12750,12 +12750,12 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
           width: logoWidth,
           height: logoHeight
         });
-        console.log('✅ Logo added to header');
+        console.log(' Logo added to header');
       } else {
-        console.warn('⚠️ Logo dosyası bulunamadı:', logoPath);
+        console.warn(' Logo dosyası bulunamadı:', logoPath);
       }
     } catch (error) {
-      console.error('❌ Logo ekleme hatası:', error);
+      console.error(' Logo ekleme hatası:', error);
       // Hata olsa bile devam et
     }
     
@@ -12770,25 +12770,25 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     let qrCodeDataUrl;
     
     // Debug: QR kod için kullanılacak URL'i kontrol et
-    console.log('📱 QR Code Debug:');
+    console.log(' QR Code Debug:');
     console.log('  - Original invoiceUrl:', invoiceUrl);
     console.log('  - Final invoiceUrl:', finalInvoiceUrl);
     
     // finalInvoiceUrl boş veya geçersizse, invoiceUrl'i tekrar kontrol et
     let qrCodeUrl = finalInvoiceUrl;
     if (!qrCodeUrl || qrCodeUrl.trim() === '') {
-      console.warn('⚠️ finalInvoiceUrl is empty, checking invoiceUrl');
+      console.warn(' finalInvoiceUrl is empty, checking invoiceUrl');
       if (invoiceUrl && invoiceUrl.trim() !== '') {
         qrCodeUrl = invoiceUrl;
       } else {
-        console.error('❌ Both invoiceUrl and finalInvoiceUrl are empty!');
+        console.error(' Both invoiceUrl and finalInvoiceUrl are empty!');
         qrCodeUrl = 'https://example.com'; // Fallback
       }
     }
     
     // URL formatını kontrol et (http veya https ile başlamalı)
     if (!qrCodeUrl.startsWith('http://') && !qrCodeUrl.startsWith('https://')) {
-      console.warn('⚠️ QR code URL does not start with http/https:', qrCodeUrl);
+      console.warn(' QR code URL does not start with http/https:', qrCodeUrl);
       // Eğer sadece path ise, base URL ekle
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       qrCodeUrl = `${baseUrl}${qrCodeUrl.startsWith('/') ? '' : '/'}${qrCodeUrl}`;
@@ -12809,12 +12809,12 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
         },
         type: 'image/png' // PNG formatı daha iyi kalite sağlar
       });
-      console.log('✅ QR code generated successfully with high quality settings');
+      console.log(' QR code generated successfully with high quality settings');
       console.log('  - Size: 300x300px');
       console.log('  - Error Correction: H (High)');
       console.log('  - Margin: 4');
     } catch (error) {
-      console.error('❌ QR kod oluşturma hatası:', error);
+      console.error(' QR kod oluşturma hatası:', error);
       qrCodeDataUrl = null;
     }
 
@@ -12921,9 +12921,9 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
             width: qrSize, 
             height: qrSize
           });
-          console.log('✅ QR code image added to PDF successfully');
+          console.log(' QR code image added to PDF successfully');
         } catch (imageError) {
-          console.error('❌ Error adding QR code image to PDF:', imageError);
+          console.error(' Error adding QR code image to PDF:', imageError);
         }
         
         doc.fontSize(7)
@@ -12959,9 +12959,9 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
             width: qrSize, 
             height: qrSize
           });
-          console.log('✅ QR code image added to PDF successfully');
+          console.log(' QR code image added to PDF successfully');
         } catch (imageError) {
-          console.error('❌ Error adding QR code image to PDF:', imageError);
+          console.error(' Error adding QR code image to PDF:', imageError);
         }
         
         doc.fontSize(7)
@@ -13181,9 +13181,9 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
               textsize: 10
             });
             barcodeImage = barcodeBuffer;
-            console.log('✅ EAN-128 barkod oluşturuldu:', barcodeText, '(Uzunluk:', barcodeText.length, ')');
+            console.log(' EAN-128 barkod oluşturuldu:', barcodeText, '(Uzunluk:', barcodeText.length, ')');
           } catch (error) {
-            console.error('❌ EAN-128 barkod oluşturma hatası:', error);
+            console.error(' EAN-128 barkod oluşturma hatası:', error);
             barcodeImage = null;
           }
         }
@@ -13267,9 +13267,9 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
               textsize: 10
             });
             barcodeImage = barcodeBuffer;
-            console.log('✅ EAN-16 barkod oluşturuldu (Referans Numarası):', referenceNumber);
+            console.log(' EAN-16 barkod oluşturuldu (Referans Numarası):', referenceNumber);
           } catch (error) {
-            console.error('❌ EAN-16 barkod oluşturma hatası:', error);
+            console.error(' EAN-16 barkod oluşturma hatası:', error);
             barcodeImage = null;
           }
         }
@@ -13362,7 +13362,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
             });
             barcodeImage = barcodeBuffer;
           } catch (error) {
-            console.error('❌ EAN-128 barkod oluşturma hatası:', error);
+            console.error(' EAN-128 barkod oluşturma hatası:', error);
             barcodeImage = null;
           }
         }
@@ -13485,7 +13485,7 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
         res.setHeader('Content-Disposition', `attachment; filename="kargo-fisi-${orderId}.pdf"`);
         res.send(pdfBuffer);
       } catch (dbError) {
-        console.error('❌ Veritabanı güncelleme hatası:', dbError);
+        console.error(' Veritabanı güncelleme hatası:', dbError);
         // Veritabanı hatası olsa bile PDF'i gönder
         if (!res.headersSent) {
           const pdfBuffer = Buffer.concat(chunks);
@@ -13499,8 +13499,8 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
     doc.end();
 
   } catch (error) {
-    console.error('❌ Kargo fişi oluşturma hatası:', error);
-    console.error('❌ Hata detayları:', {
+    console.error(' Kargo fişi oluşturma hatası:', error);
+    console.error(' Hata detayları:', {
       message: error.message,
       stack: error.stack,
       body: req.body
@@ -13538,7 +13538,7 @@ app.get('/api/admin/opportunities', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching opportunities:', error);
+    console.error(' Error fetching opportunities:', error);
     res.status(500).json({ success: false, message: 'Error fetching opportunities' });
   }
 });
@@ -13553,7 +13553,7 @@ app.post('/api/admin/opportunities', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating opportunity:', error);
+    console.error(' Error creating opportunity:', error);
     res.status(500).json({ success: false, message: 'Error creating opportunity' });
   }
 });
@@ -13570,7 +13570,7 @@ app.put('/api/admin/opportunities/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute(`UPDATE crm_deals SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating opportunity:', error);
+    console.error(' Error updating opportunity:', error);
     res.status(500).json({ success: false, message: 'Error updating opportunity' });
   }
 });
@@ -13581,7 +13581,7 @@ app.delete('/api/admin/opportunities/:id', authenticateAdmin, async (req, res) =
     await poolWrapper.execute('DELETE FROM crm_deals WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting opportunity:', error);
+    console.error(' Error deleting opportunity:', error);
     res.status(500).json({ success: false, message: 'Error deleting opportunity' });
   }
 });
@@ -13609,7 +13609,7 @@ app.get('/api/admin/activities', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching activities:', error);
+    console.error(' Error fetching activities:', error);
     res.status(500).json({ success: false, message: 'Error fetching activities' });
   }
 });
@@ -13626,7 +13626,7 @@ app.post('/api/admin/activities', authenticateAdmin, async (req, res) => {
     const [newActivity] = await poolWrapper.execute('SELECT * FROM crm_activities WHERE id = ?', [result.insertId]);
     res.json({ success: true, data: newActivity[0] });
   } catch (error) {
-    console.error('❌ Error creating activity:', error);
+    console.error(' Error creating activity:', error);
     res.status(500).json({ success: false, message: 'Error creating activity' });
   }
 });
@@ -13644,7 +13644,7 @@ app.put('/api/admin/activities/:id', authenticateAdmin, async (req, res) => {
     const [updated] = await poolWrapper.execute('SELECT * FROM crm_activities WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true, data: updated[0] });
   } catch (error) {
-    console.error('❌ Error updating activity:', error);
+    console.error(' Error updating activity:', error);
     res.status(500).json({ success: false, message: 'Error updating activity' });
   }
 });
@@ -13655,7 +13655,7 @@ app.delete('/api/admin/activities/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_activities WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting activity:', error);
+    console.error(' Error deleting activity:', error);
     res.status(500).json({ success: false, message: 'Error deleting activity' });
   }
 });
@@ -13668,7 +13668,7 @@ app.get('/api/admin/pipeline', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching pipeline:', error);
+    console.error(' Error fetching pipeline:', error);
     res.status(500).json({ success: false, message: 'Error fetching pipeline' });
   }
 });
@@ -13683,7 +13683,7 @@ app.post('/api/admin/pipeline', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { id: result.insertId } });
   } catch (error) {
-    console.error('❌ Error creating pipeline stage:', error);
+    console.error(' Error creating pipeline stage:', error);
     res.status(500).json({ success: false, message: 'Error creating pipeline stage' });
   }
 });
@@ -13700,7 +13700,7 @@ app.put('/api/admin/pipeline/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute(`UPDATE crm_pipeline_stages SET ${fields.join(', ')} WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error updating pipeline stage:', error);
+    console.error(' Error updating pipeline stage:', error);
     res.status(500).json({ success: false, message: 'Error updating pipeline stage' });
   }
 });
@@ -13711,7 +13711,7 @@ app.delete('/api/admin/pipeline/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_pipeline_stages WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting pipeline stage:', error);
+    console.error(' Error deleting pipeline stage:', error);
     res.status(500).json({ success: false, message: 'Error deleting pipeline stage' });
   }
 });
@@ -13753,7 +13753,7 @@ app.get('/api/admin/crm/leads', authenticateAdmin, async (req, res) => {
     
     // GÜVENLİK: Production'da stack trace loglanmaz
     if (process.env.NODE_ENV !== 'production') {
-      console.error('❌ Error fetching CRM leads:', error);
+      console.error(' Error fetching CRM leads:', error);
       console.error('Error stack:', error.stack);
     }
     
@@ -13772,7 +13772,7 @@ app.get('/api/admin/crm/leads/:id', authenticateAdmin, async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Lead not found' });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error('❌ Error fetching lead:', error);
+    console.error(' Error fetching lead:', error);
     res.status(500).json({ success: false, message: 'Error fetching lead' });
   }
 });
@@ -13790,7 +13790,7 @@ app.post('/api/admin/crm/leads', authenticateAdmin, async (req, res) => {
     const [newLead] = await poolWrapper.execute('SELECT * FROM crm_leads WHERE id = ?', [result.insertId]);
     res.json({ success: true, data: newLead[0] });
   } catch (error) {
-    console.error('❌ Error creating CRM lead:', error);
+    console.error(' Error creating CRM lead:', error);
     res.status(500).json({ success: false, message: 'Error creating lead' });
   }
 });
@@ -13809,7 +13809,7 @@ app.put('/api/admin/crm/leads/:id', authenticateAdmin, async (req, res) => {
     const [updated] = await poolWrapper.execute('SELECT * FROM crm_leads WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true, data: updated[0] });
   } catch (error) {
-    console.error('❌ Error updating CRM lead:', error);
+    console.error(' Error updating CRM lead:', error);
     res.status(500).json({ success: false, message: 'Error updating lead' });
   }
 });
@@ -13821,7 +13821,7 @@ app.delete('/api/admin/crm/leads/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_leads WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting CRM lead:', error);
+    console.error(' Error deleting CRM lead:', error);
     res.status(500).json({ success: false, message: 'Error deleting lead' });
   }
 });
@@ -13871,7 +13871,7 @@ app.post('/api/admin/crm/leads/:id/convert', authenticateAdmin, async (req, res)
     const [contactRows] = await poolWrapper.execute('SELECT * FROM crm_contacts WHERE id = ?', [contactId]);
     res.json({ success: true, data: { contact: contactRows[0], opportunity } });
   } catch (error) {
-    console.error('❌ Error converting lead:', error);
+    console.error(' Error converting lead:', error);
     res.status(500).json({ success: false, message: 'Error converting lead' });
   }
 });
@@ -13889,7 +13889,7 @@ app.get('/api/admin/crm/leads/search', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error searching leads:', error);
+    console.error(' Error searching leads:', error);
     res.status(500).json({ success: false, message: 'Error searching leads' });
   }
 });
@@ -13957,7 +13957,7 @@ app.post('/api/admin/google-maps/scraped-data', authenticateAdmin, async (req, r
       } 
     });
   } catch (error) {
-    console.error('❌ Error saving Google Maps scraped data:', error);
+    console.error(' Error saving Google Maps scraped data:', error);
     res.status(500).json({ success: false, message: 'Error saving scraped data' });
   }
 });
@@ -14016,7 +14016,7 @@ app.get('/api/admin/google-maps/scraped-data', authenticateAdmin, async (req, re
       } 
     });
   } catch (error) {
-    console.error('❌ Error fetching Google Maps scraped data:', error);
+    console.error(' Error fetching Google Maps scraped data:', error);
     res.status(500).json({ success: false, message: 'Error fetching scraped data' });
   }
 });
@@ -14033,7 +14033,7 @@ app.delete('/api/admin/google-maps/scraped-data/:id', authenticateAdmin, async (
     
     res.json({ success: true, message: 'Record deleted' });
   } catch (error) {
-    console.error('❌ Error deleting scraped data:', error);
+    console.error(' Error deleting scraped data:', error);
     res.status(500).json({ success: false, message: 'Error deleting record' });
   }
 });
@@ -14074,7 +14074,7 @@ app.post('/api/admin/google-maps/scraped-data/:id/convert-to-lead', authenticate
     
     res.json({ success: true, data: newLead[0] });
   } catch (error) {
-    console.error('❌ Error converting to lead:', error);
+    console.error(' Error converting to lead:', error);
     res.status(500).json({ success: false, message: 'Error converting to lead' });
   }
 });
@@ -14260,7 +14260,7 @@ app.post('/api/admin/seo/analyze', authenticateAdmin, async (req, res) => {
     
     res.json({ success: true, data: analysis });
   } catch (error) {
-    console.error('❌ Error analyzing SEO:', error);
+    console.error(' Error analyzing SEO:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'SEO analizi yapılamadı. URL erişilebilir mi kontrol edin.' 
@@ -14323,7 +14323,7 @@ app.get('/api/admin/crm/opportunities', authenticateAdmin, async (req, res) => {
     
     // GÜVENLİK: Production'da stack trace loglanmaz
     if (process.env.NODE_ENV !== 'production') {
-      console.error('❌ Error fetching CRM opportunities:', error);
+      console.error(' Error fetching CRM opportunities:', error);
       console.error('Error stack:', error.stack);
     }
     
@@ -14346,7 +14346,7 @@ app.get('/api/admin/crm/opportunities/:id', authenticateAdmin, async (req, res) 
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Opportunity not found' });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error('❌ Error fetching opportunity:', error);
+    console.error(' Error fetching opportunity:', error);
     res.status(500).json({ success: false, message: 'Error fetching opportunity' });
   }
 });
@@ -14383,7 +14383,7 @@ app.post('/api/admin/crm/opportunities', authenticateAdmin, async (req, res) => 
     );
     res.json({ success: true, data: newOpp[0] });
   } catch (error) {
-    console.error('❌ Error creating CRM opportunity:', error);
+    console.error(' Error creating CRM opportunity:', error);
     res.status(500).json({ success: false, message: 'Error creating opportunity' });
   }
 });
@@ -14429,7 +14429,7 @@ app.put('/api/admin/crm/opportunities/:id', authenticateAdmin, async (req, res) 
     );
     res.json({ success: true, data: updated[0] });
   } catch (error) {
-    console.error('❌ Error updating CRM opportunity:', error);
+    console.error(' Error updating CRM opportunity:', error);
     res.status(500).json({ success: false, message: 'Error updating opportunity' });
   }
 });
@@ -14441,7 +14441,7 @@ app.delete('/api/admin/crm/opportunities/:id', authenticateAdmin, async (req, re
     await poolWrapper.execute('DELETE FROM crm_deals WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting CRM opportunity:', error);
+    console.error(' Error deleting CRM opportunity:', error);
     res.status(500).json({ success: false, message: 'Error deleting opportunity' });
   }
 });
@@ -14460,7 +14460,7 @@ app.get('/api/admin/crm/opportunities/search', authenticateAdmin, async (req, re
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error searching opportunities:', error);
+    console.error(' Error searching opportunities:', error);
     res.status(500).json({ success: false, message: 'Error searching opportunities' });
   }
 });
@@ -14496,7 +14496,7 @@ app.get('/api/admin/crm/tasks', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: { tasks: rows, total: countRows[0].total } });
   } catch (error) {
-    console.error('❌ Error fetching CRM tasks:', error);
+    console.error(' Error fetching CRM tasks:', error);
     console.error('Error stack:', error.stack);
     res.status(500).json({ 
       success: false, 
@@ -14516,7 +14516,7 @@ app.get('/api/admin/crm/tasks/:id', authenticateAdmin, async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Task not found' });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error('❌ Error fetching task:', error);
+    console.error(' Error fetching task:', error);
     res.status(500).json({ success: false, message: 'Error fetching task' });
   }
 });
@@ -14534,7 +14534,7 @@ app.post('/api/admin/crm/tasks', authenticateAdmin, async (req, res) => {
     const [newTask] = await poolWrapper.execute('SELECT * FROM crm_tasks WHERE id = ?', [result.insertId]);
     res.json({ success: true, data: newTask[0] });
   } catch (error) {
-    console.error('❌ Error creating CRM task:', error);
+    console.error(' Error creating CRM task:', error);
     res.status(500).json({ success: false, message: 'Error creating task' });
   }
 });
@@ -14553,7 +14553,7 @@ app.put('/api/admin/crm/tasks/:id', authenticateAdmin, async (req, res) => {
     const [updated] = await poolWrapper.execute('SELECT * FROM crm_tasks WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true, data: updated[0] });
   } catch (error) {
-    console.error('❌ Error updating CRM task:', error);
+    console.error(' Error updating CRM task:', error);
     res.status(500).json({ success: false, message: 'Error updating task' });
   }
 });
@@ -14565,7 +14565,7 @@ app.delete('/api/admin/crm/tasks/:id', authenticateAdmin, async (req, res) => {
     await poolWrapper.execute('DELETE FROM crm_tasks WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting CRM task:', error);
+    console.error(' Error deleting CRM task:', error);
     res.status(500).json({ success: false, message: 'Error deleting task' });
   }
 });
@@ -14585,7 +14585,7 @@ app.get('/api/admin/crm/contacts', authenticateAdmin, async (req, res) => {
     const [countRows] = await poolWrapper.execute('SELECT COUNT(*) as total FROM crm_contacts WHERE tenantId = ?', [tenantId]);
     res.json({ success: true, data: { contacts: rows, total: countRows[0].total } });
   } catch (error) {
-    console.error('❌ Error fetching CRM contacts:', error);
+    console.error(' Error fetching CRM contacts:', error);
     res.status(500).json({ success: false, message: 'Error fetching contacts' });
   }
 });
@@ -14600,7 +14600,7 @@ app.get('/api/admin/crm/contacts/:id', authenticateAdmin, async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Contact not found' });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error('❌ Error fetching contact:', error);
+    console.error(' Error fetching contact:', error);
     res.status(500).json({ success: false, message: 'Error fetching contact' });
   }
 });
@@ -14618,7 +14618,7 @@ app.post('/api/admin/crm/contacts', authenticateAdmin, async (req, res) => {
     const [newContact] = await poolWrapper.execute('SELECT * FROM crm_contacts WHERE id = ?', [result.insertId]);
     res.json({ success: true, data: newContact[0] });
   } catch (error) {
-    console.error('❌ Error creating CRM contact:', error);
+    console.error(' Error creating CRM contact:', error);
     res.status(500).json({ success: false, message: 'Error creating contact' });
   }
 });
@@ -14646,7 +14646,7 @@ app.put('/api/admin/crm/contacts/:id', authenticateAdmin, async (req, res) => {
     const [updated] = await poolWrapper.execute('SELECT * FROM crm_contacts WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true, data: updated[0] });
   } catch (error) {
-    console.error('❌ Error updating CRM contact:', error);
+    console.error(' Error updating CRM contact:', error);
     res.status(500).json({ success: false, message: 'Error updating contact' });
   }
 });
@@ -14658,7 +14658,7 @@ app.delete('/api/admin/crm/contacts/:id', authenticateAdmin, async (req, res) =>
     await poolWrapper.execute('DELETE FROM crm_contacts WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('❌ Error deleting CRM contact:', error);
+    console.error(' Error deleting CRM contact:', error);
     res.status(500).json({ success: false, message: 'Error deleting contact' });
   }
 });
@@ -14676,7 +14676,7 @@ app.get('/api/admin/crm/contacts/search', authenticateAdmin, async (req, res) =>
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error searching contacts:', error);
+    console.error(' Error searching contacts:', error);
     res.status(500).json({ success: false, message: 'Error searching contacts' });
   }
 });
@@ -14713,7 +14713,7 @@ app.get('/api/admin/crm/stats', authenticateAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error fetching CRM stats:', error);
+    console.error(' Error fetching CRM stats:', error);
     res.status(500).json({ success: false, message: 'Error fetching CRM stats' });
   }
 });
@@ -14733,7 +14733,7 @@ app.get('/api/admin/crm/pipeline', authenticateAdmin, async (req, res) => {
     );
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error fetching CRM pipeline:', error);
+    console.error(' Error fetching CRM pipeline:', error);
     res.status(500).json({ success: false, message: 'Error fetching pipeline' });
   }
 });
@@ -14751,7 +14751,7 @@ app.get('/api/admin/warehouses', authenticateAdmin, async (req, res) => {
       [tenantId]
     );
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ warehouses list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' warehouses list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/warehouses', authenticateAdmin, async (req, res) => {
   try {
@@ -14763,7 +14763,7 @@ app.post('/api/admin/warehouses', authenticateAdmin, async (req, res) => {
       [tenantId, name, code, address, isActive ? 1 : 0]
     );
     res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ warehouses create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' warehouses create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/warehouses/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -14774,14 +14774,14 @@ app.put('/api/admin/warehouses/:id', authenticateAdmin, async (req, res) => {
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE warehouses SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ warehouses update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' warehouses update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/warehouses/:id', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id);
     await poolWrapper.execute('DELETE FROM warehouses WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ warehouses delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' warehouses delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Warehouse Locations
@@ -14793,7 +14793,7 @@ app.get('/api/admin/warehouse-locations', authenticateAdmin, async (req, res) =>
     const [rows] = await poolWrapper.execute(
       `SELECT id, warehouseId, name, code, createdAt FROM warehouse_locations WHERE ${where.join(' AND ')} ORDER BY id DESC`, params);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ locations list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' locations list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/warehouse-locations', authenticateAdmin, async (req, res) => {
   try {
@@ -14803,7 +14803,7 @@ app.post('/api/admin/warehouse-locations', authenticateAdmin, async (req, res) =
       'INSERT INTO warehouse_locations (tenantId, warehouseId, name, code) VALUES (?, ?, ?, ?)',
       [tenantId, parseInt(warehouseId), name, code]
     ); res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ locations create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' locations create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/warehouse-locations/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -14814,14 +14814,14 @@ app.put('/api/admin/warehouse-locations/:id', authenticateAdmin, async (req, res
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE warehouse_locations SET ${fields.join(', ')} WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ locations update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' locations update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/warehouse-locations/:id', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id);
     await poolWrapper.execute('DELETE FROM warehouse_locations WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ locations delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' locations delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Bins
@@ -14834,7 +14834,7 @@ app.get('/api/admin/bins', authenticateAdmin, async (req, res) => {
     const [rows] = await poolWrapper.execute(
       `SELECT id, warehouseId, locationId, code, capacity, createdAt FROM bins WHERE ${where.join(' AND ')} ORDER BY id DESC`, params);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ bins list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' bins list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/bins', authenticateAdmin, async (req, res) => {
   try {
@@ -14844,7 +14844,7 @@ app.post('/api/admin/bins', authenticateAdmin, async (req, res) => {
       'INSERT INTO bins (tenantId, warehouseId, locationId, code, capacity) VALUES (?, ?, ?, ?, ?)',
       [tenantId, parseInt(warehouseId), locationId ? parseInt(locationId) : null, code, parseInt(capacity)]
     ); res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ bins create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' bins create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/bins/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -14855,14 +14855,14 @@ app.put('/api/admin/bins/:id', authenticateAdmin, async (req, res) => {
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE bins SET ${fields.join(', ')} WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ bins update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' bins update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/bins/:id', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id);
     await poolWrapper.execute('DELETE FROM bins WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ bins delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' bins delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Inventory items
@@ -14882,7 +14882,7 @@ app.get('/api/admin/inventory', authenticateAdmin, async (req, res) => {
        WHERE ${where.join(' AND ')}
        ORDER BY ii.id DESC`, params);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ inventory list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' inventory list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/inventory', authenticateAdmin, async (req, res) => {
   try {
@@ -14893,7 +14893,7 @@ app.post('/api/admin/inventory', authenticateAdmin, async (req, res) => {
        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updatedAt = CURRENT_TIMESTAMP`,
       [tenantId, parseInt(productId), parseInt(warehouseId), binId ? parseInt(binId) : null, parseInt(quantity)]);
     res.json({ success: true, data: { id: r.insertId || null } });
-  } catch (error) { console.error('❌ inventory upsert', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' inventory upsert', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/inventory/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -14904,14 +14904,14 @@ app.put('/api/admin/inventory/:id', authenticateAdmin, async (req, res) => {
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE inventory_items SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ inventory update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' inventory update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/inventory/:id', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id);
     await poolWrapper.execute('DELETE FROM inventory_items WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ inventory delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' inventory delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Inventory movements
@@ -14922,7 +14922,7 @@ app.get('/api/admin/inventory-movements', authenticateAdmin, async (req, res) =>
       `SELECT id, productId, fromWarehouseId, fromBinId, toWarehouseId, toBinId, quantity, reason, referenceType, referenceId, createdAt
        FROM inventory_movements WHERE tenantId = ? ORDER BY id DESC LIMIT 500`, [tenantId]);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ movements list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' movements list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/inventory-movements', authenticateAdmin, async (req, res) => {
   try {
@@ -14936,7 +14936,7 @@ app.post('/api/admin/inventory-movements', authenticateAdmin, async (req, res) =
       [tenantId, parseInt(productId), fromWarehouseId, fromBinId, toWarehouseId, toBinId, qty, reason, referenceType, referenceId]
     );
     res.json({ success: true });
-  } catch (error) { console.error('❌ movements create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' movements create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Suppliers
@@ -14945,7 +14945,7 @@ app.get('/api/admin/suppliers', authenticateAdmin, async (req, res) => {
     const tenantId = req.tenant?.id || 1; const [rows] = await poolWrapper.execute(
       'SELECT id, name, email, phone, address, taxNumber, isActive, createdAt FROM suppliers WHERE tenantId = ? ORDER BY id DESC', [tenantId]);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ suppliers list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' suppliers list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/suppliers', authenticateAdmin, async (req, res) => {
   try {
@@ -14953,7 +14953,7 @@ app.post('/api/admin/suppliers', authenticateAdmin, async (req, res) => {
     if (!name) return res.status(400).json({ success: false, message: 'Name required' });
     const [r] = await poolWrapper.execute('INSERT INTO suppliers (tenantId, name, email, phone, address, taxNumber, isActive) VALUES (?, ?, ?, ?, ?, ?, ?)', [tenantId, name, email, phone, address, taxNumber, isActive ? 1 : 0]);
     res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ suppliers create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' suppliers create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/suppliers/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -14964,14 +14964,14 @@ app.put('/api/admin/suppliers/:id', authenticateAdmin, async (req, res) => {
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE suppliers SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ suppliers update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' suppliers update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/suppliers/:id', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id);
     await poolWrapper.execute('DELETE FROM suppliers WHERE id = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ suppliers delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' suppliers delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Purchase Orders
@@ -14985,7 +14985,7 @@ app.get('/api/admin/purchase-orders', authenticateAdmin, async (req, res) => {
        LEFT JOIN warehouses w ON w.id = po.warehouseId
        WHERE po.tenantId = ? ORDER BY po.id DESC`, [tenantId]);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ PO list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/purchase-orders', authenticateAdmin, async (req, res) => {
   try {
@@ -14995,7 +14995,7 @@ app.post('/api/admin/purchase-orders', authenticateAdmin, async (req, res) => {
       'INSERT INTO purchase_orders (tenantId, supplierId, warehouseId, status, expectedAt, notes) VALUES (?, ?, ?, ?, ?, ?)',
       [tenantId, parseInt(supplierId), parseInt(warehouseId), status, expectedAt, notes]
     ); res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ PO create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/purchase-orders/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -15006,7 +15006,7 @@ app.put('/api/admin/purchase-orders/:id', authenticateAdmin, async (req, res) =>
     params.push(id, tenantId);
     await poolWrapper.execute(`UPDATE purchase_orders SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ PO update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/purchase-orders/:id', authenticateAdmin, async (req, res) => {
   try {
@@ -15014,7 +15014,7 @@ app.delete('/api/admin/purchase-orders/:id', authenticateAdmin, async (req, res)
     await poolWrapper.execute('DELETE FROM purchase_orders WHERE id = ? AND tenantId = ?', [id, tenantId]);
     await poolWrapper.execute('DELETE FROM purchase_order_items WHERE purchaseOrderId = ? AND tenantId = ?', [id, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ PO delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Purchase Order Items
@@ -15024,7 +15024,7 @@ app.get('/api/admin/purchase-orders/:id/items', authenticateAdmin, async (req, r
     const [rows] = await poolWrapper.execute(
       `SELECT id, productId, quantity, receivedQuantity, price FROM purchase_order_items WHERE tenantId = ? AND purchaseOrderId = ? ORDER BY id ASC`, [tenantId, id]);
     res.json({ success: true, data: rows });
-  } catch (error) { console.error('❌ PO items list', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO items list', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/purchase-orders/:id/items', authenticateAdmin, async (req, res) => {
   try {
@@ -15033,7 +15033,7 @@ app.post('/api/admin/purchase-orders/:id/items', authenticateAdmin, async (req, 
     if (!productId || !quantity) return res.status(400).json({ success: false, message: 'productId and quantity required' });
     const [r] = await poolWrapper.execute('INSERT INTO purchase_order_items (tenantId, purchaseOrderId, productId, quantity, price) VALUES (?, ?, ?, ?, ?)', [tenantId, id, parseInt(productId), parseInt(quantity), parseFloat(price)]);
     res.json({ success: true, data: { id: r.insertId } });
-  } catch (error) { console.error('❌ PO item create', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO item create', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/purchase-orders/:orderId/items/:itemId', authenticateAdmin, async (req, res) => {
   try {
@@ -15044,28 +15044,28 @@ app.put('/api/admin/purchase-orders/:orderId/items/:itemId', authenticateAdmin, 
     params.push(itemId, orderId, tenantId);
     await poolWrapper.execute(`UPDATE purchase_order_items SET ${fields.join(', ')} WHERE id = ? AND purchaseOrderId = ? AND tenantId = ?`, params);
     res.json({ success: true });
-  } catch (error) { console.error('❌ PO item update', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO item update', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/purchase-orders/:orderId/items/:itemId', authenticateAdmin, async (req, res) => {
   try {
     const tenantId = req.tenant?.id || 1; const orderId = parseInt(req.params.orderId); const itemId = parseInt(req.params.itemId);
     await poolWrapper.execute('DELETE FROM purchase_order_items WHERE id = ? AND purchaseOrderId = ? AND tenantId = ?', [itemId, orderId, tenantId]);
     res.json({ success: true });
-  } catch (error) { console.error('❌ PO item delete', error); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (error) { console.error(' PO item delete', error); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Workstations
 app.get('/api/admin/workstations', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const [rows] = await poolWrapper.execute('SELECT id, name, code, capacityPerHour, isActive, createdAt FROM workstations WHERE tenantId = ? ORDER BY id DESC', [tenantId]); res.json({ success: true, data: rows }); } catch (e) { console.error('❌ workstations', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const [rows] = await poolWrapper.execute('SELECT id, name, code, capacityPerHour, isActive, createdAt FROM workstations WHERE tenantId = ? ORDER BY id DESC', [tenantId]); res.json({ success: true, data: rows }); } catch (e) { console.error(' workstations', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/workstations', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const { name, code = null, capacityPerHour = 0, isActive = 1 } = req.body || {}; if (!name) return res.status(400).json({ success: false, message: 'Name required' }); const [r] = await poolWrapper.execute('INSERT INTO workstations (tenantId, name, code, capacityPerHour, isActive) VALUES (?, ?, ?, ?, ?)', [tenantId, name, code, parseInt(capacityPerHour), isActive ? 1 : 0]); res.json({ success: true, data: { id: r.insertId } }); } catch (e) { console.error('❌ ws create', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const { name, code = null, capacityPerHour = 0, isActive = 1 } = req.body || {}; if (!name) return res.status(400).json({ success: false, message: 'Name required' }); const [r] = await poolWrapper.execute('INSERT INTO workstations (tenantId, name, code, capacityPerHour, isActive) VALUES (?, ?, ?, ?, ?)', [tenantId, name, code, parseInt(capacityPerHour), isActive ? 1 : 0]); res.json({ success: true, data: { id: r.insertId } }); } catch (e) { console.error(' ws create', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/workstations/:id', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const allowed = ['name', 'code', 'capacityPerHour', 'isActive']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(id, tenantId); await poolWrapper.execute(`UPDATE workstations SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error('❌ ws update', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const allowed = ['name', 'code', 'capacityPerHour', 'isActive']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(id, tenantId); await poolWrapper.execute(`UPDATE workstations SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error(' ws update', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/workstations/:id', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); await poolWrapper.execute('DELETE FROM workstations WHERE id = ? AND tenantId = ?', [id, tenantId]); res.json({ success: true }); } catch (e) { console.error('❌ ws delete', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); await poolWrapper.execute('DELETE FROM workstations WHERE id = ? AND tenantId = ?', [id, tenantId]); res.json({ success: true }); } catch (e) { console.error(' ws delete', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Production Orders
@@ -15075,7 +15075,7 @@ app.get('/api/admin/production-orders', authenticateAdmin, async (req, res) => {
       `SELECT po.id, po.productId, p.name as productName, po.quantity, po.status, po.plannedStart, po.plannedEnd, po.actualStart, po.actualEnd, po.importance_level, po.notes, po.createdAt
      FROM production_orders po LEFT JOIN products p ON p.id = po.productId WHERE po.tenantId = ? ORDER BY po.id DESC`, [tenantId]);
     res.json({ success: true, data: rows });
-  } catch (e) { console.error('❌ prod orders list', e); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (e) { console.error(' prod orders list', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/production-orders', authenticateAdmin, async (req, res) => {
   try {
@@ -15083,27 +15083,27 @@ app.post('/api/admin/production-orders', authenticateAdmin, async (req, res) => 
     if (!productId || !quantity) return res.status(400).json({ success: false, message: 'productId and quantity required' });
     const [r] = await poolWrapper.execute('INSERT INTO production_orders (tenantId, productId, quantity, status, plannedStart, plannedEnd, warehouseId, importance_level, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [tenantId, parseInt(productId), parseInt(quantity), status, plannedStart, plannedEnd, warehouseId, importance_level, notes]);
     res.json({ success: true, data: { id: r.insertId } });
-  } catch (e) { console.error('❌ prod orders create', e); res.status(500).json({ success: false, message: 'Error' }); }
+  } catch (e) { console.error(' prod orders create', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/production-orders/:id', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const allowed = ['productId', 'quantity', 'status', 'plannedStart', 'plannedEnd', 'actualStart', 'actualEnd', 'warehouseId', 'importance_level', 'notes']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(id, tenantId); await poolWrapper.execute(`UPDATE production_orders SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error('❌ prod orders update', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const allowed = ['productId', 'quantity', 'status', 'plannedStart', 'plannedEnd', 'actualStart', 'actualEnd', 'warehouseId', 'importance_level', 'notes']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(id, tenantId); await poolWrapper.execute(`UPDATE production_orders SET ${fields.join(', ')}, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error(' prod orders update', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/production-orders/:id', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); await poolWrapper.execute('DELETE FROM production_orders WHERE id = ? AND tenantId = ?', [id, tenantId]); res.json({ success: true }); } catch (e) { console.error('❌ prod orders delete', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); await poolWrapper.execute('DELETE FROM production_orders WHERE id = ? AND tenantId = ?', [id, tenantId]); res.json({ success: true }); } catch (e) { console.error(' prod orders delete', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Production Steps
 app.get('/api/admin/production-orders/:id/steps', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const [rows] = await poolWrapper.execute('SELECT id, workstationId, stepName, sequence, status, startedAt, finishedAt FROM production_steps WHERE tenantId = ? AND productionOrderId = ? ORDER BY sequence ASC', [tenantId, id]); res.json({ success: true, data: rows }); } catch (e) { console.error('❌ steps list', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const [rows] = await poolWrapper.execute('SELECT id, workstationId, stepName, sequence, status, startedAt, finishedAt FROM production_steps WHERE tenantId = ? AND productionOrderId = ? ORDER BY sequence ASC', [tenantId, id]); res.json({ success: true, data: rows }); } catch (e) { console.error(' steps list', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.post('/api/admin/production-orders/:id/steps', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const { workstationId = null, stepName, sequence = 1, status = 'pending', startedAt = null, finishedAt = null } = req.body || {}; if (!stepName) return res.status(400).json({ success: false, message: 'stepName required' }); const [r] = await poolWrapper.execute('INSERT INTO production_steps (tenantId, productionOrderId, workstationId, stepName, sequence, status, startedAt, finishedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [tenantId, id, workstationId, stepName, parseInt(sequence), status, startedAt, finishedAt]); res.json({ success: true, data: { id: r.insertId } }); } catch (e) { console.error('❌ steps create', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const id = parseInt(req.params.id); const { workstationId = null, stepName, sequence = 1, status = 'pending', startedAt = null, finishedAt = null } = req.body || {}; if (!stepName) return res.status(400).json({ success: false, message: 'stepName required' }); const [r] = await poolWrapper.execute('INSERT INTO production_steps (tenantId, productionOrderId, workstationId, stepName, sequence, status, startedAt, finishedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [tenantId, id, workstationId, stepName, parseInt(sequence), status, startedAt, finishedAt]); res.json({ success: true, data: { id: r.insertId } }); } catch (e) { console.error(' steps create', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.put('/api/admin/production-orders/:orderId/steps/:stepId', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const orderId = parseInt(req.params.orderId); const stepId = parseInt(req.params.stepId); const allowed = ['workstationId', 'stepName', 'sequence', 'status', 'startedAt', 'finishedAt']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(stepId, orderId, tenantId); await poolWrapper.execute(`UPDATE production_steps SET ${fields.join(', ')} WHERE id = ? AND productionOrderId = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error('❌ steps update', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const orderId = parseInt(req.params.orderId); const stepId = parseInt(req.params.stepId); const allowed = ['workstationId', 'stepName', 'sequence', 'status', 'startedAt', 'finishedAt']; const fields = []; const params = []; for (const k of allowed) if (k in (req.body || {})) { fields.push(`${k} = ?`); params.push(req.body[k]); } if (!fields.length) return res.json({ success: true }); params.push(stepId, orderId, tenantId); await poolWrapper.execute(`UPDATE production_steps SET ${fields.join(', ')} WHERE id = ? AND productionOrderId = ? AND tenantId = ?`, params); res.json({ success: true }); } catch (e) { console.error(' steps update', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 app.delete('/api/admin/production-orders/:orderId/steps/:stepId', authenticateAdmin, async (req, res) => {
-  try { const tenantId = req.tenant?.id || 1; const orderId = parseInt(req.params.orderId); const stepId = parseInt(req.params.stepId); await poolWrapper.execute('DELETE FROM production_steps WHERE id = ? AND productionOrderId = ? AND tenantId = ?', [stepId, orderId, tenantId]); res.json({ success: true }); } catch (e) { console.error('❌ steps delete', e); res.status(500).json({ success: false, message: 'Error' }); }
+  try { const tenantId = req.tenant?.id || 1; const orderId = parseInt(req.params.orderId); const stepId = parseInt(req.params.stepId); await poolWrapper.execute('DELETE FROM production_steps WHERE id = ? AND productionOrderId = ? AND tenantId = ?', [stepId, orderId, tenantId]); res.json({ success: true }); } catch (e) { console.error(' steps delete', e); res.status(500).json({ success: false, message: 'Error' }); }
 });
 
 // Admin - Tüm siparişleri listele
@@ -15130,10 +15130,10 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
           ALTER TABLE orders 
           ADD COLUMN cargoSlipPrintedAt TIMESTAMP NULL AFTER updatedAt
         `);
-        console.log('✅ cargoSlipPrintedAt sütunu eklendi');
+        console.log(' cargoSlipPrintedAt sütunu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
+      console.error(' cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
       // Hata olsa bile devam et
     }
 
@@ -15191,7 +15191,7 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: orders });
   } catch (error) {
-    console.error('❌ Error getting orders:', error);
+    console.error(' Error getting orders:', error);
     res.status(500).json({ success: false, message: 'Error getting orders' });
   }
 });
@@ -15231,7 +15231,7 @@ app.get('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, data: order });
   } catch (error) {
-    console.error('❌ Error getting order details:', error);
+    console.error(' Error getting order details:', error);
     res.status(500).json({ success: false, message: 'Error getting order details' });
   }
 });
@@ -15257,7 +15257,7 @@ app.put('/api/admin/orders/:id/status', authenticateAdmin, async (req, res) => {
 
     res.json({ success: true, message: 'Order status updated' });
   } catch (error) {
-    console.error('❌ Error updating order status:', error);
+    console.error(' Error updating order status:', error);
     res.status(500).json({ success: false, message: 'Error updating order status' });
   }
 });
@@ -15305,7 +15305,7 @@ app.post('/api/admin/orders/:id/shipping-label', authenticateAdmin, async (req, 
     };
     res.json({ success: true, data: label });
   } catch (error) {
-    console.error('❌ Error generating shipping label:', error);
+    console.error(' Error generating shipping label:', error);
     res.status(500).json({ success: false, message: 'Error generating shipping label' });
   }
 });
@@ -15332,7 +15332,7 @@ app.post('/api/tenants', async (req, res) => {
       message: 'Tenant created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating tenant:', error);
+    console.error(' Error creating tenant:', error);
     res.status(500).json({ success: false, message: 'Error creating tenant' });
   }
 });
@@ -15345,7 +15345,7 @@ app.get('/api/tenants', async (req, res) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting tenants:', error);
+    console.error(' Error getting tenants:', error);
     res.status(500).json({ success: false, message: 'Error getting tenants' });
   }
 });
@@ -15369,7 +15369,7 @@ app.get('/api/tenants/:id', async (req, res) => {
       res.status(404).json({ success: false, message: 'Tenant not found' });
     }
   } catch (error) {
-    console.error('❌ Error getting tenant:', error);
+    console.error(' Error getting tenant:', error);
     res.status(500).json({ success: false, message: 'Error getting tenant' });
   }
 });
@@ -15386,7 +15386,7 @@ app.put('/api/tenants/:id', async (req, res) => {
 
     res.json({ success: true, message: 'Tenant updated successfully' });
   } catch (error) {
-    console.error('❌ Error updating tenant:', error);
+    console.error(' Error updating tenant:', error);
     res.status(500).json({ success: false, message: 'Error updating tenant' });
   }
 });
@@ -15399,7 +15399,7 @@ app.delete('/api/tenants/:id', async (req, res) => {
 
     res.json({ success: true, message: 'Tenant deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting tenant:', error);
+    console.error(' Error deleting tenant:', error);
     res.status(500).json({ success: false, message: 'Error deleting tenant' });
   }
 });
@@ -15610,11 +15610,11 @@ app.get('/api/users/:id', async (req, res) => {
       res.status(404).json({ success: false, message: 'User not found' });
     }
   } catch (error) {
-    console.error('❌ Error getting user:', error);
+    console.error(' Error getting user:', error);
 
     // Check if it's a database column error
     if (error.code === 'ER_BAD_FIELD_ERROR') {
-      console.error('❌ Database column error - birth_date column missing');
+      console.error(' Database column error - birth_date column missing');
       res.status(500).json({
         success: false,
         message: 'Veritabanı hatası: birth_date kolonu eksik',
@@ -15691,9 +15691,9 @@ app.post('/api/users/login', async (req, res) => {
         // Explicitly remove password if somehow present
         delete userData.password;
 
-        console.log('✅ User data retrieved for login');
+        console.log(' User data retrieved for login');
         console.log('📧 Email:', !!userData.email);
-        console.log('📱 Phone:', !!userData.phone);
+        console.log(' Phone:', !!userData.phone);
         console.log('🏠 Address:', !!userData.address);
 
         res.json({
@@ -15796,11 +15796,11 @@ app.put('/api/users/:id', async (req, res) => {
         } catch (alterError) {
           // Ignore if column already exists (race condition)
           if (!alterError.message.includes('Duplicate column name')) {
-            console.error('❌ Error adding column:', alterError.message);
+            console.error(' Error adding column:', alterError.message);
           }
         }
       }
-      console.log('✅ Kullanıcı profil ve şirket bilgileri kolonları eklendi');
+      console.log(' Kullanıcı profil ve şirket bilgileri kolonları eklendi');
     }
 
     // If password change is requested
@@ -15999,7 +15999,7 @@ app.put('/api/users/:id', async (req, res) => {
       message: 'User updated successfully'
     });
   } catch (error) {
-    console.error('❌ Error updating user:', error);
+    console.error(' Error updating user:', error);
     res.status(500).json({ success: false, message: 'Error updating user' });
   }
 });
@@ -16030,7 +16030,7 @@ app.get('/api/favorites/user/:userId', async (req, res) => {
 
     res.json({ success: true, data: favorites || [] });
   } catch (error) {
-    console.error('❌ Error getting favorites:', error);
+    console.error(' Error getting favorites:', error);
     res.status(500).json({ success: false, message: 'Error getting favorites' });
   }
 });
@@ -16087,7 +16087,7 @@ app.post('/api/favorites', async (req, res) => {
       message: 'Product added to favorites'
     });
   } catch (error) {
-    console.error('❌ Error adding to favorites:', error);
+    console.error(' Error adding to favorites:', error);
     res.status(500).json({ success: false, message: 'Error adding to favorites' });
   }
 });
@@ -16127,7 +16127,7 @@ app.delete('/api/favorites/:id', async (req, res) => {
 
     res.json({ success: true, message: 'Removed from favorites' });
   } catch (error) {
-    console.error('❌ Error removing from favorites:', error);
+    console.error(' Error removing from favorites:', error);
     res.status(500).json({ success: false, message: 'Error removing from favorites' });
   }
 });
@@ -16160,7 +16160,7 @@ app.delete('/api/favorites/product/:productId', async (req, res) => {
 
     res.json({ success: true, message: 'Removed from favorites' });
   } catch (error) {
-    console.error('❌ Error removing from favorites:', error);
+    console.error(' Error removing from favorites:', error);
     res.status(500).json({ success: false, message: 'Error removing from favorites' });
   }
 });
@@ -16223,7 +16223,7 @@ app.post('/api/favorites/toggle', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error toggling favorite:', error);
+    console.error(' Error toggling favorite:', error);
     res.status(500).json({ success: false, message: 'Error toggling favorite' });
   }
 });
@@ -16258,7 +16258,7 @@ app.get('/api/lists/user/:userId', async (req, res) => {
 
     res.json({ success: true, data: lists });
   } catch (error) {
-    console.error('❌ Error getting user lists:', error);
+    console.error(' Error getting user lists:', error);
     res.status(500).json({ success: false, message: 'Error getting user lists' });
   }
 });
@@ -16324,7 +16324,7 @@ app.get('/api/lists/:listId', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error getting list:', error);
+    console.error(' Error getting list:', error);
     res.status(500).json({ success: false, message: 'Error getting list' });
   }
 });
@@ -16354,7 +16354,7 @@ app.post('/api/lists', async (req, res) => {
       message: 'List created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating list:', error);
+    console.error(' Error creating list:', error);
     res.status(500).json({ success: false, message: 'Error creating list' });
   }
 });
@@ -16415,7 +16415,7 @@ app.put('/api/lists/:listId', async (req, res) => {
 
     res.json({ success: true, message: 'List updated successfully' });
   } catch (error) {
-    console.error('❌ Error updating list:', error);
+    console.error(' Error updating list:', error);
     res.status(500).json({ success: false, message: 'Error updating list' });
   }
 });
@@ -16456,7 +16456,7 @@ app.delete('/api/lists/:listId', async (req, res) => {
 
     res.json({ success: true, message: 'List deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting list:', error);
+    console.error(' Error deleting list:', error);
     res.status(500).json({ success: false, message: 'Error deleting list' });
   }
 });
@@ -16532,7 +16532,7 @@ app.post('/api/lists/:listId/items', async (req, res) => {
       message: 'Product added to list'
     });
   } catch (error) {
-    console.error('❌ Error adding product to list:', error);
+    console.error(' Error adding product to list:', error);
     res.status(500).json({ success: false, message: 'Error adding product to list' });
   }
 });
@@ -16573,7 +16573,7 @@ app.delete('/api/lists/:listId/items/:itemId', async (req, res) => {
 
     res.json({ success: true, message: 'Product removed from list' });
   } catch (error) {
-    console.error('❌ Error removing product from list:', error);
+    console.error(' Error removing product from list:', error);
     res.status(500).json({ success: false, message: 'Error removing product from list' });
   }
 });
@@ -16633,7 +16633,7 @@ app.put('/api/lists/:listId/items/:itemId', async (req, res) => {
 
     res.json({ success: true, message: 'List item updated successfully' });
   } catch (error) {
-    console.error('❌ Error updating list item:', error);
+    console.error(' Error updating list item:', error);
     res.status(500).json({ success: false, message: 'Error updating list item' });
   }
 });
@@ -16654,7 +16654,7 @@ app.get('/api/support-tickets/user/:userId', async (req, res) => {
 
     res.json({ success: true, data: tickets });
   } catch (error) {
-    console.error('❌ Error getting support tickets:', error);
+    console.error(' Error getting support tickets:', error);
     
     // Check if table doesn't exist
     if (error.code === 'ER_NO_SUCH_TABLE') {
@@ -16703,7 +16703,7 @@ app.post('/api/support-tickets', async (req, res) => {
       message: 'Support ticket created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating support ticket:', error);
+    console.error(' Error creating support ticket:', error);
     
     // Check if table doesn't exist
     if (error.code === 'ER_NO_SUCH_TABLE') {
@@ -16739,7 +16739,7 @@ app.post('/api/support-tickets', async (req, res) => {
           message: 'Support ticket created successfully'
         });
       } catch (createError) {
-        console.error('❌ Error creating support_tickets table:', createError);
+        console.error(' Error creating support_tickets table:', createError);
       }
     }
     
@@ -16777,7 +16777,7 @@ app.get('/api/orders/user/:userId', async (req, res) => {
     console.log(`✅ Found ${orders.length} orders for user ${userId}`);
     res.json({ success: true, data: orders });
   } catch (error) {
-    console.error('❌ Error getting user orders:', error);
+    console.error(' Error getting user orders:', error);
     res.status(500).json({ success: false, message: 'Error getting orders' });
   }
 });
@@ -16788,7 +16788,7 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenant?.id || req.headers['x-tenant-id'] || 1;
     
-    console.log(`🔍 [GET /api/orders/${id}] Request received:`, {
+    console.log(` [GET /api/orders/${id}] Request received:`, {
       orderId: id,
       tenantId: tenantId || 'missing',
       userAgent: req.headers['user-agent']?.substring(0, 50) || 'unknown',
@@ -16926,7 +16926,7 @@ app.get('/api/users/:userId/purchases/:productId', tenantCache, async (req, res)
     const { userId, productId } = req.params;
     const tenantId = req.tenant?.id || 1;
     
-    console.log(`🔍 Checking purchase for user ${userId}, product ${productId}, tenant ${tenantId}`);
+    console.log(` Checking purchase for user ${userId}, product ${productId}, tenant ${tenantId}`);
 
     // Kullanıcının bu ürünü içeren siparişlerini kontrol et
     const [purchases] = await poolWrapper.execute(
@@ -16961,7 +16961,7 @@ app.get('/api/users/:userId/purchases/:productId', tenantCache, async (req, res)
       });
     }
   } catch (error) {
-    console.error('❌ Error checking user purchase:', error);
+    console.error(' Error checking user purchase:', error);
     res.status(500).json({ success: false, message: 'Error checking purchase' });
   }
 });
@@ -17105,7 +17105,7 @@ app.post('/api/orders', tenantCache, async (req, res) => {
               selectedVariations = JSON.stringify(item.selectedVariations);
             }
           } catch (variationError) {
-            console.warn('⚠️ selectedVariations parse hatası:', variationError.message);
+            console.warn(' selectedVariations parse hatası:', variationError.message);
             selectedVariations = null;
           }
         }
@@ -17150,7 +17150,7 @@ app.post('/api/orders', tenantCache, async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Error creating order:', error);
+    console.error(' Error creating order:', error);
     console.error('Error details:', {
       message: error.message,
       stack: error.stack,
@@ -17176,7 +17176,7 @@ app.put('/api/orders/:id/status', requireUserOwnership('order', 'params'), async
 
     res.json({ success: true, message: 'Order status updated' });
   } catch (error) {
-    console.error('❌ Error updating order status:', error);
+    console.error(' Error updating order status:', error);
     res.status(500).json({ success: false, message: 'Error updating order status' });
   }
 });
@@ -17192,7 +17192,7 @@ app.put('/api/orders/:id/cancel', requireUserOwnership('order', 'params'), async
 
     res.json({ success: true, message: 'Order cancelled' });
   } catch (error) {
-    console.error('❌ Error cancelling order:', error);
+    console.error(' Error cancelling order:', error);
     res.status(500).json({ success: false, message: 'Error cancelling order' });
   }
 });
@@ -17223,7 +17223,7 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN isActive BOOLEAN DEFAULT true AFTER hasVariations
         `);
-        console.log('✅ isActive kolonu eklendi');
+        console.log(' isActive kolonu eklendi');
       }
       
       if (!existingColumns.includes('excludeFromXml')) {
@@ -17231,10 +17231,10 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN excludeFromXml BOOLEAN DEFAULT false AFTER isActive
         `);
-        console.log('✅ excludeFromXml kolonu eklendi');
+        console.log(' excludeFromXml kolonu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ Kolon kontrolü/ekleme hatası:', alterError);
+      console.error(' Kolon kontrolü/ekleme hatası:', alterError);
     }
     
     // Optimize: Admin için gerekli column'lar (isActive ve excludeFromXml dahil)
@@ -17261,7 +17261,7 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
 app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
   try {
     const productId = req.params.id;
-    console.log('📦 Admin requesting product detail for ID:', productId);
+    console.log(' Admin requesting product detail for ID:', productId);
 
     // Veritabanında isActive ve excludeFromXml kolonlarının var olup olmadığını kontrol et
     try {
@@ -17280,7 +17280,7 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN isActive BOOLEAN DEFAULT true AFTER hasVariations
         `);
-        console.log('✅ isActive kolonu eklendi');
+        console.log(' isActive kolonu eklendi');
       }
       
       if (!existingColumns.includes('excludeFromXml')) {
@@ -17288,10 +17288,10 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN excludeFromXml BOOLEAN DEFAULT false AFTER isActive
         `);
-        console.log('✅ excludeFromXml kolonu eklendi');
+        console.log(' excludeFromXml kolonu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ Kolon kontrolü/ekleme hatası:', alterError);
+      console.error(' Kolon kontrolü/ekleme hatası:', alterError);
     }
     
     // Optimize: Admin detail için gerekli column'lar (isActive ve excludeFromXml dahil)
@@ -17310,7 +17310,7 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     // Clean HTML entities from product data
     const cleanedProduct = cleanProductData(rows[0]);
 
-    console.log('📦 Product detail found:', cleanedProduct.name);
+    console.log(' Product detail found:', cleanedProduct.name);
     res.json({ success: true, data: cleanedProduct });
   } catch (error) {
     console.error('Error getting product detail:', error);
@@ -17354,12 +17354,12 @@ app.post('/api/admin/products', authenticateAdmin, async (req, res) => {
       await invalidateByTag('products');
       await delPattern(`products:list:${tenantId}:*`);
     } catch (error) {
-      console.warn('⚠️ Cache invalidation error:', error.message);
+      console.warn(' Cache invalidation error:', error.message);
     }
     
     res.json({ success: true, data: rows[0], message: 'Ürün oluşturuldu' });
   } catch (error) {
-    console.error('❌ Error creating product:', error);
+    console.error(' Error creating product:', error);
     res.status(500).json({ success: false, message: 'Error creating product' });
   }
 });
@@ -17387,7 +17387,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN isActive BOOLEAN DEFAULT true AFTER hasVariations
         `);
-        console.log('✅ isActive kolonu eklendi');
+        console.log(' isActive kolonu eklendi');
       }
       
       if (!existingColumns.includes('excludeFromXml')) {
@@ -17395,10 +17395,10 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
           ALTER TABLE products 
           ADD COLUMN excludeFromXml BOOLEAN DEFAULT false AFTER isActive
         `);
-        console.log('✅ excludeFromXml kolonu eklendi');
+        console.log(' excludeFromXml kolonu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ Kolon kontrolü/ekleme hatası:', alterError);
+      console.error(' Kolon kontrolü/ekleme hatası:', alterError);
     }
     
     const allowed = ['name', 'description', 'price', 'taxRate', 'priceIncludesTax', 'category', 'image', 'images', 'stock', 'brand', 'hasVariations', 'isActive', 'excludeFromXml'];
@@ -17431,13 +17431,13 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
       // Product detail cache'ini temizle
       await delPattern(`product:${productId}:*`);
     } catch (error) {
-      console.warn('⚠️ Cache invalidation error:', error.message);
+      console.warn(' Cache invalidation error:', error.message);
     }
     // Optimize: Sadece gerekli column'lar
     const [rows] = await poolWrapper.execute('SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
     res.json({ success: true, data: rows[0], message: 'Ürün güncellendi' });
   } catch (error) {
-    console.error('❌ Error updating product:', error);
+    console.error(' Error updating product:', error);
     res.status(500).json({ success: false, message: 'Error updating product' });
   }
 });
@@ -17464,10 +17464,10 @@ app.patch('/api/admin/products/:id/status', authenticateAdmin, async (req, res) 
           ALTER TABLE products 
           ADD COLUMN isActive BOOLEAN DEFAULT true AFTER hasVariations
         `);
-        console.log('✅ isActive kolonu eklendi');
+        console.log(' isActive kolonu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ isActive kolonu kontrolü/ekleme hatası:', alterError);
+      console.error(' isActive kolonu kontrolü/ekleme hatası:', alterError);
     }
     
     const activeVal = !!isActive;
@@ -17487,7 +17487,7 @@ app.patch('/api/admin/products/:id/status', authenticateAdmin, async (req, res) 
     
     res.json({ success: true, data: { isActive: activeVal }, message: `Ürün ${activeVal ? 'aktif' : 'pasif'} edildi` });
   } catch (error) {
-    console.error('❌ Error toggling product status:', error);
+    console.error(' Error toggling product status:', error);
     res.status(500).json({ success: false, message: 'Error toggling product status' });
   }
 });
@@ -17517,10 +17517,10 @@ app.patch('/api/admin/products/bulk-status', authenticateAdmin, async (req, res)
           ALTER TABLE products 
           ADD COLUMN isActive BOOLEAN DEFAULT true AFTER hasVariations
         `);
-        console.log('✅ isActive kolonu eklendi');
+        console.log(' isActive kolonu eklendi');
       }
     } catch (alterError) {
-      console.error('❌ isActive kolonu kontrolü/ekleme hatası:', alterError);
+      console.error(' isActive kolonu kontrolü/ekleme hatası:', alterError);
     }
     
     const activeVal = !!isActive;
@@ -17536,7 +17536,7 @@ app.patch('/api/admin/products/bulk-status', authenticateAdmin, async (req, res)
       message: `${result.affectedRows} ürün ${activeVal ? 'aktif' : 'pasif'} edildi` 
     });
   } catch (error) {
-    console.error('❌ Error bulk toggling product status:', error);
+    console.error(' Error bulk toggling product status:', error);
     res.status(500).json({ success: false, message: 'Error bulk toggling product status' });
   }
 });
@@ -17551,7 +17551,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     }
     res.json({ success: true, message: 'Ürün silindi' });
   } catch (error) {
-    console.error('❌ Error deleting product:', error);
+    console.error(' Error deleting product:', error);
     res.status(500).json({ success: false, message: 'Error deleting product' });
   }
 });
@@ -17607,7 +17607,7 @@ app.get('/api/admin/category-stats', authenticateAdmin, async (req, res) => {
     const merged = Array.from(byName.values()).sort((a, b) => b.revenue - a.revenue);
     res.json({ success: true, data: merged });
   } catch (error) {
-    console.error('❌ Error getting category stats:', error);
+    console.error(' Error getting category stats:', error);
     res.status(500).json({ success: false, message: 'Error getting category stats' });
   }
 });
@@ -17761,9 +17761,9 @@ async function createFlashDealsTable() {
       )
     `);
     
-    console.log('✅ Flash deals tables created/verified');
+    console.log(' Flash deals tables created/verified');
   } catch (error) {
-    console.error('❌ Error creating flash deals table:', error);
+    console.error(' Error creating flash deals table:', error);
   }
 }
 
@@ -17807,7 +17807,7 @@ app.get('/api/admin/flash-deals/all', authenticateAdmin, async (req, res) => {
     console.log('⚡ Flash deals found:', dealsWithTargets.length);
     res.json({ success: true, data: dealsWithTargets });
   } catch (error) {
-    console.error('❌ Error getting flash deals:', error);
+    console.error(' Error getting flash deals:', error);
     res.status(500).json({ success: false, message: 'Error getting flash deals' });
   }
 });
@@ -17934,7 +17934,7 @@ app.post('/api/admin/flash-deals', authenticateAdmin, async (req, res) => {
       connection.release();
     }
   } catch (error) {
-    console.error('❌ Error creating flash deal:', error);
+    console.error(' Error creating flash deal:', error);
     res.status(500).json({ success: false, message: 'Error creating flash deal' });
   }
 });
@@ -17991,7 +17991,7 @@ app.put('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
           .map(id => parseInt(id))
           .filter(id => !isNaN(id) && id > 0);
         
-        console.log('📦 Güncellenecek ürünler:', validProductIds);
+        console.log(' Güncellenecek ürünler:', validProductIds);
         if (validProductIds.length > 0) {
           const productValues = validProductIds.map((productId) => [flashDealId, productId]);
           // MySQL'in güvenli bulk insert yöntemi
@@ -17999,7 +17999,7 @@ app.put('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
             INSERT INTO flash_deal_products (flash_deal_id, product_id)
             VALUES ?
           `, [productValues]);
-          console.log('✅ Ürünler eklendi:', validProductIds.length);
+          console.log(' Ürünler eklendi:', validProductIds.length);
         }
       }
 
@@ -18021,7 +18021,7 @@ app.put('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
             INSERT INTO flash_deal_categories (flash_deal_id, category_id)
             VALUES ?
           `, [categoryValues]);
-          console.log('✅ Kategoriler eklendi:', validCategoryIds.length);
+          console.log(' Kategoriler eklendi:', validCategoryIds.length);
         }
       }
 
@@ -18038,7 +18038,7 @@ app.put('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => {
       connection.release();
     }
   } catch (error) {
-    console.error('❌ Error updating flash deal:', error);
+    console.error(' Error updating flash deal:', error);
     res.status(500).json({ success: false, message: 'Error updating flash deal' });
   }
 });
@@ -18068,7 +18068,7 @@ app.delete('/api/admin/flash-deals/:id', authenticateAdmin, async (req, res) => 
       message: 'Flash indirim başarıyla silindi'
     });
   } catch (error) {
-    console.error('❌ Error deleting flash deal:', error);
+    console.error(' Error deleting flash deal:', error);
     res.status(500).json({ success: false, message: 'Error deleting flash deal' });
   }
 });
@@ -18103,7 +18103,7 @@ app.get('/api/products', async (req, res) => {
           }
         }
       } catch (error) {
-        console.warn('⚠️ [GET /api/products] Cache read error:', error.message);
+        console.warn(' [GET /api/products] Cache read error:', error.message);
       }
     }
     
@@ -18188,7 +18188,7 @@ app.get('/api/products', async (req, res) => {
           console.log(`💾 [GET /api/products] Data cached for 10 minutes`);
         }
       } catch (error) {
-        console.warn('⚠️ [GET /api/products] Cache write error:', error.message);
+        console.warn(' [GET /api/products] Cache write error:', error.message);
       }
     }
     
@@ -18215,7 +18215,7 @@ async function ensureHomepageProductsTable() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
   } catch (e) {
-    console.error('❌ ensureHomepageProductsTable error:', e);
+    console.error(' ensureHomepageProductsTable error:', e);
   }
 }
 
@@ -18307,7 +18307,7 @@ app.get('/api/users/:userId/homepage-products', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     return res.json({ success: true, data: payload });
   } catch (error) {
-    console.error('❌ Error getting homepage products:', error);
+    console.error(' Error getting homepage products:', error);
     return res.status(500).json({ success: false, message: 'Error getting homepage products' });
   }
 });
@@ -18343,7 +18343,7 @@ app.get('/api/users/:userId/account-summary', async (req, res) => {
     }, { backgroundRefresh: true });
     return res.json({ success: true, data: summary });
   } catch (error) {
-    console.error('❌ Account summary error:', error);
+    console.error(' Account summary error:', error);
     return res.status(500).json({ success: false, message: 'Error getting account summary' });
   }
 });
@@ -18421,7 +18421,7 @@ app.get('/api/products/search', async (req, res) => {
     console.log(`✅ [GET /api/products/search] Arama tamamlandı: "${search}" - ${cleanedProducts.length} sonuç bulundu`);
     return res.json({ success: true, data: cleanedProducts, page, limit, count: cleanedProducts.length });
   } catch (error) {
-    console.error('❌ [GET /api/products/search] Arama hatası:', {
+    console.error(' [GET /api/products/search] Arama hatası:', {
       error: error.message,
       stack: error.stack,
       search: req.query.q,
@@ -18496,7 +18496,7 @@ app.get('/api/products/:id', async (req, res) => {
     const tenantId = req.tenant?.id;
     const apiKey = req.headers['x-api-key'] || 'not-provided';
     
-    console.log(`🔍 [GET /api/products/${id}] Request received:`, {
+    console.log(` [GET /api/products/${id}] Request received:`, {
       numericId,
       tenantId: tenantId || 'missing',
       apiKey: apiKey.substring(0, 10) + '...',
@@ -18529,11 +18529,11 @@ app.get('/api/products/:id', async (req, res) => {
       [numericId, req.tenant.id]
     );
 
-    console.log(`🔍 [GET /api/products/${id}] Query result: ${rows.length} row(s) found (productId: ${numericId}, tenantId: ${req.tenant.id})`);
+    console.log(` [GET /api/products/${id}] Query result: ${rows.length} row(s) found (productId: ${numericId}, tenantId: ${req.tenant.id})`);
 
     if (rows.length > 0) {
       const product = rows[0];
-      console.log(`🔍 [GET /api/products/${id}] Product found: ${product.name}`);
+      console.log(` [GET /api/products/${id}] Product found: ${product.name}`);
       
       // Clean HTML entities from single product
       const cleanedProduct = cleanProductData(product);
@@ -19031,7 +19031,7 @@ app.post('/api/products/filter', async (req, res) => {
 
     res.json({ success: true, data: cleanedProducts });
   } catch (error) {
-    console.error('❌ Error filtering products:', error);
+    console.error(' Error filtering products:', error);
     res.status(500).json({ success: false, message: 'Error filtering products' });
   }
 });
@@ -19048,7 +19048,7 @@ app.put('/api/products/:id/stock', async (req, res) => {
 
     res.json({ success: true, message: 'Product stock updated' });
   } catch (error) {
-    console.error('❌ Error updating product stock:', error);
+    console.error(' Error updating product stock:', error);
     res.status(500).json({ success: false, message: 'Error updating product stock' });
   }
 });
@@ -19106,7 +19106,7 @@ app.get('/api/admin/reviews', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error getting admin reviews:', error);
+    console.error(' Error getting admin reviews:', error);
     res.status(500).json({ success: false, message: 'Error getting reviews' });
   }
 });
@@ -19151,7 +19151,7 @@ app.put('/api/admin/reviews/:reviewId/status', async (req, res) => {
       message: 'Review status updated'
     });
   } catch (error) {
-    console.error('❌ Error updating review status:', error);
+    console.error(' Error updating review status:', error);
     res.status(500).json({ success: false, message: 'Error updating review status' });
   }
 });
@@ -19172,7 +19172,7 @@ app.delete('/api/admin/reviews/:reviewId', async (req, res) => {
       message: 'Review deleted'
     });
   } catch (error) {
-    console.error('❌ Error deleting review:', error);
+    console.error(' Error deleting review:', error);
     res.status(500).json({ success: false, message: 'Error deleting review' });
   }
 });
@@ -19205,7 +19205,7 @@ app.get('/api/reviews/product/:productId', async (req, res) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('❌ Error getting product reviews:', error);
+    console.error(' Error getting product reviews:', error);
     res.status(500).json({ success: false, message: 'Error getting product reviews' });
   }
 });
@@ -19234,9 +19234,9 @@ async function createProductQuestionsTable() {
         INDEX idx_created (createdAt)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
-    console.log('✅ product_questions table created/verified');
+    console.log(' product_questions table created/verified');
   } catch (error) {
-    console.error('❌ Error creating product_questions table:', error);
+    console.error(' Error creating product_questions table:', error);
   }
 }
 
@@ -19256,7 +19256,7 @@ app.get('/api/product-questions', async (req, res) => {
     const [questions] = await poolWrapper.execute(
       `SELECT q.*, u.name as userName, u.id as userId
        FROM product_questions q
-       LEFT JOIN users u ON q.userId = u.id
+       LEFT JOIN users u ON q.userId = u.id AND u.tenantId = q.tenantId
        WHERE q.productId = ? AND q.tenantId = ?
        ORDER BY q.createdAt DESC`,
       [productId, tenantId]
@@ -19268,7 +19268,7 @@ app.get('/api/product-questions', async (req, res) => {
       questions: questions
     });
   } catch (error) {
-    console.error('❌ Error getting product questions:', error);
+    console.error(' Error getting product questions:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting product questions'
@@ -19314,7 +19314,7 @@ app.post('/api/product-questions', async (req, res) => {
       message: 'Question created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating product question:', error);
+    console.error(' Error creating product question:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating product question'
@@ -19398,7 +19398,7 @@ app.post('/api/product-questions/:questionId/answer', async (req, res) => {
       message: 'Answer added successfully'
     });
   } catch (error) {
-    console.error('❌ Error answering product question:', error);
+    console.error(' Error answering product question:', error);
     res.status(500).json({
       success: false,
       message: 'Error answering product question'
@@ -19422,7 +19422,7 @@ app.delete('/api/product-questions/:questionId', async (req, res) => {
       message: 'Question deleted successfully'
     });
   } catch (error) {
-    console.error('❌ Error deleting product question:', error);
+    console.error(' Error deleting product question:', error);
     res.status(500).json({
       success: false,
       message: 'Error deleting product question'
@@ -19448,7 +19448,7 @@ app.post('/api/product-questions/:questionId/helpful', async (req, res) => {
       message: 'Question marked as helpful'
     });
   } catch (error) {
-    console.error('❌ Error marking question as helpful:', error);
+    console.error(' Error marking question as helpful:', error);
     res.status(500).json({
       success: false,
       message: 'Error marking question as helpful'
@@ -19509,7 +19509,7 @@ app.get('/api/admin/product-questions', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error getting admin product questions:', error);
+    console.error(' Error getting admin product questions:', error);
     res.status(500).json({ success: false, message: 'Error getting product questions' });
   }
 });
@@ -19590,7 +19590,7 @@ app.post('/api/admin/product-questions/:questionId/answer', async (req, res) => 
       message: 'Answer added successfully'
     });
   } catch (error) {
-    console.error('❌ Error answering product question:', error);
+    console.error(' Error answering product question:', error);
     res.status(500).json({
       success: false,
       message: 'Error answering product question'
@@ -19614,7 +19614,7 @@ app.delete('/api/admin/product-questions/:questionId', async (req, res) => {
       message: 'Question deleted successfully'
     });
   } catch (error) {
-    console.error('❌ Error deleting product question:', error);
+    console.error(' Error deleting product question:', error);
     res.status(500).json({
       success: false,
       message: 'Error deleting product question'
@@ -19649,7 +19649,7 @@ app.post('/api/reviews/upload', upload.array('media', 5), async (req, res) => {
             fs.unlinkSync(filePath);
           }
         } catch (deleteError) {
-          console.error('❌ Error deleting invalid file:', deleteError);
+          console.error(' Error deleting invalid file:', deleteError);
         }
         
         errors.push({
@@ -19709,7 +19709,7 @@ app.post('/api/reviews/upload', upload.array('media', 5), async (req, res) => {
       message: 'Dosyalar başarıyla yüklendi'
     });
   } catch (error) {
-    console.error('❌ Error uploading files:', error);
+    console.error(' Error uploading files:', error);
     res.status(500).json({ 
       success: false, 
       message: process.env.NODE_ENV === 'production' 
@@ -19806,7 +19806,7 @@ app.post('/api/reviews', async (req, res) => {
       message: 'Review added successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating review:', error);
+    console.error(' Error creating review:', error);
     res.status(500).json({ success: false, message: 'Error creating review' });
   }
 });
@@ -19827,7 +19827,7 @@ app.get('/api/categories', async (req, res) => {
     // Check cache
     const now = Date.now();
     if (categoriesCache && (now - categoriesCacheTime) < CACHE_DURATION) {
-      console.log('📋 Categories served from cache');
+      console.log(' Categories served from cache');
       return res.json({
         success: true,
         data: categoriesCache,
@@ -19851,7 +19851,7 @@ app.get('/api/categories', async (req, res) => {
     // Update in-memory cache
     categoriesCache = categoryNames;
     categoriesCacheTime = now;
-    console.log('📋 Categories cached for 5 minutes');
+    console.log(' Categories cached for 5 minutes');
     // ✅ OPTIMIZASYON: Use setJsonEx helper with CACHE_TTL
     await setJsonEx(`categories:${req.tenant.id}`, CACHE_TTL.MEDIUM, categoryNames);
 
@@ -19952,7 +19952,7 @@ app.post('/api/sync/trigger', async (req, res) => {
       message: 'Manual sync triggered successfully'
     });
   } catch (error) {
-    console.error('❌ Error triggering manual sync:', error);
+    console.error(' Error triggering manual sync:', error);
     res.status(500).json({
       success: false,
       message: 'Error triggering manual sync'
@@ -19992,7 +19992,7 @@ app.get('/api/sync/test', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error testing XML parsing:', error);
+    console.error(' Error testing XML parsing:', error);
     res.status(500).json({
       success: false,
       message: 'Error testing XML parsing',
@@ -20069,7 +20069,7 @@ app.post('/api/sync/import-xml', async (req, res) => {
       }
     });
   } catch (e) {
-    console.error('❌ Error importing XML:', e.message);
+    console.error(' Error importing XML:', e.message);
     return res.status(500).json({ success: false, message: 'XML import hatası: ' + e.message });
   }
 });
@@ -20122,7 +20122,7 @@ async function startServer() {
         lazyConnect: false,
         retryStrategy: (times) => {
           if (times > 10) {
-            console.error('❌ Redis: Max reconnection attempts reached');
+            console.error(' Redis: Max reconnection attempts reached');
             return null; // Stop retrying
           }
           // Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms, 6400ms, 12800ms, 25600ms
@@ -20140,7 +20140,7 @@ async function startServer() {
       });
       
       client.on('error', (err) => {
-        console.warn('⚠️ Redis error:', err.message);
+        console.warn(' Redis error:', err.message);
       });
       
       client.on('connect', () => {
@@ -20148,7 +20148,7 @@ async function startServer() {
       });
       
       client.on('ready', () => {
-        console.log('✅ Redis connected and ready');
+        console.log(' Redis connected and ready');
         redisRetries = 0;
       });
       
@@ -20194,7 +20194,7 @@ async function startServer() {
         await new Promise(resolve => setTimeout(resolve, redisRetryDelay));
         return connectRedis();
       } else {
-        console.warn('⚠️ Redis not available after max retries:', e.message);
+        console.warn(' Redis not available after max retries:', e.message);
         global.redis = null;
         return null;
       }
@@ -20252,7 +20252,7 @@ async function startServer() {
 
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('❌ Error getting cart:', error);
+      console.error(' Error getting cart:', error);
       res.status(500).json({ success: false, message: 'Error getting cart' });
     }
   });
@@ -20314,7 +20314,7 @@ async function startServer() {
         data: { cartItemId }
       });
     } catch (error) {
-      console.error('❌ Error adding to cart:', error);
+      console.error(' Error adding to cart:', error);
       res.status(500).json({ success: false, message: 'Sepete eklenirken hata oluştu' });
     }
   });
@@ -20373,7 +20373,7 @@ async function startServer() {
         });
       }
     } catch (error) {
-      console.error('❌ Error checking cart before logout:', error);
+      console.error(' Error checking cart before logout:', error);
       res.status(500).json({ success: false, message: 'Sepet kontrolü sırasında hata oluştu' });
     }
   });
@@ -20411,7 +20411,7 @@ async function startServer() {
         message: 'Cart item updated'
       });
     } catch (error) {
-      console.error('❌ Error updating cart item:', error);
+      console.error(' Error updating cart item:', error);
       res.status(500).json({ success: false, message: 'Error updating cart item' });
     }
   });
@@ -20438,7 +20438,7 @@ async function startServer() {
         message: 'Item removed from cart'
       });
     } catch (error) {
-      console.error('❌ Error removing from cart:', error);
+      console.error(' Error removing from cart:', error);
       res.status(500).json({ success: false, message: 'Error removing from cart' });
     }
   });
@@ -20473,7 +20473,7 @@ async function startServer() {
       console.log(`✅ Server: Found ${rows.length} cart items for user ${userId}`);
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('❌ Error getting user cart:', error);
+      console.error(' Error getting user cart:', error);
       res.status(500).json({ success: false, message: 'Error getting user cart' });
     }
   });
@@ -20501,7 +20501,7 @@ async function startServer() {
       const total = rows[0]?.total || 0;
       res.json({ success: true, data: total });
     } catch (error) {
-      console.error('❌ Error getting cart total:', error);
+      console.error(' Error getting cart total:', error);
       res.status(500).json({ success: false, message: 'Error getting cart total' });
     }
   });
@@ -20611,7 +20611,7 @@ async function startServer() {
       
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('❌ Error getting detailed cart total:', error);
+      console.error(' Error getting detailed cart total:', error);
       res.status(500).json({ success: false, message: 'Error getting detailed cart total' });
     }
   });
@@ -20632,7 +20632,7 @@ async function startServer() {
       try { if (global.redis) await global.redis.set(`campaigns:list:${tenantId}`, JSON.stringify(rows), 'EX', 300); } catch { }
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('❌ Error listing campaigns:', error);
+      console.error(' Error listing campaigns:', error);
       res.status(500).json({ success: false, message: 'Error listing campaigns' });
     }
   });
@@ -20650,7 +20650,7 @@ async function startServer() {
 
       res.json({ success: true, message: 'Campaign created' });
     } catch (error) {
-      console.error('❌ Error creating campaign:', error);
+      console.error(' Error creating campaign:', error);
       res.status(500).json({ success: false, message: 'Error creating campaign' });
     }
   });
@@ -20677,7 +20677,7 @@ async function startServer() {
         message: 'Cart cleared'
       });
     } catch (error) {
-      console.error('❌ Error clearing cart:', error);
+      console.error(' Error clearing cart:', error);
       res.status(500).json({ success: false, message: 'Error clearing cart' });
     }
   });
@@ -20737,7 +20737,7 @@ async function startServer() {
 
       if (alters.length > 0) {
         await poolWrapper.execute(`ALTER TABLE users ${alters.join(', ')}`);
-        console.log('✅ Şirket bilgileri kolonları eklendi');
+        console.log(' Şirket bilgileri kolonları eklendi');
       }
 
       // Update user profile
@@ -20779,7 +20779,7 @@ async function startServer() {
         data: updatedUser[0] || null
       });
     } catch (error) {
-      console.error('❌ Error updating profile:', error);
+      console.error(' Error updating profile:', error);
       res.status(500).json({
         success: false,
         message: 'Profil güncellenirken bir hata oluştu'
@@ -20848,7 +20848,7 @@ async function startServer() {
         message: 'Şifre başarıyla değiştirildi'
       });
     } catch (error) {
-      console.error('❌ Error changing password:', error);
+      console.error(' Error changing password:', error);
       res.status(500).json({
         success: false,
         message: 'Şifre değiştirilirken bir hata oluştu'
@@ -20934,7 +20934,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Error getting wallet:', error);
+      console.error(' Error getting wallet:', error);
       res.status(500).json({ success: false, message: 'Error getting wallet' });
     }
   });
@@ -20983,7 +20983,7 @@ async function startServer() {
         throw error;
       }
     } catch (error) {
-      console.error('❌ Error adding money:', error);
+      console.error(' Error adding money:', error);
       res.status(500).json({ success: false, message: 'Para yükleme hatası' });
     }
   });
@@ -21031,7 +21031,7 @@ async function startServer() {
         }))
       });
     } catch (error) {
-      console.error('❌ Error getting transactions:', error);
+      console.error(' Error getting transactions:', error);
       res.status(500).json({ success: false, message: 'Error getting transactions' });
     }
   });
@@ -21260,7 +21260,7 @@ async function startServer() {
       res.json({ success: true, data: formattedRequests });
 
     } catch (error) {
-      console.error('❌ Error getting custom production requests:', error);
+      console.error(' Error getting custom production requests:', error);
       res.status(500).json({ success: false, message: 'Error getting custom production requests' });
     }
   });
@@ -21281,7 +21281,7 @@ async function startServer() {
       );
       res.json({ success: true, message: 'Mesaj kaydedildi' });
     } catch (error) {
-      console.error('❌ Error creating custom production message:', error);
+      console.error(' Error creating custom production message:', error);
       res.status(500).json({ success: false, message: 'Mesaj kaydedilemedi' });
     }
   });
@@ -21298,7 +21298,7 @@ async function startServer() {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('❌ Error listing custom production messages:', error);
+      console.error(' Error listing custom production messages:', error);
       res.status(500).json({ success: false, message: 'Mesajlar alınamadı' });
     }
   });
@@ -21401,7 +21401,7 @@ async function startServer() {
 
       res.json({ success: true, data: requestsWithItems });
     } catch (error) {
-      console.error('❌ Error getting user custom production requests:', error);
+      console.error(' Error getting user custom production requests:', error);
       res.status(500).json({ success: false, message: 'Error getting requests' });
     }
   });
@@ -21502,7 +21502,7 @@ async function startServer() {
       res.json({ success: true, data: formattedRequest });
 
     } catch (error) {
-      console.error('❌ Error getting custom production request:', error);
+      console.error(' Error getting custom production request:', error);
       res.status(500).json({ success: false, message: 'Error getting custom production request' });
     }
   });
@@ -21625,14 +21625,14 @@ async function startServer() {
         try {
           await connection.rollback();
         } catch (rollbackError) {
-          console.error('❌ Error rolling back transaction:', rollbackError);
+          console.error(' Error rolling back transaction:', rollbackError);
         }
         connection.release();
         throw error;
       }
 
     } catch (error) {
-      console.error('❌ Error creating custom production request:', error);
+      console.error(' Error creating custom production request:', error);
       const errorMessage = error.message || 'Error creating custom production request';
       const errorDetails = process.env.NODE_ENV === 'development' ? error.stack : undefined;
       res.status(500).json({ 
@@ -21702,7 +21702,7 @@ async function startServer() {
       res.json({ success: true, message: 'Status updated successfully' });
 
     } catch (error) {
-      console.error('❌ Error updating custom production request status:', error);
+      console.error(' Error updating custom production request status:', error);
       res.status(500).json({ success: false, message: 'Error updating status' });
     }
   });
@@ -21746,7 +21746,7 @@ async function startServer() {
     } catch (error) {
       success = false;
       message = error && error.message ? error.message : 'Unknown error';
-      console.error('❌ Error in manual sync:', error);
+      console.error(' Error in manual sync:', error);
       res.status(500).json({
         success: false,
         message: 'Error during product sync: ' + message
@@ -21759,7 +21759,7 @@ async function startServer() {
         global.__syncLogs.unshift({ startedAt: new Date(started).toISOString(), durationMs, success, message });
         if (global.__syncLogs.length > 50) global.__syncLogs.length = 50;
       } catch (logErr) { 
-        console.error('❌ Error logging sync:', logErr);
+        console.error(' Error logging sync:', logErr);
       }
     }
   });
@@ -21876,7 +21876,7 @@ async function startServer() {
         meta: { page, pageSize, total }
       });
     } catch (error) {
-      console.error('❌ Error fetching campaigns:', error);
+      console.error(' Error fetching campaigns:', error);
       res.status(500).json({ success: false, message: 'Error fetching campaigns' });
     }
   });
@@ -21904,7 +21904,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching customer segments:', error);
+      console.error(' Error fetching customer segments:', error);
       res.status(500).json({ success: false, message: 'Error fetching customer segments' });
     }
   });
@@ -21935,7 +21935,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error creating campaign:', error);
+      console.error(' Error creating campaign:', error);
       res.status(500).json({ success: false, message: 'Error creating campaign' });
     }
   });
@@ -21966,7 +21966,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error creating customer segment:', error);
+      console.error(' Error creating customer segment:', error);
       res.status(500).json({ success: false, message: 'Error creating customer segment' });
     }
   });
@@ -22025,7 +22025,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error creating automatic segments:', error);
+      console.error(' Error creating automatic segments:', error);
       res.status(500).json({ success: false, message: 'Error creating automatic segments' });
     }
   });
@@ -22056,7 +22056,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error creating customer segment:', error);
+      console.error(' Error creating customer segment:', error);
       res.status(500).json({ success: false, message: 'Error creating customer segment' });
     }
   });
@@ -22080,7 +22080,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching customer segments:', error);
+      console.error(' Error fetching customer segments:', error);
       res.status(500).json({ success: false, message: 'Error fetching customer segments' });
     }
   });
@@ -22123,7 +22123,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error creating campaign:', error);
+      console.error(' Error creating campaign:', error);
       res.status(500).json({ success: false, message: 'Error creating campaign' });
     }
   });
@@ -22152,7 +22152,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching campaigns:', error);
+      console.error(' Error fetching campaigns:', error);
       res.status(500).json({ success: false, message: 'Error fetching campaigns' });
     }
   });
@@ -22197,7 +22197,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching customer analytics:', error);
+      console.error(' Error fetching customer analytics:', error);
       res.status(500).json({ success: false, message: 'Error fetching customer analytics' });
     }
   });
@@ -22216,7 +22216,7 @@ async function startServer() {
         });
       }
 
-      console.log('📊 Tracking campaign usage:', { campaignId, userId, orderId });
+      console.log(' Tracking campaign usage:', { campaignId, userId, orderId });
 
       await poolWrapper.execute(
         'INSERT INTO campaign_usage (tenantId, campaignId, userId, orderId, discountAmount) VALUES (?, ?, ?, ?, ?)',
@@ -22235,7 +22235,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error tracking campaign usage:', error);
+      console.error(' Error tracking campaign usage:', error);
       res.status(500).json({ success: false, message: 'Error tracking campaign usage' });
     }
   });
@@ -22288,7 +22288,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching available campaigns:', error);
+      console.error(' Error fetching available campaigns:', error);
       res.status(500).json({ success: false, message: 'Error fetching available campaigns' });
     }
   });
@@ -22385,7 +22385,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error spinning discount wheel:', error);
+      console.error(' Error spinning discount wheel:', error);
       res.status(500).json({ success: false, message: 'Çark çevrilirken hata oluştu' });
     }
   });
@@ -22413,7 +22413,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error fetching discount codes:', error);
+      console.error(' Error fetching discount codes:', error);
       res.status(500).json({ success: false, message: 'İndirim kodları alınırken hata oluştu' });
     }
   });
@@ -22482,7 +22482,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error validating discount code:', error);
+      console.error(' Error validating discount code:', error);
       res.status(500).json({ success: false, message: 'İndirim kodu doğrulanırken hata oluştu' });
     }
   });
@@ -22520,7 +22520,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error using discount code:', error);
+      console.error(' Error using discount code:', error);
       res.status(500).json({ success: false, message: 'İndirim kodu kullanılırken hata oluştu' });
     }
   });
@@ -22559,7 +22559,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Error checking discount wheel:', error);
+      console.error(' Error checking discount wheel:', error);
       res.status(500).json({ success: false, message: 'Çark durumu kontrol edilirken hata oluştu' });
     }
   });
@@ -22604,7 +22604,7 @@ async function startServer() {
             };
           }
         } catch (err) {
-          console.warn('⚠️ Ürün bilgisi alınamadı:', err.message);
+          console.warn(' Ürün bilgisi alınamadı:', err.message);
         }
       }
 
@@ -22625,7 +22625,7 @@ async function startServer() {
             };
           }
         } catch (err) {
-          console.warn('⚠️ Kullanıcı bilgisi alınamadı:', err.message);
+          console.warn(' Kullanıcı bilgisi alınamadı:', err.message);
         }
       }
 
@@ -22634,7 +22634,7 @@ async function startServer() {
       try {
         response = await generateChatbotResponse(intent, message, actionType, tenantId, userId, productId, userInfo);
       } catch (responseError) {
-        console.error('❌ Yanıt oluşturma hatası:', responseError);
+        console.error(' Yanıt oluşturma hatası:', responseError);
         // Fallback yanıt
         response = {
           id: `bot-${Date.now()}`,
@@ -22666,7 +22666,7 @@ async function startServer() {
           ]
         );
       } catch (analyticsError) {
-        console.warn('⚠️ Chatbot analytics kaydedilemedi:', analyticsError.message);
+        console.warn(' Chatbot analytics kaydedilemedi:', analyticsError.message);
       }
 
       res.json({
@@ -22675,7 +22675,7 @@ async function startServer() {
       });
 
     } catch (error) {
-      console.error('❌ Chatbot mesaj işleme hatası:', error);
+      console.error(' Chatbot mesaj işleme hatası:', error);
       res.status(500).json({
         success: false,
         message: 'Mesaj işlenirken hata oluştu',
@@ -22721,7 +22721,7 @@ async function startServer() {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('❌ Chatbot analitik hatası:', error);
+      console.error(' Chatbot analitik hatası:', error);
       res.status(500).json({ success: false, message: 'Analitik kaydedilemedi' });
     }
   });
@@ -22769,7 +22769,7 @@ async function startServer() {
         data: rows
       });
     } catch (error) {
-      console.error('❌ Chatbot konuşmaları getirme hatası:', error);
+      console.error(' Chatbot konuşmaları getirme hatası:', error);
       res.status(500).json({ success: false, message: 'Konuşmalar getirilemedi' });
     }
   });
@@ -22819,7 +22819,7 @@ async function startServer() {
         message: 'Mesaj gönderildi'
       });
     } catch (error) {
-      console.error('❌ Admin mesaj gönderme hatası:', error);
+      console.error(' Admin mesaj gönderme hatası:', error);
       res.status(500).json({ success: false, message: 'Mesaj gönderilemedi' });
     }
   });
@@ -22854,7 +22854,7 @@ async function startServer() {
         data: rows
       });
     } catch (error) {
-      console.error('❌ Admin mesajları getirme hatası:', error);
+      console.error(' Admin mesajları getirme hatası:', error);
       res.status(500).json({ success: false, message: 'Mesajlar getirilemedi' });
     }
   });
@@ -22920,7 +22920,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Canlı destek mesaj gönderme hatası:', error);
+      console.error(' Canlı destek mesaj gönderme hatası:', error);
       res.status(500).json({ success: false, message: 'Mesaj gönderilemedi' });
     }
   });
@@ -22956,7 +22956,7 @@ async function startServer() {
         data: rows
       });
     } catch (error) {
-      console.error('❌ Canlı destek mesaj geçmişi getirme hatası:', error);
+      console.error(' Canlı destek mesaj geçmişi getirme hatası:', error);
       res.status(500).json({ success: false, message: 'Mesaj geçmişi getirilemedi' });
     }
   });
@@ -22984,7 +22984,7 @@ async function startServer() {
         data: faqData
       });
     } catch (error) {
-      console.error('❌ FAQ yükleme hatası:', error);
+      console.error(' FAQ yükleme hatası:', error);
       res.status(500).json({ success: false, message: 'FAQ yüklenemedi' });
     }
   });
@@ -23429,7 +23429,7 @@ async function startServer() {
             if (userRows[0].weight) userWeight = parseInt(userRows[0].weight);
           }
         } catch (err) {
-          console.warn('⚠️ Kullanıcı bilgisi alınamadı:', err.message);
+          console.warn(' Kullanıcı bilgisi alınamadı:', err.message);
         }
       }
 
@@ -23629,7 +23629,7 @@ async function startServer() {
             }
           }
         } catch (err) {
-          console.warn('⚠️ Ürün beden bilgisi alınamadı:', err.message);
+          console.warn(' Ürün beden bilgisi alınamadı:', err.message);
         }
       }
 
@@ -23657,7 +23657,7 @@ async function startServer() {
         ]
       };
     } catch (error) {
-      console.error('❌ Beden önerisi hatası:', error);
+      console.error(' Beden önerisi hatası:', error);
       return {
         id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         text: 'Beden önerisi oluşturulurken bir hata oluştu. Lütfen tekrar deneyin veya canlı destek ile iletişime geçin.',
@@ -23887,7 +23887,7 @@ async function startServer() {
     } catch (e) {
       const status = e?.response?.status || 500;
       const providerMsg = e?.response?.data?.error?.message || e?.response?.data?.message || e?.message || 'İçerik üretilemedi';
-      console.error('❌ AI generate error:', providerMsg);
+      console.error(' AI generate error:', providerMsg);
       return res.status(status).json({ success: false, message: providerMsg });
     }
   });
@@ -23926,7 +23926,7 @@ async function startServer() {
       try { if (global.redis) await global.redis.set(`wallet:balance:${req.tenant.id}:${internalUserId}`, JSON.stringify(data), 'EX', 120); } catch { }
       res.json({ success: true, data });
     } catch (error) {
-      console.error('❌ Wallet balance error:', error);
+      console.error(' Wallet balance error:', error);
       res.status(500).json({ success: false, message: 'Bakiye sorgulanırken hata oluştu' });
     }
   });
@@ -23997,7 +23997,7 @@ async function startServer() {
             });
           }
         } catch (error) {
-          console.error('❌ Card payment error:', error);
+          console.error(' Card payment error:', error);
           await poolWrapper.execute(
             'UPDATE wallet_recharge_requests SET status = ?, errorMessage = ? WHERE id = ?',
             ['failed', 'Kart ödemesinde hata oluştu', requestId]
@@ -24026,7 +24026,7 @@ async function startServer() {
         });
       }
     } catch (error) {
-      console.error('❌ Recharge request error:', error);
+      console.error(' Recharge request error:', error);
       res.status(500).json({ success: false, message: 'Para yükleme isteği oluşturulamadı' });
     }
   });
@@ -24076,7 +24076,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Approve recharge error:', error);
+      console.error(' Approve recharge error:', error);
       res.status(500).json({ success: false, message: 'Onay işleminde hata oluştu' });
     }
   });
@@ -24095,7 +24095,7 @@ async function startServer() {
 
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('❌ Pending requests error:', error);
+      console.error(' Pending requests error:', error);
       res.status(500).json({ success: false, message: 'Bekleyen istekler alınamadı' });
     }
   });
@@ -24142,7 +24142,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Wallet transactions error:', error);
+      console.error(' Wallet transactions error:', error);
       res.status(500).json({ success: false, message: 'İşlem geçmişi alınamadı' });
     }
   });
@@ -24208,7 +24208,7 @@ async function startServer() {
         data: vouchers
       });
     } catch (error) {
-      console.error('❌ Wallet gift cards error:', error);
+      console.error(' Wallet gift cards error:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Hediye çekleri alınamadı',
@@ -24236,11 +24236,11 @@ async function startServer() {
         timestamp: new Date().toISOString()
       };
 
-      console.log('✅ Payment processed successfully - card data discarded');
+      console.log(' Payment processed successfully - card data discarded');
       return paymentResult;
 
     } catch (error) {
-      console.error('❌ Card payment processing error:', error);
+      console.error(' Card payment processing error:', error);
       return {
         success: false,
         message: 'Ödeme işlemi başarısız',
@@ -24548,7 +24548,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Error getting user level:', error);
+      console.error(' Error getting user level:', error);
       res.status(500).json({ success: false, message: 'Error getting user level' });
     }
   });
@@ -24573,7 +24573,7 @@ async function startServer() {
       );
       res.json({ success: true, data: { totalExp: Number(agg.totalExp || 0), transactions: rows } });
     } catch (error) {
-      console.error('❌ Error getting user EXP:', error);
+      console.error(' Error getting user EXP:', error);
       res.status(500).json({ success: false, message: 'Error getting user EXP' });
     }
   });
@@ -24599,7 +24599,7 @@ async function startServer() {
       );
       res.json({ success: true, message: 'EXP adjusted', data: { totalExp: Number(agg.totalExp || 0) } });
     } catch (error) {
-      console.error('❌ Error adjusting EXP:', error);
+      console.error(' Error adjusting EXP:', error);
       res.status(500).json({ success: false, message: 'Error adjusting EXP' });
     }
   });
@@ -24662,7 +24662,7 @@ async function startServer() {
 
       res.json({ success: true, data: { users: data, pagination: { limit, offset, count: data.length } } });
     } catch (error) {
-      console.error('❌ Error listing user levels:', error);
+      console.error(' Error listing user levels:', error);
       res.status(500).json({ success: false, message: 'Error listing user levels' });
     }
   });
@@ -24767,7 +24767,7 @@ async function startServer() {
         }
       });
     } catch (error) {
-      console.error('❌ Error getting EXP history:', error);
+      console.error(' Error getting EXP history:', error);
       res.status(500).json({ success: false, message: 'Error getting EXP history' });
     }
   });
@@ -24830,7 +24830,7 @@ async function startServer() {
         data: stats
       });
     } catch (error) {
-      console.error('❌ Error getting user level stats:', error);
+      console.error(' Error getting user level stats:', error);
       res.status(500).json({ success: false, message: 'Error getting user level stats' });
     }
   });
@@ -24894,7 +24894,7 @@ async function startServer() {
         expGained: expAmount
       });
     } catch (error) {
-      console.error('❌ Error adding purchase EXP:', error);
+      console.error(' Error adding purchase EXP:', error);
       res.status(500).json({ success: false, message: 'Satın alma EXP\'si eklenemedi' });
     }
   });
@@ -24924,7 +24924,7 @@ async function startServer() {
         expGained: expAmount
       });
     } catch (error) {
-      console.error('❌ Error adding invitation EXP:', error);
+      console.error(' Error adding invitation EXP:', error);
       res.status(500).json({ success: false, message: 'Davet EXP\'si eklenemedi' });
     }
   });
@@ -24983,7 +24983,7 @@ async function startServer() {
                  ['%30 İndirim', 'Özel Etkinlikler']
       });
     } catch (error) {
-      console.error('❌ Error claiming rewards:', error);
+      console.error(' Error claiming rewards:', error);
       res.status(500).json({ success: false, message: 'Ödül kullanılamadı' });
     }
   });
@@ -25103,9 +25103,9 @@ async function startServer() {
     // Admin server kendi içinde '/api' prefix'iyle tanımlı.
     // Bu nedenle root'a mount ediyoruz ki yollar '/api/...' olarak kalsın.
     app.use('/', adminApp);
-    console.log('✅ Admin API mounted at root (routes keep /api prefix)');
+    console.log(' Admin API mounted at root (routes keep /api prefix)');
   } catch (e) {
-    console.warn('⚠️ Admin API mount failed:', e.message);
+    console.warn(' Admin API mount failed:', e.message);
   }
 
   // ✅ PRODUCTION: Global error handler middleware - Tüm unhandled error'ları yakala
@@ -25155,6 +25155,387 @@ async function startServer() {
       type: 'INTERNAL_ERROR',
       retryable: false
     });
+  });
+
+  // ==================== GAMIFICATION ROUTES ====================
+  // Daily Rewards
+  app.get('/api/gamification/daily-reward/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Check if user claimed today
+      const today = new Date().toISOString().split('T')[0];
+      const [claimed] = await poolWrapper.execute(
+        'SELECT * FROM daily_rewards WHERE userId = ? AND tenantId = ? AND DATE(claimedAt) = ?',
+        [userId, tenantId, today]
+      );
+      
+      const canClaim = !claimed || claimed.length === 0;
+      // Determine today's reward based on day of week (Sunday = coupon, others = exp)
+      const dayOfWeek = new Date().getDay();
+      const todayReward = dayOfWeek === 0 
+        ? { type: 'coupon', amount: 10 } 
+        : { type: 'exp', amount: 50 };
+      
+      // Get streak
+      const [streakData] = await poolWrapper.execute(
+        'SELECT COUNT(*) as streak FROM daily_rewards WHERE userId = ? AND tenantId = ? AND DATE(claimedAt) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
+        [userId, tenantId]
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          canClaim,
+          todayReward,
+          claimed: !canClaim,
+          streak: streakData[0]?.streak || 0,
+        }
+      });
+    } catch (error) {
+      console.error('Daily reward error:', error);
+      res.status(500).json({ success: false, message: 'Error getting daily reward' });
+    }
+  });
+  
+  app.post('/api/gamification/daily-reward/:userId/claim', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const [claimed] = await poolWrapper.execute(
+        'SELECT * FROM daily_rewards WHERE userId = ? AND tenantId = ? AND DATE(claimedAt) = ?',
+        [userId, tenantId, today]
+      );
+      
+      if (claimed && claimed.length > 0) {
+        return res.status(400).json({ success: false, message: 'Already claimed today' });
+      }
+      
+      // Add reward
+      await poolWrapper.execute(
+        'INSERT INTO daily_rewards (userId, tenantId, rewardType, rewardAmount, claimedAt) VALUES (?, ?, ?, ?, NOW())',
+        [userId, tenantId, 'exp', 50]
+      );
+      
+      // Add EXP
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'daily_reward', 50, 'Günlük ödül']
+      );
+      
+      res.json({ success: true, message: 'Daily reward claimed', reward: { type: 'exp', amount: 50 } });
+    } catch (error) {
+      console.error('Claim daily reward error:', error);
+      res.status(500).json({ success: false, message: 'Error claiming daily reward' });
+    }
+  });
+  
+  app.get('/api/gamification/daily-reward/:userId/streak', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      const [streakData] = await poolWrapper.execute(
+        'SELECT COUNT(*) as streak FROM daily_rewards WHERE userId = ? AND tenantId = ? AND DATE(claimedAt) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
+        [userId, tenantId]
+      );
+      
+      res.json({ success: true, data: { streak: streakData[0]?.streak || 0 } });
+    } catch (error) {
+      console.error('Streak error:', error);
+      res.status(500).json({ success: false, message: 'Error getting streak' });
+    }
+  });
+  
+  // Quests
+  app.get('/api/gamification/quests/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Return sample quests for now
+      res.json({
+        success: true,
+        data: {
+          quests: [
+            { id: 1, title: '3 Ürün Görüntüle', description: '3 farklı ürün detay sayfasını ziyaret et', type: 'view_products', progress: 0, target: 3, reward: { type: 'exp', amount: 50 }, completed: false },
+            { id: 2, title: 'İlk Yorumunu Yap', description: 'Bir ürüne ilk yorumunu yaz', type: 'write_review', progress: 0, target: 1, reward: { type: 'exp', amount: 100 }, completed: false },
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Quests error:', error);
+      res.status(500).json({ success: false, message: 'Error getting quests' });
+    }
+  });
+  
+  app.post('/api/gamification/quests/:questId/claim', async (req, res) => {
+    try {
+      const { questId } = req.params;
+      const { userId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Add EXP for quest completion
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'quest', 50, 'Görev tamamlama']
+      );
+      
+      res.json({ success: true, message: 'Quest reward claimed' });
+    } catch (error) {
+      console.error('Claim quest error:', error);
+      res.status(500).json({ success: false, message: 'Error claiming quest reward' });
+    }
+  });
+  
+  // Badges
+  app.get('/api/gamification/badges/:userId', async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          badges: [
+            { id: 1, name: 'İlk Adım', description: 'İlk alışverişini tamamla', icon: 'footsteps', earned: true, rarity: 'common' },
+            { id: 2, name: 'Sosyal Kelebek', description: '10 ürünü paylaş', icon: 'share-social', earned: false, rarity: 'common' },
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Badges error:', error);
+      res.status(500).json({ success: false, message: 'Error getting badges' });
+    }
+  });
+  
+  // ==================== WELCOME BONUS ROUTES ====================
+  app.get('/api/welcome-bonus/:userId/eligibility', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Check if user is new (registered in last 7 days)
+      const [user] = await poolWrapper.execute(
+        'SELECT createdAt FROM users WHERE id = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+      
+      if (!user || user.length === 0) {
+        return res.json({ success: true, data: { eligible: false } });
+      }
+      
+      const userCreated = new Date(user[0].createdAt);
+      const daysSinceRegistration = (Date.now() - userCreated.getTime()) / (1000 * 60 * 60 * 24);
+      const eligible = daysSinceRegistration <= 7;
+      
+      // Check if already claimed
+      const [claimed] = await poolWrapper.execute(
+        'SELECT * FROM welcome_bonuses WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          eligible: eligible && (!claimed || claimed.length === 0),
+          claimed: claimed && claimed.length > 0,
+          bonusAmount: 50,
+        }
+      });
+    } catch (error) {
+      console.error('Welcome bonus eligibility error:', error);
+      res.status(500).json({ success: false, message: 'Error checking eligibility' });
+    }
+  });
+  
+  app.post('/api/welcome-bonus/:userId/claim', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Check if already claimed
+      const [claimed] = await poolWrapper.execute(
+        'SELECT * FROM welcome_bonuses WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+      
+      if (claimed && claimed.length > 0) {
+        return res.status(400).json({ success: false, message: 'Already claimed' });
+      }
+      
+      // Add to wallet
+      await poolWrapper.execute(
+        'INSERT INTO wallet_transactions (userId, tenantId, type, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'credit', 50, 'Hoş geldin bonusu']
+      );
+      
+      // Mark as claimed
+      await poolWrapper.execute(
+        'INSERT INTO welcome_bonuses (userId, tenantId, amount, claimedAt) VALUES (?, ?, ?, NOW())',
+        [userId, tenantId, 50]
+      );
+      
+      res.json({ success: true, message: 'Welcome bonus claimed', amount: 50 });
+    } catch (error) {
+      console.error('Claim welcome bonus error:', error);
+      res.status(500).json({ success: false, message: 'Error claiming welcome bonus' });
+    }
+  });
+  
+  app.get('/api/welcome-bonus/packages', async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          packages: [
+            { id: 1, name: 'Hoş Geldin Paketi', discount: 20, freeShipping: true, coupon: 'WELCOME20' },
+            { id: 2, name: 'İlk Sipariş Bonusu', discount: 30, freeShipping: true, coupon: 'FIRST30' },
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Welcome packages error:', error);
+      res.status(500).json({ success: false, message: 'Error getting packages' });
+    }
+  });
+  
+  // ==================== VIP PROGRAM ROUTES ====================
+  app.get('/api/vip/:userId/status', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Get user level
+      const [expRows] = await poolWrapper.execute(
+        'SELECT SUM(amount) as total_exp FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+      
+      const totalExp = expRows[0]?.total_exp || 0;
+      const isVIP = totalExp >= 22500; // Diamond level
+      
+      res.json({
+        success: true,
+        data: {
+          isVIP,
+          level: isVIP ? 'Diamond' : 'Bronze',
+          totalExp,
+        }
+      });
+    } catch (error) {
+      console.error('VIP status error:', error);
+      res.status(500).json({ success: false, message: 'Error getting VIP status' });
+    }
+  });
+  
+  app.get('/api/vip/:userId/benefits', async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          benefits: [
+            { id: 1, title: 'Özel Ürün Erken Erişim', description: 'Yeni koleksiyonlara önce sen eriş', icon: 'star', active: true },
+            { id: 2, title: 'Kişisel Alışveriş Danışmanı', description: '7/24 özel danışman desteği', icon: 'person', active: true },
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('VIP benefits error:', error);
+      res.status(500).json({ success: false, message: 'Error getting VIP benefits' });
+    }
+  });
+  
+  app.post('/api/vip/:userId/convert-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { expAmount } = req.body;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Check user has enough EXP
+      const [expRows] = await poolWrapper.execute(
+        'SELECT SUM(amount) as total_exp FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+      
+      const totalExp = expRows[0]?.total_exp || 0;
+      if (totalExp < expAmount) {
+        return res.status(400).json({ success: false, message: 'Not enough EXP' });
+      }
+      
+      // Create discount coupon
+      const discountPercent = Math.floor(expAmount / 100);
+      const couponCode = `EXP${discountPercent}${Date.now().toString().slice(-6)}`;
+      
+      res.json({
+        success: true,
+        message: 'EXP converted to coupon',
+        coupon: { code: couponCode, discount: discountPercent }
+      });
+    } catch (error) {
+      console.error('Convert EXP error:', error);
+      res.status(500).json({ success: false, message: 'Error converting EXP' });
+    }
+  });
+  
+  // ==================== SUBSCRIPTION ROUTES ====================
+  app.get('/api/subscriptions/:userId', async (req, res) => {
+    try {
+      res.json({ success: true, data: { subscriptions: [] } });
+    } catch (error) {
+      console.error('Subscriptions error:', error);
+      res.status(500).json({ success: false, message: 'Error getting subscriptions' });
+    }
+  });
+  
+  app.get('/api/subscriptions/:userId/frequent-orders', async (req, res) => {
+    try {
+      res.json({ success: true, data: { orders: [] } });
+    } catch (error) {
+      console.error('Frequent orders error:', error);
+      res.status(500).json({ success: false, message: 'Error getting frequent orders' });
+    }
+  });
+  
+  // ==================== SOCIAL SHARING ROUTES ====================
+  app.post('/api/social-sharing/product', async (req, res) => {
+    try {
+      const { userId, productId, platform } = req.body;
+      const tenantId = req.tenant?.id || 1;
+      
+      // Add EXP for sharing
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'social_share', 50, `Ürün paylaşımı: ${platform}`]
+      );
+      
+      res.json({ success: true, message: 'Share recorded', expGained: 50 });
+    } catch (error) {
+      console.error('Social share error:', error);
+      res.status(500).json({ success: false, message: 'Error recording share' });
+    }
+  });
+  
+  app.get('/api/social-sharing/:userId/rewards', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+      
+      const [rewards] = await poolWrapper.execute(
+        'SELECT * FROM user_exp_transactions WHERE userId = ? AND tenantId = ? AND source = ?',
+        [userId, tenantId, 'social_share']
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          rewards: rewards.map(r => ({ amount: r.amount, date: r.createdAt }))
+        }
+      });
+    } catch (error) {
+      console.error('Share rewards error:', error);
+      res.status(500).json({ success: false, message: 'Error getting share rewards' });
+    }
   });
 
   // ✅ PRODUCTION: 404 handler - Tüm route'lardan sonra

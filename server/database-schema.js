@@ -1700,6 +1700,107 @@ async function createDatabaseSchema(pool) {
   `);
       console.log('✅ Referral earnings table ready');
 
+      // Daily Rewards table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS daily_rewards (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          rewardType ENUM('exp', 'coupon', 'points') DEFAULT 'exp',
+          rewardAmount INT NOT NULL,
+          claimedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          INDEX idx_tenant_user (tenantId, userId),
+          INDEX idx_claimed_at (claimedAt)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Daily rewards table ready');
+
+      // Welcome Bonuses table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS welcome_bonuses (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          claimedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE KEY unique_user_bonus (tenantId, userId),
+          INDEX idx_tenant_user (tenantId, userId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Welcome bonuses table ready');
+
+      // Quests table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS quests (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          questType VARCHAR(100) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          progress INT DEFAULT 0,
+          target INT NOT NULL,
+          rewardType ENUM('exp', 'coupon', 'points') DEFAULT 'exp',
+          rewardAmount INT NOT NULL,
+          completed BOOLEAN DEFAULT FALSE,
+          completedAt TIMESTAMP NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          INDEX idx_tenant_user (tenantId, userId),
+          INDEX idx_completed (completed)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Quests table ready');
+
+      // Badges table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS badges (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          badgeId VARCHAR(100) NOT NULL,
+          badgeName VARCHAR(255) NOT NULL,
+          description TEXT,
+          rarity ENUM('common', 'rare', 'epic', 'legendary') DEFAULT 'common',
+          earnedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE KEY unique_user_badge (tenantId, userId, badgeId),
+          INDEX idx_tenant_user (tenantId, userId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Badges table ready');
+
+      // Subscriptions table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NOT NULL,
+          productId INT NOT NULL,
+          productName VARCHAR(255) NOT NULL,
+          quantity INT NOT NULL DEFAULT 1,
+          frequency ENUM('weekly', 'biweekly', 'monthly', 'quarterly') DEFAULT 'monthly',
+          discount DECIMAL(5,2) DEFAULT 0,
+          freeShipping BOOLEAN DEFAULT FALSE,
+          active BOOLEAN DEFAULT TRUE,
+          nextDelivery DATE,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE,
+          INDEX idx_tenant_user (tenantId, userId),
+          INDEX idx_active (active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ Subscriptions table ready');
+
       // ==================== PERSONALIZATION TABLES ====================
       // User events table
       await pool.execute(`
