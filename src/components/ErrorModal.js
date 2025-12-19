@@ -29,6 +29,11 @@ export default function ErrorModal({
           onPress={onClose}
         />
         <View style={styles.modalContainer}>
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <Ionicons name="close-circle" size={48} color={COLORS.error || '#FF3B30'} />
+          </View>
+
           {/* Title */}
           <Text style={styles.title}>{title}</Text>
 
@@ -79,18 +84,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.textMain,
     marginBottom: 12,
+    textAlign: 'center',
   },
   message: {
     fontSize: 14,
     color: COLORS.gray700,
     lineHeight: 20,
     marginBottom: 24,
+    textAlign: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',

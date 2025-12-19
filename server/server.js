@@ -3315,11 +3315,13 @@ app.post('/api/returns', async (req, res) => {
         `, [itemId, orderId, userId, tenantId]);
 
         if (orderItem.length === 0) {
+          console.log(`⚠️ Order item not found: itemId=${itemId}, orderId=${orderId}, userId=${userId}, tenantId=${tenantId}`);
           continue; // Skip if item not found
         }
 
         // Check if order is delivered
         if (orderItem[0].orderStatus !== 'delivered') {
+          console.log(`⚠️ Order not delivered: orderId=${orderId}, status=${orderItem[0].orderStatus}`);
           continue; // Skip if order not delivered
         }
 

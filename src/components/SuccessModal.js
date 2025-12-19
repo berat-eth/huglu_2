@@ -30,6 +30,11 @@ export default function SuccessModal({
           onPress={onClose}
         />
         <View style={styles.modalContainer}>
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <Ionicons name={icon} size={48} color={COLORS.success || COLORS.primary} />
+          </View>
+
           {/* Title */}
           {title && (
             <Text style={styles.title}>{title}</Text>
@@ -82,18 +87,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.textMain,
     marginBottom: 12,
+    textAlign: 'center',
   },
   message: {
     fontSize: 14,
     color: COLORS.gray700,
     lineHeight: 20,
     marginBottom: 24,
+    textAlign: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',
