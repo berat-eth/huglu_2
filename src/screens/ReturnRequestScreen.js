@@ -68,6 +68,25 @@ export default function ReturnRequestScreen({ navigation, route }) {
       
       if (response.data?.success) {
         const orderData = response.data.order || response.data.data;
+        
+        // İade sadece teslim edilmiş siparişlerde kullanılabilir
+        const orderStatus = orderData.status || orderData.deliveryStatus || '';
+        const isDelivered = orderStatus === 'delivered' || 
+                           orderStatus === 'completed' ||
+                           orderData.delivered === true ||
+                           (orderData.timeline && orderData.timeline.some(item => 
+                             item.status === 'delivered' || item.status === 'completed'
+                           ));
+        
+        if (!isDelivered) {
+          Alert.alert(
+            'İade Talebi Oluşturulamaz',
+            'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir.',
+            [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+        
         setOrder(orderData);
       }
     } catch (error) {
@@ -106,6 +125,20 @@ export default function ReturnRequestScreen({ navigation, route }) {
       return;
     }
 
+    // Siparişin teslim edilmiş olduğunu kontrol et
+    const orderStatus = order?.status || order?.deliveryStatus || '';
+    const isDelivered = orderStatus === 'delivered' || 
+                       orderStatus === 'completed' ||
+                       order?.delivered === true ||
+                       (order?.timeline && order.timeline.some(item => 
+                         item.status === 'delivered' || item.status === 'completed'
+                       ));
+    
+    if (!isDelivered) {
+      Alert.alert('Hata', 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -115,6 +148,7 @@ export default function ReturnRequestScreen({ navigation, route }) {
         items: selectedItems,
         reason: selectedReason,
         comments: additionalComments,
+        description: additionalComments,
         returnMethod: selectedMethod,
         refundAmount: calculateRefundAmount(),
       };

@@ -63,7 +63,8 @@ export default function ReturnRequestsListScreen({ navigation }) {
       console.log('📦 İade talepleri yanıtı:', JSON.stringify(response.data, null, 2));
 
       if (response.data?.success) {
-        const requests = response.data.returnRequests || response.data.data || [];
+        const requests = response.data.data || response.data.returnRequests || [];
+        console.log('📋 İade talepleri örneği:', requests[0]);
         setReturnRequests(Array.isArray(requests) ? requests : []);
         console.log('✅ İade talepleri yüklendi:', requests.length, 'adet');
       } else {
@@ -98,14 +99,16 @@ export default function ReturnRequestsListScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await returnRequestsAPI.cancel(requestId);
+              const response = await returnRequestsAPI.cancel(requestId, userId);
               if (response.data?.success) {
                 Alert.alert('Başarılı', 'İade talebi iptal edildi');
                 loadReturnRequests();
+              } else {
+                Alert.alert('Hata', response.data?.message || 'İade talebi iptal edilemedi');
               }
             } catch (error) {
               console.error('İade talebi iptal hatası:', error);
-              Alert.alert('Hata', 'İade talebi iptal edilemedi');
+              Alert.alert('Hata', error.response?.data?.message || 'İade talebi iptal edilemedi');
             }
           },
         },

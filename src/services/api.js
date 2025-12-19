@@ -327,7 +327,7 @@ export const returnRequestsAPI = {
   get: (userId) => api.get(`/returns/user/${userId}`),
   getReturnableOrders: (userId) => api.get(`/returns/returnable-orders/${userId}`),
   create: (requestData) => api.post('/returns', requestData),
-  cancel: (returnRequestId) => api.put(`/returns/${returnRequestId}/cancel`),
+  cancel: (returnRequestId, userId) => api.put(`/returns/${returnRequestId}/cancel`, { userId }),
 };
 
 // ==================== STORIES API ====================

@@ -19,6 +19,14 @@ export default function WishlistScreen({ navigation }) {
     loadWishlist();
   }, []);
 
+  // Sayfa her açıldığında favorileri yeniden yükle
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadWishlist();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const loadWishlist = async () => {
     try {
       setLoading(true);
@@ -40,7 +48,29 @@ export default function WishlistScreen({ navigation }) {
       if (response.data?.success) {
         const favorites = response.data.favorites || response.data.data || [];
         console.log('✅ Favoriler yüklendi:', favorites.length, 'ürün');
-        setWishlistItems(Array.isArray(favorites) ? favorites : []);
+        console.log('📋 İlk favori örneği:', favorites[0]);
+        
+        // Backend'den gelen veri yapısını normalize et
+        // Backend: { id: favoriteId, productId: X, name: Y, price: Z, ... }
+        const normalizedFavorites = Array.isArray(favorites) ? favorites.map(fav => ({
+          id: fav.id, // favoriteId
+          favoriteId: fav.id,
+          productId: fav.productId,
+          createdAt: fav.createdAt,
+          // Ürün bilgileri direkt favori objesinde
+          name: fav.name,
+          price: fav.price,
+          image: fav.image,
+          stock: fav.stock,
+          description: fav.description,
+          brand: fav.brand,
+          category: fav.category,
+          rating: fav.rating,
+          reviewCount: fav.reviewCount,
+          hasVariations: fav.hasVariations,
+        })) : [];
+        
+        setWishlistItems(normalizedFavorites);
       } else {
         console.warn('⚠️ Favoriler API başarısız yanıt döndü');
         setWishlistItems([]);
@@ -61,19 +91,19 @@ export default function WishlistScreen({ navigation }) {
       console.log('🗑️ Favorilerden çıkarılıyor:', item);
       
       // favoriteId varsa onu kullan (endpoint.md'ye göre DELETE /favorites/:favoriteId)
-      if (item.id || item._id) {
-        const favoriteId = item.id || item._id;
+      const favoriteId = item.id || item.favoriteId || item._id;
+      if (favoriteId) {
         await wishlistAPI.remove(favoriteId, userId);
+        
+        // Local state'den kaldır
+        setWishlistItems(items => items.filter(i => 
+          (i.id || i.favoriteId || i._id) !== favoriteId
+        ));
+        
+        console.log('✅ Favorilerden çıkarıldı');
       } else {
         throw new Error('Favorite ID bulunamadı');
       }
-      
-      // Local state'den kaldır
-      setWishlistItems(items => items.filter(i => 
-        (i.id || i._id) !== (item.id || item._id) && i.productId !== item.productId
-      ));
-      
-      console.log('✅ Favorilerden çıkarıldı');
     } catch (error) {
       console.error('❌ Favorilerden çıkarma hatası:', error.message);
       Alert.alert('Hata', 'Ürün favorilerden çıkarılırken bir hata oluştu');
@@ -121,8 +151,9 @@ export default function WishlistScreen({ navigation }) {
             try {
               // Tüm favorileri tek tek sil (endpoint.md'ye göre DELETE /favorites/:favoriteId)
               for (const item of wishlistItems) {
-                if (item.id || item._id) {
-                  await wishlistAPI.remove(item.id || item._id, userId);
+                const favoriteId = item.id || item.favoriteId || item._id;
+                if (favoriteId) {
+                  await wishlistAPI.remove(favoriteId, userId);
                 }
               }
               setWishlistItems([]);
@@ -224,20 +255,19 @@ export default function WishlistScreen({ navigation }) {
             contentContainerStyle={styles.productsList}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
-              // Backend'den gelen veri yapısını normalize et
-              const product = item.product || item;
-              const productId = item.productId || product.id || product._id;
+              // Backend'den gelen veri yapısı: { id: favoriteId, productId: X, name: Y, price: Z, ... }
+              const productId = item.productId || item.id;
               
               return (
                 <View style={styles.productWrapper}>
                   <ProductCard
                     product={{
                       id: productId,
-                      name: product.productName || product.name,
-                      price: product.price,
-                      image: product.productImage || product.image || product.imageUrl,
-                      rating: product.rating,
-                      category: product.category,
+                      name: item.name,
+                      price: item.price,
+                      image: item.image || item.imageUrl,
+                      rating: item.rating,
+                      category: item.category,
                       isFavorite: true,
                     }}
                     onPress={() => navigation.navigate('ProductDetail', { 
@@ -255,7 +285,7 @@ export default function WishlistScreen({ navigation }) {
             <View style={styles.totalValueRow}>
               <Text style={styles.totalValueLabel}>Toplam Değer</Text>
               <Text style={styles.totalValueAmount}>
-                {wishlistItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0).toFixed(2)} ₺
+                {wishlistItems.reduce((sum, item) => sum + (parseFloat(item.price || 0) || 0), 0).toFixed(2)} ₺
               </Text>
             </View>
             <TouchableOpacity style={styles.shareWishlistButton} onPress={handleShareWishlist}>

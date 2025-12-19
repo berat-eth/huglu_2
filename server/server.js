@@ -3137,9 +3137,9 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
       });
     }
 
-    // Get order item details for refund amount
+    // Get order item details for refund amount and check if order is delivered
     const [orderItem] = await poolWrapper.execute(`
-      SELECT oi.*, o.userId as orderUserId
+      SELECT oi.*, o.userId as orderUserId, o.status as orderStatus
       FROM order_items oi
       JOIN orders o ON oi.orderId = o.id
       WHERE oi.id = ? AND o.userId = ? AND oi.tenantId = ?
@@ -3149,6 +3149,14 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
       return res.status(404).json({
         success: false,
         message: 'Order item not found or not owned by user'
+      });
+    }
+
+    // Check if order is delivered - iade sadece teslim edilmiş siparişlerde kullanılabilir
+    if (orderItem[0].orderStatus !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir'
       });
     }
 
@@ -3181,6 +3189,276 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
   } catch (error) {
     console.error('❌ Error creating return request:', error);
     res.status(500).json({ success: false, message: 'Error creating return request' });
+  }
+});
+
+// ========== Returns Endpoints (endpoint.md'ye göre) ==========
+// Get user's return requests
+app.get('/api/returns/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    const [returnRequests] = await poolWrapper.execute(`
+      SELECT 
+        rr.*,
+        o.id as orderId,
+        oi.productName,
+        oi.productImage,
+        oi.price as originalPrice,
+        oi.quantity
+      FROM return_requests rr
+      JOIN orders o ON rr.orderId = o.id
+      JOIN order_items oi ON rr.orderItemId = oi.id
+      WHERE rr.userId = ? AND rr.tenantId = ?
+      ORDER BY rr.createdAt DESC
+    `, [userId, tenantId]);
+
+    res.json({ success: true, data: returnRequests || [] });
+  } catch (error) {
+    console.error('❌ Error fetching return requests:', error);
+    res.status(500).json({ success: false, message: 'Error fetching return requests' });
+  }
+});
+
+// Get returnable orders (sadece teslim edilmiş siparişler)
+app.get('/api/returns/returnable-orders/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    const [orders] = await poolWrapper.execute(`
+      SELECT 
+        o.id as orderId,
+        o.createdAt as orderDate,
+        o.status as orderStatus,
+        oi.id as orderItemId,
+        oi.productName,
+        oi.productImage,
+        oi.price,
+        oi.quantity,
+        CASE 
+          WHEN rr.id IS NOT NULL THEN rr.status
+          ELSE NULL
+        END as returnStatus
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.orderId
+      LEFT JOIN return_requests rr ON oi.id = rr.orderItemId AND rr.status NOT IN ('rejected', 'cancelled')
+      WHERE o.userId = ? AND o.tenantId = ? AND o.status = 'delivered'
+      ORDER BY o.createdAt DESC, oi.id
+    `, [userId, tenantId]);
+
+    // Group by order
+    const ordersMap = {};
+    orders.forEach(row => {
+      if (!ordersMap[row.orderId]) {
+        ordersMap[row.orderId] = {
+          orderId: row.orderId,
+          orderDate: row.orderDate,
+          orderStatus: row.orderStatus,
+          items: []
+        };
+      }
+
+      ordersMap[row.orderId].items.push({
+        orderItemId: row.orderItemId,
+        productName: row.productName,
+        productImage: row.productImage,
+        price: row.price,
+        quantity: row.quantity,
+        returnStatus: row.returnStatus,
+        canReturn: !row.returnStatus // Can return if no active return request
+      });
+    });
+
+    const result = Object.values(ordersMap);
+    res.json({ success: true, data: result || [] });
+  } catch (error) {
+    console.error('❌ Error fetching returnable orders:', error);
+    res.status(500).json({ success: false, message: 'Error fetching returnable orders' });
+  }
+});
+
+// Create new return request (endpoint.md'ye göre)
+app.post('/api/returns', async (req, res) => {
+  try {
+    const { userId, orderId, orderItemId, reason, description, items, comments, returnMethod } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!userId || !orderId || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: userId, orderId, reason'
+      });
+    }
+
+    // Eğer items array'i varsa, her item için iade talebi oluştur
+    if (items && Array.isArray(items) && items.length > 0) {
+      const returnRequestIds = [];
+      
+      for (const itemId of items) {
+        // Get order item details and check if order is delivered
+        const [orderItem] = await poolWrapper.execute(`
+          SELECT oi.*, o.userId as orderUserId, o.status as orderStatus
+          FROM order_items oi
+          JOIN orders o ON oi.orderId = o.id
+          WHERE (oi.id = ? OR oi.productId = ?) AND o.id = ? AND o.userId = ? AND oi.tenantId = ?
+        `, [itemId, itemId, orderId, userId, tenantId]);
+
+        if (orderItem.length === 0) {
+          continue; // Skip if item not found
+        }
+
+        // Check if order is delivered
+        if (orderItem[0].orderStatus !== 'delivered') {
+          continue; // Skip if order not delivered
+        }
+
+        const orderItemIdToUse = orderItem[0].id;
+        const refundAmount = parseFloat(orderItem[0].price) * parseInt(orderItem[0].quantity);
+
+        // Check if return request already exists
+        const [existingRequest] = await poolWrapper.execute(`
+          SELECT id FROM return_requests 
+          WHERE orderItemId = ? AND tenantId = ? AND status NOT IN ('rejected', 'cancelled')
+        `, [orderItemIdToUse, tenantId]);
+
+        if (existingRequest.length > 0) {
+          continue; // Skip if already exists
+        }
+
+        // Create return request
+        const [result] = await poolWrapper.execute(`
+          INSERT INTO return_requests (tenantId, userId, orderId, orderItemId, reason, description, refundAmount)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [tenantId, userId, orderId, orderItemIdToUse, reason, description || comments || null, refundAmount]);
+
+        returnRequestIds.push(result.insertId);
+      }
+
+      if (returnRequestIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Hiçbir ürün için iade talebi oluşturulamadı. Siparişin teslim edilmiş olduğundan emin olun.'
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: { returnRequestIds },
+        message: `${returnRequestIds.length} adet iade talebi başarıyla oluşturuldu`
+      });
+    } else if (orderItemId) {
+      // Single item return (backward compatibility)
+      const [orderItem] = await poolWrapper.execute(`
+        SELECT oi.*, o.userId as orderUserId, o.status as orderStatus
+        FROM order_items oi
+        JOIN orders o ON oi.orderId = o.id
+        WHERE oi.id = ? AND o.userId = ? AND oi.tenantId = ?
+      `, [orderItemId, userId, tenantId]);
+
+      if (orderItem.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order item not found or not owned by user'
+        });
+      }
+
+      // Check if order is delivered
+      if (orderItem[0].orderStatus !== 'delivered') {
+        return res.status(400).json({
+          success: false,
+          message: 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir'
+        });
+      }
+
+      const refundAmount = parseFloat(orderItem[0].price) * parseInt(orderItem[0].quantity);
+
+      // Check if return request already exists
+      const [existingRequest] = await poolWrapper.execute(`
+        SELECT id FROM return_requests 
+        WHERE orderItemId = ? AND tenantId = ? AND status NOT IN ('rejected', 'cancelled')
+      `, [orderItemId, tenantId]);
+
+      if (existingRequest.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bu ürün için zaten bir iade talebi bulunmaktadır'
+        });
+      }
+
+      // Create return request
+      const [result] = await poolWrapper.execute(`
+        INSERT INTO return_requests (tenantId, userId, orderId, orderItemId, reason, description, refundAmount)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [tenantId, userId, orderId, orderItemId, reason, description || comments || null, refundAmount]);
+
+      return res.json({
+        success: true,
+        data: { returnRequestId: result.insertId },
+        message: 'İade talebi başarıyla oluşturuldu'
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'orderItemId veya items array gereklidir'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error creating return request:', error);
+    res.status(500).json({ success: false, message: 'Error creating return request' });
+  }
+});
+
+// Cancel return request (endpoint.md'ye göre)
+app.put('/api/returns/:returnRequestId/cancel', async (req, res) => {
+  try {
+    const { returnRequestId } = req.params;
+    const { userId } = req.body;
+    const tenantId = req.tenant?.id || 1;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Check if return request exists and belongs to user
+    const [returnRequest] = await poolWrapper.execute(`
+      SELECT id, status FROM return_requests 
+      WHERE id = ? AND userId = ? AND tenantId = ?
+    `, [returnRequestId, userId, tenantId]);
+
+    if (returnRequest.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Return request not found'
+      });
+    }
+
+    if (returnRequest[0].status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Sadece beklemede olan iade talepleri iptal edilebilir'
+      });
+    }
+
+    await poolWrapper.execute(`
+      UPDATE return_requests 
+      SET status = 'cancelled', updatedAt = NOW()
+      WHERE id = ?
+    `, [returnRequestId]);
+
+    res.json({ success: true, message: 'İade talebi iptal edildi' });
+  } catch (error) {
+    console.error('❌ Error cancelling return request:', error);
+    res.status(500).json({ success: false, message: 'Error cancelling return request' });
   }
 });
 
