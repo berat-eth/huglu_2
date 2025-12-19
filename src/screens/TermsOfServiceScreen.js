@@ -45,7 +45,7 @@ export default function TermsOfServiceScreen({ navigation }) {
 
           <Text style={styles.sectionTitle}>5. TESLİMAT VE İADE</Text>
           <Text style={styles.paragraph}>
-            Ürünler, belirtilen teslimat süreleri içinde adresinize teslim edilir. İade ve değişim işlemleri, İade Politikası kapsamında gerçekleştirilir. Ürünler orijinal ambalajında ve 30 gün içinde iade edilmelidir.
+            Ürünler, belirtilen teslimat süreleri içinde adresinize teslim edilir. İade ve değişim işlemleri, İade Politikası kapsamında gerçekleştirilir. Ürünler orijinal ambalajında ve 14 gün içinde iade edilmelidir.
           </Text>
 
           <Text style={styles.sectionTitle}>6. FİKRİ MÜLKİYET</Text>

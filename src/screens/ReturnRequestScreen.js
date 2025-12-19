@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { returnRequestsAPI, ordersAPI } from '../services/api';
+import ErrorModal from '../components/ErrorModal';
+import SuccessModal from '../components/SuccessModal';
 
 const RETURN_REASONS = [
   'Ürün hasarlı/kusurlu geldi',
@@ -18,7 +20,7 @@ const RETURN_REASONS = [
 const RETURN_METHODS = [
   {
     id: 'mail',
-    icon: 'mail',
+    icon: 'car-outline',
     title: 'Kargo ile İade',
     subtitle: 'Evden kargo ile gönderin',
     badge: 'Ücretsiz',
@@ -45,6 +47,14 @@ export default function ReturnRequestScreen({ navigation, route }) {
   const [additionalComments, setAdditionalComments] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('mail');
   const [step, setStep] = useState(1); // 1: Select items, 2: Reason, 3: Method
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadOrderDetails();
@@ -109,8 +119,11 @@ export default function ReturnRequestScreen({ navigation, route }) {
     if (!order || !order.items) return 0;
     
     return order.items
-      .filter(item => selectedItems.includes(item.id || item._id))
-      .reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+      .filter(item => {
+        const itemId = item.id || item._id || item.orderItemId;
+        return selectedItems.includes(itemId);
+      })
+      .reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseInt(item.quantity || 1)), 0);
   };
 
   const handleSubmit = async () => {
@@ -135,17 +148,33 @@ export default function ReturnRequestScreen({ navigation, route }) {
                        ));
     
     if (!isDelivered) {
-      Alert.alert('Hata', 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
+      setErrorMessage('İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
+      setShowErrorModal(true);
       return;
     }
 
     try {
       setSubmitting(true);
 
+      // Order items'dan orderItemId'leri al (backend order_items tablosundaki id'leri bekliyor)
+      const orderItemIds = order.items
+        .filter(item => {
+          const itemId = item.id || item._id || item.orderItemId;
+          return selectedItems.includes(itemId);
+        })
+        .map(item => item.id || item._id || item.orderItemId);
+
+      if (orderItemIds.length === 0) {
+        setErrorMessage('Seçilen ürünler bulunamadı. Lütfen tekrar deneyin.');
+        setShowErrorModal(true);
+        setSubmitting(false);
+        return;
+      }
+
       const returnData = {
         userId,
         orderId,
-        items: selectedItems,
+        items: orderItemIds, // Backend'e order_items tablosundaki id'leri gönder
         reason: selectedReason,
         comments: additionalComments,
         description: additionalComments,
@@ -153,25 +182,24 @@ export default function ReturnRequestScreen({ navigation, route }) {
         refundAmount: calculateRefundAmount(),
       };
 
+      console.log('📤 İade talebi gönderiliyor:', returnData);
+
       const response = await returnRequestsAPI.create(returnData);
 
       if (response.data?.success) {
-        Alert.alert(
-          'Başarılı',
-          'İade talebiniz alındı. En kısa sürede işleme alınacaktır.',
-          [
-            {
-              text: 'Tamam',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        setSuccessMessage(response.data?.message || 'İade talebiniz alındı. En kısa sürede işleme alınacaktır.');
+        setShowSuccessModal(true);
       } else {
-        Alert.alert('Hata', response.data?.message || 'İade talebi oluşturulamadı');
+        const errorMsg = response.data?.message || 'İade talebi oluşturulamadı';
+        console.error('❌ İade talebi hatası:', errorMsg);
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('İade talebi hatası:', error);
-      Alert.alert('Hata', 'İade talebi oluşturulurken bir hata oluştu');
+      console.error('❌ İade talebi hatası:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'İade talebi oluşturulurken bir hata oluştu';
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -226,13 +254,14 @@ export default function ReturnRequestScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>İade Edilecek Ürünleri Seçin</Text>
           
           {order?.items?.map((item) => {
-            const isSelected = selectedItems.includes(item.id || item._id);
+            const itemId = item.id || item._id || item.orderItemId;
+            const isSelected = selectedItems.includes(itemId);
             
             return (
               <TouchableOpacity
-                key={item.id || item._id}
+                key={itemId}
                 style={[styles.itemCard, isSelected && styles.itemCardSelected]}
-                onPress={() => toggleItemSelection(item.id || item._id)}
+                onPress={() => toggleItemSelection(itemId)}
               >
                 <Image
                   source={{ uri: item.image || item.productImage || 'https://via.placeholder.com/80' }}
@@ -350,13 +379,33 @@ export default function ReturnRequestScreen({ navigation, route }) {
         <View style={styles.policyCard}>
           <Ionicons name="information-circle" size={20} color={COLORS.primary} />
           <Text style={styles.policyText}>
-            <Text style={styles.policyBold}>İade Politikası:</Text> Ürünler orijinal ambalajında ve 30 gün içinde iade edilmelidir. İadeler orijinal ödeme yöntemine yapılır.{' '}
+            <Text style={styles.policyBold}>İade Politikası:</Text> Ürünler orijinal ambalajında ve 14 gün içinde iade edilmelidir. İadeler orijinal ödeme yöntemine yapılır.{' '}
             <Text style={styles.policyLink}>Detaylı politika</Text>
           </Text>
         </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Hata"
+        message={errorMessage}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigation.goBack();
+        }}
+        title="Başarılı"
+        message={successMessage}
+        icon="checkmark-circle"
+      />
 
       {/* Fixed Bottom */}
       <View style={styles.bottomContainer}>

@@ -3306,12 +3306,13 @@ app.post('/api/returns', async (req, res) => {
       
       for (const itemId of items) {
         // Get order item details and check if order is delivered
+        // itemId order_items tablosundaki id olmalı
         const [orderItem] = await poolWrapper.execute(`
           SELECT oi.*, o.userId as orderUserId, o.status as orderStatus
           FROM order_items oi
           JOIN orders o ON oi.orderId = o.id
-          WHERE (oi.id = ? OR oi.productId = ?) AND o.id = ? AND o.userId = ? AND oi.tenantId = ?
-        `, [itemId, itemId, orderId, userId, tenantId]);
+          WHERE oi.id = ? AND o.id = ? AND o.userId = ? AND oi.tenantId = ?
+        `, [itemId, orderId, userId, tenantId]);
 
         if (orderItem.length === 0) {
           continue; // Skip if item not found
@@ -3345,9 +3346,10 @@ app.post('/api/returns', async (req, res) => {
       }
 
       if (returnRequestIds.length === 0) {
+        console.log(`❌ No return requests created: items=${JSON.stringify(items)}, orderId=${orderId}`);
         return res.status(400).json({
           success: false,
-          message: 'Hiçbir ürün için iade talebi oluşturulamadı. Siparişin teslim edilmiş olduğundan emin olun.'
+          message: 'Hiçbir ürün için iade talebi oluşturulamadı. Siparişin teslim edilmiş olduğundan ve ürünlerin siparişe ait olduğundan emin olun.'
         });
       }
 

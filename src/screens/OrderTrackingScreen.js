@@ -260,16 +260,14 @@ function OrderTrackingScreen({ navigation }) {
     
     console.log('🔍 Sipariş detayına gidiliyor:', { orderId, status: order.status, actualStatus });
     
-    // Sadece aktif siparişler için detay ekranına git
-    if (actualStatus !== 'cancelled' && actualStatus !== 'delivered') {
+    // Tüm siparişler için detay ekranına git (iade talebi oluşturmak için teslim edilmiş siparişler de görüntülenebilir)
+    if (actualStatus !== 'cancelled') {
       navigation.navigate('OrderDetail', { orderId });
     } else {
-      // Tamamlanmış veya iptal edilmiş siparişler için bilgi göster
+      // Sadece iptal edilmiş siparişler için bilgi göster
       Alert.alert(
         'Bilgi',
-        actualStatus === 'cancelled' 
-          ? 'İptal edilmiş siparişlerin detayları görüntülenemez.'
-          : 'Teslim edilmiş siparişlerin detayları görüntülenemez.',
+        'İptal edilmiş siparişlerin detayları görüntülenemez.',
         [{ text: 'Tamam' }]
       );
     }

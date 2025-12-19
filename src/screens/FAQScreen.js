@@ -16,7 +16,7 @@ const FAQ_DATA = [
     id: 1,
     category: 'popular',
     question: 'Outdoor ürünlerde iade politikanız nedir?',
-    answer: 'Satın aldığınız outdoor ürünleri, orijinal ambalajı bozulmamış ve etiketleri sökülmemiş olmak kaydıyla 30 gün içinde iade edebilirsiniz. Ürünleri iade etmeden önce iç mekanda denemenizi öneririz!',
+    answer: 'Satın aldığınız outdoor ürünleri, orijinal ambalajı bozulmamış ve etiketleri sökülmemiş olmak kaydıyla 14 gün içinde iade edebilirsiniz. Ürünleri iade etmeden önce iç mekanda denemenizi öneririz!',
   },
   {
     id: 2,

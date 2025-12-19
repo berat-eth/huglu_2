@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker } from 'react-native-maps';
 import { COLORS } from '../constants/colors';
-import { ordersAPI, invoicesAPI } from '../services/api';
+import { ordersAPI, invoicesAPI, returnRequestsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
-import { Linking } from 'react-native';
+import { Linking, Alert } from 'react-native';
 
 export default function OrderDetailScreen({ navigation, route }) {
   const { orderId } = route.params || {};
@@ -19,6 +19,7 @@ export default function OrderDetailScreen({ navigation, route }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorTitle, setErrorTitle] = useState('Hata');
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     loadOrderDetail();
@@ -34,6 +35,12 @@ export default function OrderDetailScreen({ navigation, route }) {
         setShowErrorModal(true);
         setLoading(false);
         return;
+      }
+
+      // Kullanıcı ID'sini yükle
+      const storedUserId = await AsyncStorage.getItem('userId');
+      if (storedUserId) {
+        setUserId(storedUserId);
       }
 
       const response = await ordersAPI.getById(orderId);
@@ -177,6 +184,26 @@ export default function OrderDetailScreen({ navigation, route }) {
     }
   };
 
+  const isOrderDelivered = () => {
+    if (!order) return false;
+    const orderStatus = order?.status || order?.deliveryStatus || '';
+    return orderStatus === 'delivered' || 
+           orderStatus === 'completed' ||
+           order?.delivered === true ||
+           (order?.timeline && order.timeline.some(item => 
+             item.status === 'delivered' || item.status === 'completed'
+           ));
+  };
+
+  const handleCreateReturnRequest = () => {
+    if (!isOrderDelivered()) {
+      Alert.alert('Bilgi', 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
+      return;
+    }
+
+    navigation.navigate('ReturnRequest', { orderId });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -275,19 +302,56 @@ export default function OrderDetailScreen({ navigation, route }) {
               
               return status;
             })()}{'\n'}
-            <Text style={styles.deliveryTime}>
-              Tahmini Teslimat Tarihi: {(() => {
-                // Sipariş tarihinden 3 gün sonrasını hesapla
-                const orderDate = order.createdAt || order.orderDate || order.date || new Date();
-                const estimatedDate = new Date(orderDate);
-                estimatedDate.setDate(estimatedDate.getDate() + 3);
-                return estimatedDate.toLocaleDateString('tr-TR', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric'
-                });
-              })()}
-            </Text>
+            {(() => {
+              const orderStatus = order.deliveryStatus || order.statusText || order.status || '';
+              const statusLower = orderStatus.toLowerCase();
+              const isDelivered = statusLower === 'delivered' || statusLower === 'completed' || order?.delivered === true;
+              
+              if (isDelivered && order.deliveredDate) {
+                return (
+                  <Text style={styles.deliveryTime}>
+                    Teslim Edildi: {new Date(order.deliveredDate).toLocaleDateString('tr-TR', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                );
+              } else if (isDelivered && order.timeline) {
+                const deliveredStep = order.timeline.find(step => 
+                  step.status === 'delivered' || step.status === 'completed' || 
+                  step.title?.toLowerCase().includes('teslim')
+                );
+                if (deliveredStep?.date) {
+                  return (
+                    <Text style={styles.deliveryTime}>
+                      Teslim Edildi: {new Date(deliveredStep.date).toLocaleDateString('tr-TR', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                  );
+                }
+              }
+              
+              // Teslim edilmediyse tahmini teslimat tarihi göster
+              return (
+                <Text style={styles.deliveryTime}>
+                  Tahmini Teslimat Tarihi: {(() => {
+                    // Sipariş tarihinden 3 gün sonrasını hesapla
+                    const orderDate = order.createdAt || order.orderDate || order.date || new Date();
+                    const estimatedDate = new Date(orderDate);
+                    estimatedDate.setDate(estimatedDate.getDate() + 3);
+                    return estimatedDate.toLocaleDateString('tr-TR', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    });
+                  })()}
+                </Text>
+              );
+            })()}
           </Text>
         </View>
 
@@ -434,7 +498,7 @@ export default function OrderDetailScreen({ navigation, route }) {
               <View style={styles.carrierInfo}>
                 <Ionicons name="cube-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.shippingValue}>
-                  {order.carrier || order.shippingCarrier || 'DHL E-commerce'}
+                  {order.carrier || order.shippingCarrier || 'DHL Kargo'}
                 </Text>
               </View>
             </View>
@@ -452,14 +516,71 @@ export default function OrderDetailScreen({ navigation, route }) {
                 <Text style={styles.shippingValue}>Henüz atanmadı</Text>
               )}
             </View>
+            {isOrderDelivered() && (
+              <>
+                <View style={styles.shippingDivider} />
+                <View style={styles.shippingRow}>
+                  <Text style={styles.shippingLabel}>Kargo İade Kodu</Text>
+                  <TouchableOpacity style={styles.trackingButton} onPress={() => {
+                    Clipboard.setString('3470654462');
+                    setShowSuccessModal(true);
+                  }}>
+                    <Text style={styles.trackingNumber}>3470654462</Text>
+                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
+          
+          {/* Refund Info - Sadece teslim edilmiş siparişler için */}
+          {isOrderDelivered() && (
+            <View style={styles.refundInfoCard}>
+              <View style={styles.refundInfoHeader}>
+                <Ionicons name="wallet-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.refundInfoTitle}>İade Tutarı</Text>
+              </View>
+              <View style={styles.refundInfoContent}>
+                <View style={styles.refundInfoRow}>
+                  <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+                  <Text style={styles.refundInfoText}>
+                    İade süresi: <Text style={styles.refundInfoBold}>14 gün</Text>
+                  </Text>
+                </View>
+                <View style={styles.refundInfoRow}>
+                  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+                  <Text style={styles.refundInfoText}>
+                    İade tutarı cüzdanınıza <Text style={styles.refundInfoBold}>anında</Text> yüklenir
+                  </Text>
+                </View>
+                <View style={styles.refundInfoRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.warning} />
+                  <Text style={styles.refundInfoText}>
+                    Ücret iadesi ise <Text style={styles.refundInfoBold}>1 ila 14 gün</Text> içerisinde
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
           <TouchableOpacity style={styles.primaryButton} onPress={handleViewInvoice}>
+            <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
             <Text style={styles.primaryButtonText}>Faturayı Görüntüle</Text>
           </TouchableOpacity>
+          
+          {isOrderDelivered() && (
+            <TouchableOpacity 
+              style={styles.returnButton} 
+              onPress={handleCreateReturnRequest}
+            >
+              <Ionicons name="return-down-back-outline" size={20} color={COLORS.white} />
+              <Text style={styles.returnButtonText}>İade Talebi Oluştur</Text>
+            </TouchableOpacity>
+          )}
+          
           <TouchableOpacity style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sipariş ile ilgili sorun mu var?</Text>
           </TouchableOpacity>
@@ -563,31 +684,45 @@ const styles = StyleSheet.create({
   },
   deliveryStatusContainer: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginTop: -20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
   },
   deliveryTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: COLORS.textMain,
-    lineHeight: 36,
+    lineHeight: 32,
+    marginBottom: 8,
   },
   deliveryTime: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '600',
     color: COLORS.primary,
+    marginTop: 4,
   },
   productSection: {
     marginTop: 24,
     paddingHorizontal: 20,
+    gap: 12,
   },
   productCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    padding: 12,
+    padding: 16,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -634,7 +769,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray100,
   },
   timelineSection: {
-    marginTop: 32,
+    marginTop: 24,
     paddingHorizontal: 20,
   },
   timelineHeader: {
@@ -643,6 +778,7 @@ const styles = StyleSheet.create({
     color: 'rgba(17, 212, 33, 0.6)',
     letterSpacing: 1,
     marginBottom: 16,
+    textTransform: 'uppercase',
   },
   timelineContainer: {
     position: 'relative',
@@ -724,17 +860,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'rgba(17, 212, 33, 0.6)',
     letterSpacing: 1,
-    marginBottom: 16,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   shippingCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
     borderColor: 'rgba(17, 212, 33, 0.1)',
   },
@@ -773,11 +910,50 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontFamily: 'monospace',
   },
+  refundInfoCard: {
+    marginTop: 16,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  refundInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  refundInfoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  refundInfoContent: {
+    gap: 10,
+  },
+  refundInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  refundInfoText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textMain,
+    lineHeight: 20,
+  },
+  refundInfoBold: {
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
   actionsSection: {
     paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
     gap: 12,
+    backgroundColor: COLORS.white,
+    marginTop: 16,
   },
   primaryButton: {
     width: '100%',
@@ -785,6 +961,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -794,7 +973,27 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.textMain,
+    color: COLORS.white,
+  },
+  returnButton: {
+    width: '100%',
+    paddingVertical: 14,
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  returnButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   secondaryButton: {
     width: '100%',
