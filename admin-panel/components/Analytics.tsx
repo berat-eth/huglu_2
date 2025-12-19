@@ -146,7 +146,7 @@ export default function Analytics() {
       const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS'
       const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'}/admin/analytics/export?type=${format}&format=events&timeRange=${timeRange}&tenantId=${tenantId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'}/admin/analytics/export?type=${format}&format=events&timeRange=${timeRange}&tenantId=${tenantId}`,
         {
           headers: {
             'X-Admin-Key': adminKey,

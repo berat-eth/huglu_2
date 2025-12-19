@@ -51,8 +51,7 @@ self.addEventListener('fetch', (event) => {
   // Not: Expires, Pragma, Cache-Control header'ları CORS preflight'ında sorun çıkarabilir
   // Bu yüzden sadece fetch options'da cache: 'no-store' kullanıyoruz
   if (url.pathname.startsWith('/api/') || 
-      url.hostname.includes('api.huglutekstil.com') ||
-      url.hostname.includes('api.zerodaysoftware.tr') ||
+      url.hostname.includes('api.plaxsy.com') ||
       url.hostname.includes('api.')) {
     event.respondWith(
       fetch(event.request, {

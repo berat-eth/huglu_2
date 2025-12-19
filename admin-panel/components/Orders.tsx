@@ -197,7 +197,7 @@ export default function Orders() {
   const handleGenerateCargoSlip = async () => {
     if (!selectedOrderForCargoSlip) return
     
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
     
     try {
       setGeneratingCargoSlipId(selectedOrderForCargoSlip.id)
@@ -1360,7 +1360,7 @@ export default function Orders() {
                             setSelectedInvoiceId(null)
                           }
                         }}
-                        placeholder="https://api.huglutekstil.com/api/invoices/share/..."
+                        placeholder="https://api.plaxsy.com/api/invoices/share/..."
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       {invoiceLink && invoiceLink.trim() && (

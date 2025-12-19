@@ -38,15 +38,49 @@ function OrderTrackingScreen({ navigation }) {
         console.log('📦 Siparişler yüklendi:', orders.length, 'adet');
         if (orders.length > 0) {
           console.log('📦 İlk sipariş örneği:', JSON.stringify(orders[0], null, 2));
+          console.log('📦 Status değerleri:', orders.map(o => ({ id: o.id, status: o.status, statusText: o.statusText, deliveryStatus: o.deliveryStatus })));
         }
         
         // Siparişleri durumlarına göre ayır
-        const active = orders.filter(order => 
-          order.status !== 'delivered' && order.status !== 'cancelled'
-        );
-        const past = orders.filter(order => 
-          order.status === 'delivered' || order.status === 'cancelled'
-        );
+        const active = orders.filter(order => {
+          // Timeline'daki son duruma bakarak gerçek durumu belirle
+          let actualStatus = order.status;
+          
+          // completed durumu da delivered olarak kabul et
+          if (actualStatus === 'completed') {
+            actualStatus = 'delivered';
+          }
+          
+          // Eğer timeline varsa ve son durum completed ise, sipariş teslim edilmiş sayılır
+          if (order.timeline && Array.isArray(order.timeline) && order.timeline.length > 0) {
+            const lastTimelineItem = order.timeline[order.timeline.length - 1];
+            if (lastTimelineItem.status === 'completed' && lastTimelineItem.title?.toLowerCase().includes('teslim')) {
+              actualStatus = 'delivered';
+            }
+          }
+          
+          return actualStatus !== 'delivered' && actualStatus !== 'cancelled';
+        });
+        
+        const past = orders.filter(order => {
+          // Timeline'daki son duruma bakarak gerçek durumu belirle
+          let actualStatus = order.status;
+          
+          // completed durumu da delivered olarak kabul et
+          if (actualStatus === 'completed') {
+            actualStatus = 'delivered';
+          }
+          
+          // Eğer timeline varsa ve son durum completed ise, sipariş teslim edilmiş sayılır
+          if (order.timeline && Array.isArray(order.timeline) && order.timeline.length > 0) {
+            const lastTimelineItem = order.timeline[order.timeline.length - 1];
+            if (lastTimelineItem.status === 'completed' && lastTimelineItem.title?.toLowerCase().includes('teslim')) {
+              actualStatus = 'delivered';
+            }
+          }
+          
+          return actualStatus === 'delivered' || actualStatus === 'cancelled';
+        });
         
         setActiveOrders(active);
         setPastOrders(past);
@@ -95,9 +129,32 @@ function OrderTrackingScreen({ navigation }) {
     }
   };
 
-  const getStatusConfig = (status) => {
-    switch (status) {
+  const getStatusConfig = (order) => {
+    // Timeline'daki son duruma bakarak gerçek durumu belirle
+    let actualStatus = order.status;
+    
+    // Status değerini küçük harfe çevir ve normalize et
+    if (typeof actualStatus === 'string') {
+      actualStatus = actualStatus.toLowerCase().trim();
+    }
+    
+    // Eğer timeline varsa ve son durum completed ise, sipariş teslim edilmiş sayılır
+    if (order.timeline && Array.isArray(order.timeline) && order.timeline.length > 0) {
+      const lastTimelineItem = order.timeline[order.timeline.length - 1];
+      if (lastTimelineItem.status === 'completed' && lastTimelineItem.title?.toLowerCase().includes('teslim')) {
+        actualStatus = 'delivered';
+      }
+    }
+    
+    // completed durumu da delivered olarak kabul et
+    if (actualStatus === 'completed') {
+      actualStatus = 'delivered';
+    }
+    
+    // Status değerine göre Türkçe etiket döndür
+    switch (actualStatus) {
       case 'processing':
+      case 'hazırlanıyor':
         return {
           icon: 'cube-outline',
           label: 'Hazırlanıyor',
@@ -105,6 +162,8 @@ function OrderTrackingScreen({ navigation }) {
           bgColor: 'rgba(245, 158, 11, 0.1)',
         };
       case 'shipped':
+      case 'kargoda':
+      case 'in cargo':
         return {
           icon: 'car-outline',
           label: 'Kargoda',
@@ -112,6 +171,8 @@ function OrderTrackingScreen({ navigation }) {
           bgColor: 'rgba(59, 130, 246, 0.1)',
         };
       case 'delivered':
+      case 'completed':
+      case 'teslim edildi':
         return {
           icon: 'checkmark-circle',
           label: 'Teslim Edildi',
@@ -119,16 +180,59 @@ function OrderTrackingScreen({ navigation }) {
           bgColor: 'rgba(17, 212, 33, 0.1)',
         };
       case 'cancelled':
+      case 'canceled':
+      case 'iptal edildi':
         return {
           icon: 'close-circle',
           label: 'İptal Edildi',
           color: '#ef4444',
           bgColor: 'rgba(239, 68, 68, 0.1)',
         };
-      default:
+      case 'pending':
+      case 'bekleniyor':
+      case 'beklemede':
         return {
           icon: 'time-outline',
-          label: 'Beklemede',
+          label: 'Bekleniyor',
+          color: COLORS.gray500,
+          bgColor: COLORS.gray100,
+        };
+      default:
+        // Eğer status değeri tanınmıyorsa, order.statusText veya order.deliveryStatus'a bak
+        const altStatus = (order.statusText || order.deliveryStatus || '').toLowerCase();
+        if (altStatus.includes('hazırlan')) {
+          return {
+            icon: 'cube-outline',
+            label: 'Hazırlanıyor',
+            color: '#f59e0b',
+            bgColor: 'rgba(245, 158, 11, 0.1)',
+          };
+        } else if (altStatus.includes('kargo')) {
+          return {
+            icon: 'car-outline',
+            label: 'Kargoda',
+            color: '#3b82f6',
+            bgColor: 'rgba(59, 130, 246, 0.1)',
+          };
+        } else if (altStatus.includes('teslim')) {
+          return {
+            icon: 'checkmark-circle',
+            label: 'Teslim Edildi',
+            color: COLORS.primary,
+            bgColor: 'rgba(17, 212, 33, 0.1)',
+          };
+        } else if (altStatus.includes('iptal')) {
+          return {
+            icon: 'close-circle',
+            label: 'İptal Edildi',
+            color: '#ef4444',
+            bgColor: 'rgba(239, 68, 68, 0.1)',
+          };
+        }
+        
+        return {
+          icon: 'time-outline',
+          label: 'Bekleniyor',
           color: COLORS.gray500,
           bgColor: COLORS.gray100,
         };
@@ -137,16 +241,33 @@ function OrderTrackingScreen({ navigation }) {
 
   const handleOrderPress = (order) => {
     const orderId = order.id || order.orderId || order._id;
-    console.log('🔍 Sipariş detayına gidiliyor:', { orderId, status: order.status });
+    
+    // Timeline'daki son duruma bakarak gerçek durumu belirle
+    let actualStatus = order.status;
+    
+    // completed durumu da delivered olarak kabul et
+    if (actualStatus === 'completed') {
+      actualStatus = 'delivered';
+    }
+    
+    // Eğer timeline varsa ve son durum completed ise, sipariş teslim edilmiş sayılır
+    if (order.timeline && Array.isArray(order.timeline) && order.timeline.length > 0) {
+      const lastTimelineItem = order.timeline[order.timeline.length - 1];
+      if (lastTimelineItem.status === 'completed' && lastTimelineItem.title?.toLowerCase().includes('teslim')) {
+        actualStatus = 'delivered';
+      }
+    }
+    
+    console.log('🔍 Sipariş detayına gidiliyor:', { orderId, status: order.status, actualStatus });
     
     // Sadece aktif siparişler için detay ekranına git
-    if (order.status !== 'cancelled' && order.status !== 'delivered') {
+    if (actualStatus !== 'cancelled' && actualStatus !== 'delivered') {
       navigation.navigate('OrderDetail', { orderId });
     } else {
       // Tamamlanmış veya iptal edilmiş siparişler için bilgi göster
       Alert.alert(
         'Bilgi',
-        order.status === 'cancelled' 
+        actualStatus === 'cancelled' 
           ? 'İptal edilmiş siparişlerin detayları görüntülenemez.'
           : 'Teslim edilmiş siparişlerin detayları görüntülenemez.',
         [{ text: 'Tamam' }]
@@ -155,7 +276,7 @@ function OrderTrackingScreen({ navigation }) {
   };
 
   const renderOrderCard = (order, isPast = false) => {
-    const statusConfig = getStatusConfig(order.status);
+    const statusConfig = getStatusConfig(order);
     
     // Güvenli değer çıkarma
     const orderTotal = parseFloat(order.total || order.totalAmount || 0);
@@ -187,19 +308,46 @@ function OrderTrackingScreen({ navigation }) {
           </Text>
           
           {/* Date Info */}
-          {order.status === 'processing' || order.status === 'shipped' ? (
-            <Text style={styles.orderDate}>
-              Tahmini Teslimat: {order.estimatedDelivery || order.estimatedDeliveryDate || 'Hesaplanıyor...'}
-            </Text>
-          ) : order.status === 'delivered' ? (
-            <Text style={styles.orderDate}>
-              Teslim Edildi: {order.deliveredDate || order.deliveryDate || new Date(order.updatedAt || order.createdAt).toLocaleDateString('tr-TR')}
-            </Text>
-          ) : (
-            <Text style={styles.orderDate}>
-              İptal Tarihi: {order.cancelledDate || order.cancelDate || new Date(order.updatedAt || order.createdAt).toLocaleDateString('tr-TR')}
-            </Text>
-          )}
+          {(() => {
+            // Timeline'daki son duruma bakarak gerçek durumu belirle
+            let actualStatus = order.status;
+            
+            // completed durumu da delivered olarak kabul et
+            if (actualStatus === 'completed') {
+              actualStatus = 'delivered';
+            }
+            
+            // Eğer timeline varsa ve son durum completed ise, sipariş teslim edilmiş sayılır
+            if (order.timeline && Array.isArray(order.timeline) && order.timeline.length > 0) {
+              const lastTimelineItem = order.timeline[order.timeline.length - 1];
+              if (lastTimelineItem.status === 'completed' && lastTimelineItem.title?.toLowerCase().includes('teslim')) {
+                actualStatus = 'delivered';
+              }
+            }
+            
+            if (actualStatus === 'processing' || actualStatus === 'shipped') {
+              return (
+                <Text style={styles.orderDate}>
+                  Tahmini Teslimat: {order.estimatedDelivery || order.estimatedDeliveryDate || 'Hesaplanıyor...'}
+                </Text>
+              );
+            } else if (actualStatus === 'delivered') {
+              return (
+                <Text style={styles.orderDate}>
+                  Teslim Edildi: {order.deliveredDate || order.deliveryDate || new Date(order.updatedAt || order.createdAt).toLocaleDateString('tr-TR')}
+                </Text>
+              );
+            } else if (actualStatus === 'cancelled') {
+              return (
+                <Text style={styles.orderDate}>
+                  İptal Tarihi: {order.cancelledDate || order.cancelDate || new Date(order.updatedAt || order.createdAt).toLocaleDateString('tr-TR')}
+                </Text>
+              );
+            } else {
+              // Beklemede veya diğer durumlar için tarih gösterme
+              return null;
+            }
+          })()}
 
           {/* Action Button */}
           {isPast ? (

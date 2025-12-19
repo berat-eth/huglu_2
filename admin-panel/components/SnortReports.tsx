@@ -45,7 +45,7 @@ export default function SnortReports() {
   const handleDownload = async (filename: string) => {
     try {
       // PDF export için fetch kullan (blob response için)
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.zerodaysoftware.tr/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
       
       const response = await fetch(`${baseUrl}/admin/snort/logs/export/pdf?filename=${encodeURIComponent(filename)}`, {
@@ -182,7 +182,7 @@ function CreateReportModal({ onClose, onSuccess }: { onClose: () => void; onSucc
       setError(null)
 
       if (format === 'pdf') {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.zerodaysoftware.tr/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
         const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
         
         const response = await fetch(`${baseUrl}/admin/snort/logs/export/pdf`, {

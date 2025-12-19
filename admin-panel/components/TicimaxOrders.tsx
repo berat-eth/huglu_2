@@ -130,7 +130,7 @@ export default function TicimaxOrders() {
       formData.append('file', file)
       
       // API base URL'i al - api utility'sinden aynı değerleri kullan
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
       const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
       const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS'
       const token = sessionStorage.getItem('authToken') || ''
@@ -273,7 +273,7 @@ export default function TicimaxOrders() {
     if (!selectedOrder) return
     
     // API base URL'i fonksiyonun başında tanımla
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
     
     try {
     // Fatura linki veya seçili fatura kontrolü
@@ -765,7 +765,7 @@ export default function TicimaxOrders() {
                             setSelectedInvoiceId(null)
                           }
                         }}
-                        placeholder="https://api.huglutekstil.com/api/invoices/share/..."
+                        placeholder="https://api.plaxsy.com/api/invoices/share/..."
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       {invoiceLink && invoiceLink.trim() && (
@@ -1122,7 +1122,7 @@ export default function TicimaxOrders() {
               </div>
                             <div className="flex items-center gap-2 ml-4">
                               {(() => {
-                                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'
+                                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
                                 const token = sessionStorage.getItem('authToken') || ''
                                 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
                                 const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS'

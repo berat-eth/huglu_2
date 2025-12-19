@@ -134,7 +134,7 @@ export default function SnortLogs() {
     // Real-time SSE bağlantısı
     useEffect(() => {
         if (realTimeMode) {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.zerodaysoftware.tr/api'
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
             const token = localStorage.getItem('adminToken')
             const eventSource = new EventSource(`${baseUrl}/admin/snort/logs/stream?token=${token}`)
             

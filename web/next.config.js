@@ -20,27 +20,19 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'api.huglutekstil.com',
+        hostname: 'api.plaxsy.com',
       },
       {
         protocol: 'http',
-        hostname: 'api.huglutekstil.com',
+        hostname: 'api.plaxsy.com',
       },
       {
         protocol: 'https',
-        hostname: '*.huglutekstil.com',
+        hostname: '*.plaxsy.com',
       },
       {
         protocol: 'http',
-        hostname: '*.huglutekstil.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'api.zerodaysoftware.tr',
-      },
-      {
-        protocol: 'http',
-        hostname: 'api.zerodaysoftware.tr',
+        hostname: '*.plaxsy.com',
       },
     ],
     formats: ['image/avif', 'image/webp'],

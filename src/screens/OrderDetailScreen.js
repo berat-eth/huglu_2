@@ -3,10 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MapView, { Marker } from 'react-native-maps';
 import { COLORS } from '../constants/colors';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, invoicesAPI } from '../services/api';
+import { getApiUrl } from '../config/api.config';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
+import { Linking } from 'react-native';
 
 export default function OrderDetailScreen({ navigation, route }) {
   const { orderId } = route.params || {};
@@ -71,9 +74,93 @@ export default function OrderDetailScreen({ navigation, route }) {
   };
 
   const copyTrackingNumber = () => {
-    if (order?.trackingNumber) {
-      Clipboard.setString(order.trackingNumber);
+    const trackingCode = order?.trackingNumber || order?.trackingCode || order?.cargoTrackingCode;
+    if (trackingCode) {
+      Clipboard.setString(trackingCode);
       setShowSuccessModal(true);
+    }
+  };
+
+  const handleViewInvoice = async () => {
+    try {
+      if (!orderId) {
+        setErrorTitle('Hata');
+        setErrorMessage('Sipariş bulunamadı');
+        setShowErrorModal(true);
+        return;
+      }
+
+      // Önce sipariş bazlı fatura endpoint'ini dene
+      try {
+        const response = await invoicesAPI.getByOrderId(orderId);
+        if (response.data?.success && response.data?.data) {
+          const invoice = response.data.data;
+          
+          // Eğer PDF URL'i varsa tarayıcıda aç
+          if (invoice.filePath || invoice.shareUrl) {
+            const invoiceUrl = invoice.shareUrl || `${getApiUrl()}/invoices/download/${invoice.id}`;
+            const canOpen = await Linking.canOpenURL(invoiceUrl);
+            if (canOpen) {
+              await Linking.openURL(invoiceUrl);
+            } else {
+              setErrorTitle('Hata');
+              setErrorMessage('Fatura açılamadı. Lütfen daha sonra tekrar deneyin.');
+              setShowErrorModal(true);
+            }
+          } else {
+            // Fatura bulundu ama URL yok
+            setErrorTitle('Bilgi');
+            setErrorMessage('Fatura henüz hazırlanmamış.');
+            setShowErrorModal(true);
+          }
+          return;
+        }
+      } catch (orderInvoiceError) {
+        console.log('Sipariş bazlı fatura bulunamadı, kullanıcı bazlı arama yapılıyor...');
+      }
+
+      // Kullanıcı bazlı fatura endpoint'lerini dene
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        setErrorTitle('Hata');
+        setErrorMessage('Kullanıcı bilgisi bulunamadı');
+        setShowErrorModal(true);
+        return;
+      }
+
+      // /orders/:userId/invoices endpoint'ini dene
+      try {
+        const response = await invoicesAPI.getOrderInvoices(userId);
+        if (response.data?.success && response.data?.data) {
+          const invoices = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+          const orderInvoice = invoices.find(inv => inv.orderId === parseInt(orderId) || inv.orderId === orderId);
+          
+          if (orderInvoice) {
+            const invoiceUrl = orderInvoice.shareUrl || orderInvoice.filePath || `${getApiUrl()}/invoices/download/${orderInvoice.id}`;
+            const canOpen = await Linking.canOpenURL(invoiceUrl);
+            if (canOpen) {
+              await Linking.openURL(invoiceUrl);
+            } else {
+              setErrorTitle('Hata');
+              setErrorMessage('Fatura açılamadı. Lütfen daha sonra tekrar deneyin.');
+              setShowErrorModal(true);
+            }
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('Kullanıcı bazlı fatura bulunamadı:', error);
+      }
+
+      // Fatura bulunamadı
+      setErrorTitle('Bilgi');
+      setErrorMessage('Bu sipariş için fatura bulunamadı.');
+      setShowErrorModal(true);
+    } catch (error) {
+      console.error('❌ Fatura görüntüleme hatası:', error);
+      setErrorTitle('Hata');
+      setErrorMessage('Fatura yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setShowErrorModal(true);
     }
   };
 
@@ -141,22 +228,66 @@ export default function OrderDetailScreen({ navigation, route }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Map Placeholder */}
+        {/* Google Maps */}
         <View style={styles.mapContainer}>
-          <View style={styles.mapOverlay} />
-          <View style={styles.mapGradient} />
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: order.shippingAddress?.latitude || order.deliveryAddress?.latitude || 39.9334,
+              longitude: order.shippingAddress?.longitude || order.deliveryAddress?.longitude || 32.8597,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+          >
+            {(order.shippingAddress?.latitude || order.deliveryAddress?.latitude) && (
+              <Marker
+                coordinate={{
+                  latitude: order.shippingAddress?.latitude || order.deliveryAddress?.latitude,
+                  longitude: order.shippingAddress?.longitude || order.deliveryAddress?.longitude,
+                }}
+                title="Teslimat Adresi"
+              />
+            )}
+          </MapView>
         </View>
 
         {/* Delivery Status */}
         <View style={styles.deliveryStatusContainer}>
           <Text style={styles.deliveryTitle}>
-            {order.deliveryStatus || order.statusText || 'Kargoda'}{'\n'}
+            {(() => {
+              const status = order.deliveryStatus || order.statusText || order.status || 'Kargoda';
+              const statusLower = status.toLowerCase();
+              
+              // Durum belirteçlerini Türkçeye çevir
+              if (statusLower === 'pending') {
+                return 'Bekleniyor';
+              } else if (statusLower === 'processing') {
+                return 'Hazırlanıyor';
+              } else if (statusLower === 'shipped') {
+                return 'Kargoda';
+              } else if (statusLower === 'delivered' || statusLower === 'completed') {
+                return 'Teslim Edildi';
+              } else if (statusLower === 'cancelled' || statusLower === 'canceled') {
+                return 'İptal Edildi';
+              }
+              
+              return status;
+            })()}{'\n'}
             <Text style={styles.deliveryTime}>
-              {order.estimatedDelivery || order.estimatedDeliveryDate || 'Tahmini teslimat hesaplanıyor'}
+              Tahmini Teslimat Tarihi: {(() => {
+                // Sipariş tarihinden 3 gün sonrasını hesapla
+                const orderDate = order.createdAt || order.orderDate || order.date || new Date();
+                const estimatedDate = new Date(orderDate);
+                estimatedDate.setDate(estimatedDate.getDate() + 3);
+                return estimatedDate.toLocaleDateString('tr-TR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                });
+              })()}
             </Text>
-          </Text>
-          <Text style={styles.latestUpdate}>
-            Son Güncelleme: {order.latestUpdate || order.lastUpdate || new Date(order.updatedAt || order.createdAt).toLocaleString('tr-TR')}
           </Text>
         </View>
 
@@ -172,7 +303,8 @@ export default function OrderDetailScreen({ navigation, route }) {
             // Varyant string'ini oluştur
             let variantText = '';
             if (typeof itemVariant === 'string') {
-              variantText = itemVariant;
+              // JSON formatındaki renk kodlarını temizle
+              variantText = itemVariant.replace(/\{"color":"#[^"]+"\}/g, '').trim();
             } else if (typeof itemVariant === 'object' && itemVariant !== null) {
               const parts = [];
               if (itemVariant.size) parts.push(`Beden: ${itemVariant.size}`);
@@ -212,9 +344,25 @@ export default function OrderDetailScreen({ navigation, route }) {
             <View style={styles.timelineContainer}>
               {order.timeline.map((step, index) => {
                 const stepId = step.id || step._id || index;
-                const stepTitle = step.title || step.status || step.statusText || 'Durum';
+                let stepTitle = step.title || step.status || step.statusText || 'Durum';
                 const stepDate = step.date || step.timestamp || step.createdAt;
                 const stepStatus = step.status || 'pending';
+                
+                // Timeline başlıklarını Türkçeye çevir
+                const stepTitleLower = stepTitle.toLowerCase();
+                if (stepTitleLower === 'order received' || stepTitleLower === 'sipariş alındı') {
+                  stepTitle = 'Sipariş Alındı';
+                } else if (stepTitleLower === 'processing' || stepTitleLower === 'hazırlanıyor') {
+                  stepTitle = 'Hazırlanıyor';
+                } else if (stepTitleLower === 'shipped' || stepTitleLower === 'kargoda' || stepTitleLower === 'in cargo') {
+                  stepTitle = 'Kargoda';
+                } else if (stepTitleLower === 'delivered' || stepTitleLower === 'teslim edildi' || stepTitleLower === 'completed') {
+                  stepTitle = 'Teslim Edildi';
+                } else if (stepTitleLower === 'cancelled' || stepTitleLower === 'iptal edildi' || stepTitleLower === 'canceled') {
+                  stepTitle = 'İptal Edildi';
+                } else if (stepTitleLower === 'pending' || stepTitleLower === 'bekleniyor') {
+                  stepTitle = 'Bekleniyor';
+                }
                 
                 return (
                   <View key={stepId} style={styles.timelineRow}>
@@ -290,24 +438,26 @@ export default function OrderDetailScreen({ navigation, route }) {
                 </Text>
               </View>
             </View>
-            {order.trackingNumber && (
-              <>
-                <View style={styles.shippingDivider} />
-                <View style={styles.shippingRow}>
-                  <Text style={styles.shippingLabel}>Takip No</Text>
-                  <TouchableOpacity style={styles.trackingButton} onPress={copyTrackingNumber}>
-                    <Text style={styles.trackingNumber}>{order.trackingNumber}</Text>
-                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+            <View style={styles.shippingDivider} />
+            <View style={styles.shippingRow}>
+              <Text style={styles.shippingLabel}>Kargo Takip Kodu</Text>
+              {order.trackingNumber || order.trackingCode || order.cargoTrackingCode ? (
+                <TouchableOpacity style={styles.trackingButton} onPress={copyTrackingNumber}>
+                  <Text style={styles.trackingNumber}>
+                    {order.trackingNumber || order.trackingCode || order.cargoTrackingCode}
+                  </Text>
+                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.shippingValue}>Henüz atanmadı</Text>
+              )}
+            </View>
           </View>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleViewInvoice}>
             <Text style={styles.primaryButtonText}>Faturayı Görüntüle</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryButton}>
@@ -404,21 +554,12 @@ const styles = StyleSheet.create({
   mapContainer: {
     width: '100%',
     height: 200,
-    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+    backgroundColor: COLORS.primary,
     position: 'relative',
   },
-  mapOverlay: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(17, 212, 33, 0.1)',
-  },
-  mapGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: 'transparent',
+  map: {
+    width: '100%',
+    height: '100%',
   },
   deliveryStatusContainer: {
     paddingHorizontal: 20,
@@ -435,12 +576,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
     color: COLORS.primary,
-  },
-  latestUpdate: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.gray500,
   },
   productSection: {
     marginTop: 24,

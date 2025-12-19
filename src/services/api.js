@@ -164,6 +164,16 @@ export const ordersAPI = {
   track: (orderId) => api.get(`/orders/${orderId}/track`),
   getReturnable: (userId) => api.get('/orders/returnable', { params: { userId } }),
   cancel: (orderId) => api.put(`/orders/${orderId}/cancel`),
+  getInvoice: (orderId) => api.get(`/orders/${orderId}/invoice`),
+};
+
+// ==================== INVOICES API ====================
+export const invoicesAPI = {
+  getByUser: (userId) => api.get(`/invoices/${userId}`),
+  getBillingInvoices: (userId) => api.get(`/billing/invoices/${userId}`),
+  getOrderInvoices: (userId) => api.get(`/orders/${userId}/invoices`),
+  getByOrderId: (orderId) => api.get(`/orders/${orderId}/invoice`),
+  getSharedInvoice: (token) => api.get(`/invoices/share/${token}`),
 };
 
 // ==================== USER API ====================

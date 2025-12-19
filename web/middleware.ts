@@ -68,7 +68,7 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
       "img-src 'self' data: https: blob: https://static.ticimax.cloud https://*.ticimax.cloud",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https: https://wa.me https://api.huglutekstil.com  https://static.ticimax.cloud https://*.ticimax.cloud https://accounts.google.com",
+      "connect-src 'self' https: https://wa.me https://api.plaxsy.com  https://static.ticimax.cloud https://*.ticimax.cloud https://accounts.google.com",
       "frame-src 'self' https://www.google.com https://accounts.google.com https://www.dhlecommerce.com.tr",
       "object-src 'none'",
       "base-uri 'self'",
