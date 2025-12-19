@@ -62,6 +62,9 @@ import UserLevelScreen from './src/screens/UserLevelScreen';
 import ProductCompareScreen from './src/screens/ProductCompareScreen';
 import CommunityFeedScreen from './src/screens/CommunityFeedScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import CommunityProfileScreen from './src/screens/CommunityProfileScreen';
+import CommunityDiscoverScreen from './src/screens/CommunityDiscoverScreen';
+import CommunityNotificationsScreen from './src/screens/CommunityNotificationsScreen';
 import CompassScreen from './src/screens/CompassScreen';
 
 const Stack = createStackNavigator();
@@ -99,6 +102,62 @@ function MainTabs() {
       <Tab.Screen name="Shop" component={ProductListScreen} options={{ title: 'Mağaza' }} />
       <Tab.Screen name="Wishlist" component={WishlistScreen} options={{ title: 'Favoriler' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+    </Tab.Navigator>
+  );
+}
+
+function CommunityTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'CommunityFeed') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'CommunityDiscover') iconName = focused ? 'compass' : 'compass-outline';
+          else if (route.name === 'CommunityCreate') iconName = focused ? 'add-circle' : 'add-circle-outline';
+          else if (route.name === 'CommunityNotifications') iconName = focused ? 'notifications' : 'notifications-outline';
+          else if (route.name === 'CommunityProfile') iconName = focused ? 'person' : 'person-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: PRIMARY_COLOR,
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+        },
+      })}
+    >
+      <Tab.Screen 
+        name="CommunityFeed" 
+        component={CommunityFeedScreen} 
+        options={{ title: 'Ana Akış' }} 
+      />
+      <Tab.Screen 
+        name="CommunityDiscover" 
+        component={CommunityDiscoverScreen} 
+        options={{ title: 'Keşfet' }} 
+      />
+      <Tab.Screen 
+        name="CommunityCreate" 
+        component={CreatePostScreen} 
+        options={{ title: 'Paylaş' }} 
+      />
+      <Tab.Screen 
+        name="CommunityNotifications" 
+        component={CommunityNotificationsScreen} 
+        options={{ title: 'Bildirimler' }} 
+      />
+      <Tab.Screen 
+        name="CommunityProfile" 
+        component={CommunityProfileScreen} 
+        options={{ title: 'Profil' }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -155,7 +214,9 @@ function App() {
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
         <Stack.Screen name="ProductCompare" component={ProductCompareScreen} />
+        <Stack.Screen name="Community" component={CommunityTabs} />
         <Stack.Screen name="CommunityFeed" component={CommunityFeedScreen} />
+        <Stack.Screen name="CommunityProfile" component={CommunityProfileScreen} />
         <Stack.Screen name="CreatePost" component={CreatePostScreen} />
         <Stack.Screen name="Compass" component={CompassScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />

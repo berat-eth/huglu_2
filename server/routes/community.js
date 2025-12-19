@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 // poolWrapper'ı global'dan almak için
 let poolWrapper = null;
@@ -21,18 +22,98 @@ router.use((req, res, next) => {
   next();
 });
 
-// Multer configuration for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/community');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+// Helper function to detect image aspect ratio
+async function detectAspectRatio(imagePath, requestedFormat = null) {
+  try {
+    // If format is explicitly requested, use it
+    if (requestedFormat === '9:16' || requestedFormat === '1:1') {
+      return requestedFormat;
     }
-    cb(null, uploadDir);
+    
+    const metadata = await sharp(imagePath).metadata();
+    const width = metadata.width;
+    const height = metadata.height;
+    const ratio = width / height;
+    
+    // 9:16 ratio (portrait) - approximately 0.5625
+    // Allow range: 0.5 to 0.65 (more flexible)
+    if (ratio >= 0.5 && ratio <= 0.65) {
+      return '9:16';
+    }
+    // 1:1 ratio (square) - approximately 1.0
+    // Allow range: 0.9 to 1.1 (more flexible)
+    if (ratio >= 0.9 && ratio <= 1.1) {
+      return '1:1';
+    }
+    // Default based on ratio - closer to portrait or square
+    return ratio < 0.75 ? '9:16' : '1:1';
+  } catch (error) {
+    console.error('Error detecting aspect ratio:', error);
+    return '1:1'; // Default
+  }
+}
+
+// Helper function to resize image based on format
+async function processImage(inputPath, outputPath, format) {
+  try {
+    let sharpInstance = sharp(inputPath);
+    
+    if (format === '9:16') {
+      // 9:16 format - 1080x1920 (portrait)
+      sharpInstance = sharpInstance.resize(1080, 1920, {
+        fit: 'cover',
+        position: 'center'
+      });
+    } else if (format === '1:1') {
+      // 1:1 format - 1080x1080 (square)
+      sharpInstance = sharpInstance.resize(1080, 1080, {
+        fit: 'cover',
+        position: 'center'
+      });
+    }
+    
+    // Convert to JPEG with quality optimization
+    await sharpInstance
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toFile(outputPath);
+    
+    return true;
+  } catch (error) {
+    console.error('Error processing image:', error);
+    throw error;
+  }
+}
+
+// Multer configuration for image uploads - user-specific folders
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      // Get userId from request body or params
+      const userId = req.body?.userId || req.params?.userId || 'unknown';
+      const userDir = path.join(__dirname, '../uploads/community', `user_${userId}`);
+      
+      // Create user-specific directory
+      if (!fs.existsSync(userDir)) {
+        fs.mkdirSync(userDir, { recursive: true });
+        console.log(`✅ Created user directory: ${userDir}`);
+      }
+      
+      cb(null, userDir);
+    } catch (error) {
+      console.error('Error creating upload directory:', error);
+      // Fallback to general community directory
+      const uploadDir = path.join(__dirname, '../uploads/community');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    }
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'post-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname).toLowerCase();
+    // Always save as .jpg for processed images
+    cb(null, `post-${uniqueSuffix}.jpg`);
   }
 });
 
@@ -225,7 +306,7 @@ router.post('/posts', upload.single('image'), async (req, res) => {
     }
 
     // Handle both FormData and JSON
-    let userId, caption, location, category, productId, hashtags;
+    let userId, caption, location, category, productId, hashtags, imageFormat;
     
     if (req.file) {
       // FormData request
@@ -235,14 +316,16 @@ router.post('/posts', upload.single('image'), async (req, res) => {
       category = req.body.category || 'All';
       productId = req.body.productId ? parseInt(req.body.productId) : null;
       hashtags = req.body.hashtags ? (typeof req.body.hashtags === 'string' ? JSON.parse(req.body.hashtags) : req.body.hashtags) : [];
+      imageFormat = req.body.imageFormat || null; // Optional: '9:16' or '1:1'
     } else {
       // JSON request
-      ({ userId, caption, location, category, productId, hashtags } = req.body);
+      ({ userId, caption, location, category, productId, hashtags, imageFormat } = req.body);
       caption = caption || '';
       location = location || '';
       category = category || 'All';
       productId = productId ? parseInt(productId) : null;
       hashtags = hashtags || [];
+      imageFormat = imageFormat || null;
     }
 
     const tenantId = req.tenant?.id || 1;
@@ -257,13 +340,51 @@ router.post('/posts', upload.single('image'), async (req, res) => {
     // Handle image upload
     let imageUrl = '';
     if (req.file) {
-      // File uploaded via multer
-      imageUrl = `/uploads/community/${req.file.filename}`;
-      // For now, use full URL if needed
-      const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
-      imageUrl = `${baseUrl}${imageUrl}`;
+      try {
+        const uploadedFilePath = req.file.path;
+        const userIdStr = String(userId);
+        
+        // Detect aspect ratio (with optional format parameter)
+        const aspectRatio = await detectAspectRatio(uploadedFilePath, imageFormat);
+        console.log(`📐 Detected aspect ratio: ${aspectRatio} for user ${userIdStr}${imageFormat ? ` (requested: ${imageFormat})` : ''}`);
+        
+        // Process image based on format
+        const processedFileName = `post-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
+        const userDir = path.join(__dirname, '../uploads/community', `user_${userIdStr}`);
+        const processedFilePath = path.join(userDir, processedFileName);
+        
+        // Ensure user directory exists
+        if (!fs.existsSync(userDir)) {
+          fs.mkdirSync(userDir, { recursive: true });
+        }
+        
+        // Resize and optimize image
+        await processImage(uploadedFilePath, processedFilePath, aspectRatio);
+        
+        // Delete original file
+        try {
+          if (fs.existsSync(uploadedFilePath)) {
+            fs.unlinkSync(uploadedFilePath);
+          }
+        } catch (deleteError) {
+          console.warn('Could not delete original file:', deleteError);
+        }
+        
+        // Construct image URL
+        const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || req.protocol + '://' + req.get('host');
+        imageUrl = `${baseUrl}/uploads/community/user_${userIdStr}/${processedFileName}`;
+        
+        console.log(`✅ Image processed and saved: ${imageUrl}`);
+      } catch (imageError) {
+        console.error('❌ Image processing error:', imageError);
+        // Fallback to original file if processing fails
+        const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || req.protocol + '://' + req.get('host');
+        const relativePath = req.file.path.replace(path.join(__dirname, '../'), '').replace(/\\/g, '/');
+        imageUrl = `${baseUrl}${relativePath}`;
+        console.log(`⚠️ Using original file: ${imageUrl}`);
+      }
     } else if (req.body.image) {
-      // Image URL provided in JSON body
+      // Image URL provided in JSON body (for external URLs)
       imageUrl = req.body.image;
     } else {
       return res.status(400).json({

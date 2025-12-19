@@ -21,11 +21,13 @@ import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { communityAPI, productsAPI } from '../services/api';
 
+import * as ImagePicker from 'expo-image-picker';
+
 export default function CreatePostScreen({ navigation, route }) {
-  const { image } = route.params || {};
+  const { image: initialImage } = route.params || {};
+  const [image, setImage] = useState(initialImage || null);
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Yürüyüş');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [posting, setPosting] = useState(false);
   const [userName, setUserName] = useState('');
@@ -34,8 +36,6 @@ export default function CreatePostScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const categories = ['Yürüyüş', 'Kamp', 'Tırmanış', 'Diğer'];
 
   useEffect(() => {
     loadUserData();
@@ -104,6 +104,47 @@ export default function CreatePostScreen({ navigation, route }) {
     return name.includes(query);
   });
 
+  const handleSelectImage = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], // Square or 9:16 will be handled by server
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Fotoğraf seçme hatası:', error);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    Alert.alert(
+      'Görseli Kaldır',
+      'Görseli kaldırmak istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Kaldır',
+          style: 'destructive',
+          onPress: () => setImage(null),
+        },
+      ]
+    );
+  };
+
   const handlePost = async () => {
     if (!userId) {
       Alert.alert('Giriş Gerekli', 'Gönderi paylaşmak için lütfen giriş yapın.');
@@ -132,7 +173,7 @@ export default function CreatePostScreen({ navigation, route }) {
         image: image, // For now, using the URI directly. In production, upload to server first
         caption: caption.trim(),
         location: location.trim() || '',
-        category: selectedCategory,
+        category: 'All', // Default category
         productId: selectedProduct?.id || null,
         hashtags: hashtags,
       };
@@ -145,7 +186,12 @@ export default function CreatePostScreen({ navigation, route }) {
             text: 'Tamam', 
             onPress: () => {
               // Navigate back and refresh the feed
-              navigation.goBack();
+              const isInTabNavigator = navigation.getParent()?.getState()?.type === 'tab';
+              if (isInTabNavigator) {
+                navigation.navigate('CommunityFeed');
+              } else {
+                navigation.goBack();
+              }
             }
           },
         ]);
@@ -171,7 +217,18 @@ export default function CreatePostScreen({ navigation, route }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity 
+            onPress={() => {
+              // If in tab navigator, navigate to feed, otherwise go back
+              const isInTabNavigator = navigation.getParent()?.getState()?.type === 'tab';
+              if (isInTabNavigator) {
+                navigation.navigate('CommunityFeed');
+              } else {
+                navigation.goBack();
+              }
+            }} 
+            style={styles.backButton}
+          >
             <Ionicons name="close" size={28} color={COLORS.textMain} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Yeni Gönderi</Text>
@@ -179,19 +236,49 @@ export default function CreatePostScreen({ navigation, route }) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Image Preview */}
-          {image && (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: image }} style={styles.image} resizeMode="cover" />
-            </View>
-          )}
-
           {/* User Info */}
           <View style={styles.userInfo}>
             <View style={styles.userAvatar}>
               <Ionicons name="person" size={24} color={COLORS.white} />
             </View>
             <Text style={styles.userName}>{userName}</Text>
+          </View>
+
+          {/* Image Upload/Preview Section - Enhanced */}
+          <View style={styles.imageSection}>
+            {image ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: image }} style={styles.imagePreview} resizeMode="cover" />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={handleRemoveImage}
+                >
+                  <Ionicons name="close-circle" size={32} color={COLORS.white} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.changeImageButton}
+                  onPress={handleSelectImage}
+                >
+                  <Ionicons name="camera" size={22} color={COLORS.white} />
+                  <Text style={styles.changeImageText}>Değiştir</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.imageUploadButton}
+                onPress={handleSelectImage}
+              >
+                <View style={styles.imageUploadIconContainer}>
+                  <Ionicons name="camera-outline" size={64} color={COLORS.primary} />
+                </View>
+                <Text style={styles.imageUploadText}>Fotoğraf Seç</Text>
+                <Text style={styles.imageUploadSubtext}>9:16 veya 1:1 formatında</Text>
+                <View style={styles.imageUploadHint}>
+                  <Ionicons name="image-outline" size={16} color={COLORS.gray500} />
+                  <Text style={styles.imageUploadHintText}>Galeriden seç veya çek</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Caption */}
@@ -221,32 +308,6 @@ export default function CreatePostScreen({ navigation, route }) {
                 value={location}
                 onChangeText={setLocation}
               />
-            </View>
-          </View>
-
-          {/* Category */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Kategori</Text>
-            <View style={styles.categoriesRow}>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category && styles.categoryChipActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      selectedCategory === category && styles.categoryChipTextActive,
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
 
@@ -421,14 +482,100 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textMain,
   },
-  imageContainer: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    backgroundColor: COLORS.gray100,
+  imageSection: {
+    padding: 16,
+    backgroundColor: COLORS.white,
+    marginTop: 16,
   },
-  image: {
+  imageUploadButton: {
+    width: '100%',
+    minHeight: 300,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    padding: 32,
+  },
+  imageUploadIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  imageUploadText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: 8,
+  },
+  imageUploadSubtext: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginTop: 4,
+  },
+  imageUploadHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+  },
+  imageUploadHintText: {
+    fontSize: 12,
+    color: COLORS.gray500,
+  },
+  imagePreviewContainer: {
+    width: '100%',
+    minHeight: 300,
+    aspectRatio: 1,
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: COLORS.gray100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  imagePreview: {
     width: '100%',
     height: '100%',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 4,
+  },
+  changeImageButton: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  changeImageText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   userInfo: {
     flexDirection: 'row',
@@ -494,31 +641,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMain,
     paddingVertical: 12,
     marginLeft: 8,
-  },
-  categoriesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray100,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray600,
-  },
-  categoryChipTextActive: {
-    color: COLORS.white,
   },
   selectProductButton: {
     flexDirection: 'row',

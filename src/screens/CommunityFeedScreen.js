@@ -19,25 +19,22 @@ import { communityAPI } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-export default function CommunityFeedScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState('All');
+export default function CommunityFeedScreen({ navigation, route }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState(null);
-
-  const tabs = ['All', 'Yürüyüş', 'Kamp', 'Tırmanış'];
+  
+  // Check if we're in tab navigator mode
+  const isInTabNavigator = navigation.getParent()?.getState()?.type === 'tab';
+  const discoverMode = route?.params?.discoverMode || false;
+  const notificationsMode = route?.params?.notificationsMode || false;
 
   useEffect(() => {
     loadUserData();
     loadPosts();
   }, []);
-
-  useEffect(() => {
-    // Reload posts when tab changes
-    loadPosts();
-  }, [activeTab]);
 
   const loadUserData = async () => {
     try {
@@ -58,10 +55,6 @@ export default function CommunityFeedScreen({ navigation }) {
         page: 1,
         limit: 20,
       };
-      
-      if (activeTab !== 'All') {
-        params.category = activeTab;
-      }
 
       const response = await communityAPI.getPosts(params);
       
@@ -210,11 +203,9 @@ export default function CommunityFeedScreen({ navigation }) {
     }
   };
 
-  const filteredPosts =
-    activeTab === 'All' ? posts : posts.filter((post) => post.category === activeTab);
+  const filteredPosts = posts;
 
   console.log('📊 Render durumu:', {
-    activeTab,
     totalPosts: posts.length,
     filteredPosts: filteredPosts.length,
     loading,
@@ -224,34 +215,25 @@ export default function CommunityFeedScreen({ navigation }) {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
-        </TouchableOpacity>
+        {!isInTabNavigator && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
+          </TouchableOpacity>
+        )}
+        {isInTabNavigator && <View style={{ width: 40 }} />}
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>In the Wild</Text>
-          <Text style={styles.headerSubtitle}>by Huğlu</Text>
+          <Text style={styles.headerTitle}>
+            {discoverMode ? 'Keşfet' : notificationsMode ? 'Bildirimler' : 'In the Wild'}
+          </Text>
+          {!discoverMode && !notificationsMode && (
+            <Text style={styles.headerSubtitle}>by Huğlu</Text>
+          )}
         </View>
         <TouchableOpacity style={styles.searchButton}>
           <Ionicons name="search" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
       </View>
 
-      {/* Category Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
 
       {/* Post Adventure Button */}
       <TouchableOpacity style={styles.postButton} onPress={handlePostAdventure}>
@@ -274,7 +256,10 @@ export default function CommunityFeedScreen({ navigation }) {
           <View key={post.id} style={styles.postCard}>
             {/* User Info */}
             <View style={styles.postHeader}>
-              <View style={styles.userInfo}>
+              <TouchableOpacity 
+                style={styles.userInfo}
+                onPress={() => navigation.navigate('CommunityProfile', { userId: post.userId })}
+              >
                 <Image source={{ uri: post.userAvatar }} style={styles.userAvatar} />
                 <View style={styles.userDetails}>
                   <Text style={styles.userName}>{post.userName}</Text>
@@ -284,8 +269,14 @@ export default function CommunityFeedScreen({ navigation }) {
                     <Text style={styles.timeAgo}> • {post.timeAgo}</Text>
                   </View>
                 </View>
-              </View>
-              <TouchableOpacity style={styles.followButton}>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.followButton}
+                onPress={() => {
+                  // Follow functionality will be handled in profile screen
+                  navigation.navigate('CommunityProfile', { userId: post.userId });
+                }}
+              >
                 <Text style={styles.followButtonText}>Takip Et</Text>
               </TouchableOpacity>
             </View>
@@ -418,31 +409,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  tabsContainer: {
-    backgroundColor: COLORS.white,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
-  },
-  tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    backgroundColor: COLORS.gray100,
-  },
-  tabActive: {
-    backgroundColor: COLORS.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray600,
-  },
-  tabTextActive: {
-    color: COLORS.white,
   },
   postButton: {
     flexDirection: 'row',

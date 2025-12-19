@@ -419,6 +419,10 @@ export const communityAPI = {
       if (postData.hashtags && postData.hashtags.length > 0) {
         formData.append('hashtags', JSON.stringify(postData.hashtags));
       }
+      // Optional: specify image format (9:16 or 1:1)
+      if (postData.imageFormat) {
+        formData.append('imageFormat', postData.imageFormat);
+      }
       formData.append('image', {
         uri: postData.image,
         type: 'image/jpeg',

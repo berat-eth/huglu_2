@@ -234,7 +234,18 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.dashboardCard} onPress={() => navigation.navigate('CommunityFeed')}>
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Topluluk özelliklerini kullanmak için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                // Navigate to Community tabs
+                navigation.navigate('Community');
+              }
+            }}
+          >
             <View style={styles.dashboardIcon}>
               <Ionicons name="images-outline" size={24} color={COLORS.primary} />
             </View>
