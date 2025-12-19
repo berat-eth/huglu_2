@@ -1,11 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { userAPI } from '../services/api';
+
+// Adres tipi ikonları
+const getAddressIcon = (addressType) => {
+  switch (addressType?.toLowerCase()) {
+    case 'home':
+    case 'ev':
+      return 'home';
+    case 'office':
+    case 'iş':
+    case 'work':
+      return 'briefcase';
+    case 'cabin':
+    case 'other':
+    default:
+      return 'location';
+  }
+};
+
+// Adres tipi renkleri
+const getAddressIconColor = (addressType, isDefault) => {
+  if (isDefault) return COLORS.primary;
+  return COLORS.gray500;
+};
+
+// Adres tipi arka plan renkleri
+const getAddressIconBg = (addressType, isDefault) => {
+  if (isDefault) return '#fff';
+  return '#fff';
+};
 
 export default function PersonalInfoScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -16,12 +45,23 @@ export default function PersonalInfoScreen({ navigation }) {
   const [weight, setWeight] = useState('');
   const [homeAddress, setHomeAddress] = useState('');
   const [workAddress, setWorkAddress] = useState('');
+  const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
 
   useEffect(() => {
     loadUserInfo();
+    loadAddresses();
   }, []);
+
+  // Sayfa her açıldığında adresleri yeniden yükle
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadAddresses();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const loadUserInfo = async () => {
     try {
@@ -53,6 +93,28 @@ export default function PersonalInfoScreen({ navigation }) {
     }
   };
 
+  const loadAddresses = async () => {
+    try {
+      setLoadingAddresses(true);
+      const userId = await AsyncStorage.getItem('userId');
+      
+      if (!userId) {
+        return;
+      }
+
+      const response = await userAPI.getAddresses(userId);
+      if (response.data?.success) {
+        setAddresses(response.data.data || response.data.addresses || []);
+      }
+    } catch (error) {
+      console.error('Adresler yüklenemedi:', error);
+      // Hata durumunda boş array bırak, mock data kullanma
+      setAddresses([]);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
   const handleSave = async () => {
     // Validasyon
     if (!name.trim()) {
@@ -68,17 +130,19 @@ export default function PersonalInfoScreen({ navigation }) {
     try {
       setSaving(true);
 
-      // Bilgileri local storage'a kaydet (boy ve kilo kaydedilmez)
+      // Bilgileri local storage'a kaydet
       await AsyncStorage.multiSet([
         ['userName', name.trim()],
         ['userEmail', email.trim()],
         ['userPhone', phone.trim()],
         ['userDateOfBirth', dateOfBirth.trim()],
+        ['userHeight', height.trim()],
+        ['userWeight', weight.trim()],
         ['userHomeAddress', homeAddress.trim()],
         ['userWorkAddress', workAddress.trim()],
       ]);
 
-      // API'ye gönder (boy ve kilo gönderilmez)
+      // API'ye gönder
       try {
         const userId = await AsyncStorage.getItem('userId');
         if (userId) {
@@ -87,6 +151,8 @@ export default function PersonalInfoScreen({ navigation }) {
             email: email.trim(),
             phone: phone.trim(),
             dateOfBirth: dateOfBirth.trim(),
+            height: height.trim() ? parseInt(height.trim()) : null,
+            weight: weight.trim() ? parseInt(weight.trim()) : null,
           };
 
           await userAPI.updateProfile(userId, userData);
@@ -295,39 +361,63 @@ export default function PersonalInfoScreen({ navigation }) {
               <Ionicons name="location" size={20} color={COLORS.primary} />
               <Text style={styles.sectionTitle}>Adresler</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('AddAddress')}>
               <Text style={styles.addNewText}>Yeni Ekle</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.addressCard}>
-            <View style={styles.addressIconContainer}>
-              <Ionicons name="home" size={24} color={COLORS.primary} />
+          {loadingAddresses ? (
+            <View style={styles.loadingAddressesContainer}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.loadingAddressesText}>Adresler yükleniyor...</Text>
             </View>
-            <View style={styles.addressInfo}>
-              <View style={styles.addressHeader}>
-                <Text style={styles.addressType}>Ev</Text>
-                <View style={styles.defaultBadge}>
-                  <Text style={styles.defaultText}>VARSAYILAN</Text>
+          ) : addresses.length === 0 ? (
+            <View style={styles.emptyAddressesContainer}>
+              <Ionicons name="location-outline" size={48} color={COLORS.gray400} />
+              <Text style={styles.emptyAddressesText}>Henüz adres eklenmemiş</Text>
+              <TouchableOpacity 
+                style={styles.addFirstAddressButton}
+                onPress={() => navigation.navigate('AddAddress')}
+              >
+                <Text style={styles.addFirstAddressText}>İlk Adresinizi Ekleyin</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            addresses.map((address) => (
+              <TouchableOpacity 
+                key={address.id} 
+                style={styles.addressCard}
+                onPress={() => navigation.navigate('MyAddresses')}
+              >
+                <View style={styles.addressIconContainer}>
+                  <Ionicons 
+                    name={getAddressIcon(address.addressType || address.label)} 
+                    size={24} 
+                    color={getAddressIconColor(address.addressType || address.label, address.isDefault)} 
+                  />
                 </View>
-              </View>
-              <Text style={styles.addressText}>Örnek Mahallesi, Örnek Sokak No:42</Text>
-              <Text style={styles.addressText}>İstanbul, Türkiye</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.addressCard}>
-            <View style={styles.addressIconContainer}>
-              <Ionicons name="briefcase" size={24} color={COLORS.gray500} />
-            </View>
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressType}>İş</Text>
-              <Text style={styles.addressText}>İş Merkezi, Kat:4 No:400</Text>
-              <Text style={styles.addressText}>Ankara, Türkiye</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-          </TouchableOpacity>
+                <View style={styles.addressInfo}>
+                  <View style={styles.addressHeader}>
+                    <Text style={styles.addressType}>
+                      {address.label || address.addressType === 'home' ? 'Ev' : address.addressType === 'office' ? 'İş' : 'Adres'}
+                    </Text>
+                    {address.isDefault && (
+                      <View style={styles.defaultBadge}>
+                        <Text style={styles.defaultText}>VARSAYILAN</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.addressText}>
+                    {address.fullAddress || address.address || ''}
+                  </Text>
+                  <Text style={styles.addressText}>
+                    {address.city || ''}{address.district ? `, ${address.district}` : ''} {address.postalCode || ''}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Security Notice */}
@@ -576,5 +666,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FF3B30',
+  },
+  loadingAddressesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  loadingAddressesText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  emptyAddressesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  emptyAddressesText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginBottom: 16,
+  },
+  addFirstAddressButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addFirstAddressText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
