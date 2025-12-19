@@ -380,9 +380,9 @@ export const recommendationsAPI = {
 
 // ==================== CHATBOT API ====================
 export const chatbotAPI = {
-  sendMessage: (userId, message, sessionId) => 
-    api.post('/chatbot/message', { userId, message, sessionId }),
-  getHistory: (userId, sessionId) => 
+  sendMessage: (userId, message, productId = null, actionType = 'text', voiceUrl = null) =>
+    api.post('/chatbot/message', { userId, message, productId, actionType, voiceUrl }),
+  getHistory: (userId, sessionId) =>
     api.get('/chatbot/history', { params: { userId, sessionId } }),
   createSession: (userId) => api.post('/chatbot/session', { userId }),
 };

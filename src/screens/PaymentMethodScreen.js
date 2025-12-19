@@ -123,11 +123,21 @@ export default function PaymentMethodScreen({ navigation, route }) {
       // Cüzdan bakiyesini al
       try {
         const walletResponse = await walletAPI.getBalance(storedUserId);
+        console.log('💳 Cüzdan bakiyesi yanıtı:', JSON.stringify(walletResponse.data, null, 2));
+        
         if (walletResponse.data?.success) {
-          setWalletBalance(walletResponse.data.balance || 0);
+          // Backend response: { success: true, data: { balance: ... } }
+          const balanceValue = walletResponse.data.data?.balance ?? 0;
+          const parsedBalance = parseFloat(balanceValue) || 0;
+          setWalletBalance(parsedBalance);
+          console.log('✅ Cüzdan bakiyesi yüklendi:', parsedBalance);
+        } else {
+          console.log('⚠️ Cüzdan bakiyesi success false:', walletResponse.data);
+          setWalletBalance(0);
         }
       } catch (walletError) {
-        console.log('Cüzdan bakiyesi alınamadı:', walletError);
+        console.error('❌ Cüzdan bakiyesi alınamadı:', walletError);
+        console.error('❌ Error details:', walletError.response?.data || walletError.message);
         setWalletBalance(0);
       }
     } catch (error) {
@@ -222,7 +232,10 @@ export default function PaymentMethodScreen({ navigation, route }) {
             ]}
             onPress={() => setSelectedPayment('new_card')}
           >
-            <View style={styles.radioButton}>
+            <View style={[
+              styles.radioButton,
+              selectedPayment === 'new_card' && styles.radioButtonSelected
+            ]}>
               {selectedPayment === 'new_card' && <View style={styles.radioButtonInner} />}
             </View>
             <View style={styles.cardIcon}>
@@ -396,7 +409,10 @@ export default function PaymentMethodScreen({ navigation, route }) {
                 <Text style={styles.walletSubtext}>Hızlı ve güvenli ödeme</Text>
               </View>
             </View>
-            <View style={styles.radioButton}>
+            <View style={[
+              styles.radioButton,
+              selectedPayment === 'hpay' && styles.radioButtonSelected
+            ]}>
               {selectedPayment === 'hpay' && <View style={styles.radioButtonInner} />}
             </View>
           </TouchableOpacity>
@@ -430,7 +446,10 @@ export default function PaymentMethodScreen({ navigation, route }) {
                 </Text>
               </View>
             </View>
-            <View style={styles.radioButton}>
+            <View style={[
+              styles.radioButton,
+              selectedPayment === 'wallet' && styles.radioButtonSelected
+            ]}>
               {selectedPayment === 'wallet' && <View style={styles.radioButtonInner} />}
             </View>
           </TouchableOpacity>
@@ -628,19 +647,23 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: 'rgba(17, 212, 33, 0.05)',
   },
+  radioButtonSelected: {
+    borderColor: COLORS.primary,
+  },
   radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: COLORS.gray300,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.white,
   },
   radioButtonInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: COLORS.primary,
   },
   cardIcon: {

@@ -81,8 +81,10 @@ export default function WalletTransferScreen({ navigation }) {
 
       const response = await walletAPI.getBalance(storedUserId);
       if (response.data?.success) {
-        const balanceValue = response.data.balance || response.data.data?.balance || 0;
-        setBalance(parseFloat(balanceValue));
+        // Backend response: { success: true, data: { balance: ... } }
+        const balanceValue = response.data.data?.balance ?? 0;
+        const parsedBalance = parseFloat(balanceValue) || 0;
+        setBalance(parsedBalance);
       }
     } catch (error) {
       console.error('Bakiye yüklenemedi:', error);

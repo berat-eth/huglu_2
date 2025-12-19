@@ -74,9 +74,11 @@ export default function WalletScreen({ navigation }) {
         console.log('💰 Bakiye yanıtı:', JSON.stringify(balanceResponse.data, null, 2));
         
         if (balanceResponse.data?.success) {
-          const balanceValue = balanceResponse.data.balance || balanceResponse.data.data?.balance || 0;
-          setBalance(parseFloat(balanceValue));
-          console.log('✅ Bakiye:', balanceValue);
+          // Backend response: { success: true, data: { balance: ... } }
+          const balanceValue = balanceResponse.data.data?.balance ?? 0;
+          const parsedBalance = parseFloat(balanceValue) || 0;
+          setBalance(parsedBalance);
+          console.log('✅ Bakiye:', parsedBalance);
         }
       } catch (error) {
         console.error('❌ Bakiye alınamadı:', error.message);

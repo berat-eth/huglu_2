@@ -10,17 +10,15 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 
 const { width } = Dimensions.get('window');
 
-const COLORS_OPTIONS = [COLORS.primary, '#2c2c2c', '#aa3b3b', '#3b5aaa'];
 export default function ProductDetailScreen({ navigation, route }) {
   const { product: initialProduct } = route.params || {};
   const [product, setProduct] = useState(initialProduct);
-  const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState(0);
   const [isFavorite, setIsFavorite] = useState(initialProduct?.isFavorite || false);
   const [quantity, setQuantity] = useState(1);
@@ -73,12 +71,17 @@ export default function ProductDetailScreen({ navigation, route }) {
               const variationsResponse = await productsAPI.getVariations(productId);
               
               if (variationsResponse.data?.success) {
-                const variations = variationsResponse.data.variations || variationsResponse.data.data || [];
+                // Backend'den gelen variations yapısını kontrol et
+                const responseData = variationsResponse.data.data || variationsResponse.data;
+                const variations = responseData.variations || responseData || [];
+                
+                console.log('📦 Backend\'den gelen variations:', JSON.stringify(variations, null, 2));
                 
                 // Varyasyonları ürün datasına ekle
                 data.variations = variations;
               }
             } catch (variationError) {
+              console.error('❌ Variations endpoint hatası:', variationError);
               // Varyasyon endpoint'i yoksa devam et
             }
             
@@ -197,38 +200,52 @@ export default function ProductDetailScreen({ navigation, route }) {
     }
     
     // 2. Variations array'i kontrol et (API'den gelen yeni format)
-    if (sizes.length === 0 && Array.isArray(product.variations) && product.variations.length > 0) {
+    // ÖNEMLİ: Bu kontrolü her zaman yap, çünkü backend'den variations geliyor olabilir
+    if (Array.isArray(product.variations) && product.variations.length > 0) {
       console.log('2️⃣ variations array bulundu, işleniyor...');
       product.variations.forEach(variation => {
         console.log('   Variation:', variation);
         
-        // Yeni format: variation direkt olarak option bilgilerini içerebilir
-        if (variation.name || variation.value) {
-          // Direkt variation objesi
-          sizes.push({
-            id: variation.id || variation._id,
-            variationId: variation.variationId || variation.id,
-            value: variation.value || variation.name || variation.size,
-            stock: variation.stock !== undefined ? variation.stock : 999,
-            price: variation.price || variation.satisFiyati || product.price,
-            sku: variation.sku || variation.barkod,
-          });
+        // Variation'ın name'i "Beden" veya "Size" ise, options'ları işle
+        const variationName = (variation.name || '').toLowerCase();
+        const isSizeVariation = variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
+        
+        // Eğer variation'ın name'i beden/size değilse ve options varsa, options'ları kontrol et
+        // VEYA eğer variation'ın name'i yoksa ama options varsa, onları da işle
+        if (isSizeVariation || (!variation.name && Array.isArray(variation.options)) || Array.isArray(variation.options)) {
+          // Variation içinde options array'i var
+          if (Array.isArray(variation.options) && variation.options.length > 0) {
+            variation.options.forEach(option => {
+              console.log('      Option:', option);
+              const optionValue = option.value || option.name;
+              if (optionValue) {
+                // Stok kontrolü: stok 0'dan büyükse veya stok bilgisi yoksa ekle
+                const stockValue = option.stock !== undefined ? option.stock : 999;
+                sizes.push({
+                  id: option.id || `${variation.id}_${option.value}`,
+                  variationId: variation.id,
+                  value: optionValue,
+                  stock: stockValue,
+                  price: option.priceModifier || option.satisFiyati || option.price || product.price,
+                  sku: option.sku || option.barkod,
+                });
+              }
+            });
+          }
         }
-        // Eski format: variation içinde options array'i var
-        else if (Array.isArray(variation.options) && variation.options.length > 0) {
-          variation.options.forEach(option => {
-            console.log('      Option:', option);
-            if (option.value && (option.stock === undefined || option.stock > 0)) {
-              sizes.push({
-                id: option.id,
-                variationId: variation.id,
-                value: option.value,
-                stock: option.stock || 999,
-                price: option.satisFiyati || option.priceModifier || product.price,
-                sku: option.sku || option.barkod,
-              });
-            }
-          });
+        // Yeni format: variation direkt olarak option bilgilerini içerebilir (tek beden)
+        else if (variation.name || variation.value) {
+          const variationValue = variation.value || variation.name || variation.size;
+          if (variationValue && (variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut') || !variation.name)) {
+            sizes.push({
+              id: variation.id || variation._id,
+              variationId: variation.variationId || variation.id,
+              value: variationValue,
+              stock: variation.stock !== undefined ? variation.stock : 999,
+              price: variation.price || variation.satisFiyati || product.price,
+              sku: variation.sku || variation.barkod,
+            });
+          }
         }
       });
       console.log('✅ variations\'dan', sizes.length, 'beden bulundu');
@@ -441,20 +458,56 @@ export default function ProductDetailScreen({ navigation, route }) {
     // Typing indicator
     setBotTyping(true);
 
-    // Simüle bot yanıtı (gerçek API entegrasyonu için chatbotAPI kullanılabilir)
-    setTimeout(() => {
+    try {
+      // Server API'sine mesaj gönder
+      const userId = await AsyncStorage.getItem('userId');
+      const productId = product?.id || product?._id;
+      
+      const response = await chatbotAPI.sendMessage(userId, messageText, productId, 'text', null);
+      
       setBotTyping(false);
+      
+      if (response.data?.success && response.data.data) {
+        const botData = response.data.data;
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: botData.text || botData.message || 'Üzgünüm, yanıt veremiyorum.',
+          messageType: botData.type || 'text',
+          action: botData.action,
+          quickReplies: botData.quickReplies,
+          timestamp: new Date(botData.timestamp) || new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      } else {
+        // Fallback: Local bot response
+        const localResponse = getBotResponse(messageText);
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: localResponse.text || localResponse,
+          messageType: localResponse.type || 'text',
+          action: localResponse.action,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      }
+    } catch (error) {
+      console.error('Chatbot API hatası:', error);
+      setBotTyping(false);
+      
+      // Fallback: Local bot response
       const response = getBotResponse(messageText);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response,
+        text: response.text || response || 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }, 1200);
+    }
   };
 
   const getBotResponse = (message) => {
@@ -474,7 +527,7 @@ export default function ProductDetailScreen({ navigation, route }) {
       };
     } else if (lowerMessage.includes('renk') || lowerMessage.includes('color')) {
       return {
-        text: 'Ürünümüz farklı renk seçeneklerinde mevcut. Yukarıdan renk seçebilirsiniz. 🎨',
+        text: 'Ürün renk seçenekleri için lütfen ürün görsellerine bakabilirsiniz. 🎨',
         type: 'text'
       };
     } else if (lowerMessage.includes('fiyat') || lowerMessage.includes('price') || lowerMessage.includes('kaç')) {
@@ -527,7 +580,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     }
   };
 
-  const handleQuickAction = (question) => {
+  const handleQuickAction = async (question) => {
     const userMessage = {
       id: chatMessages.length + 1,
       type: 'user',
@@ -540,20 +593,56 @@ export default function ProductDetailScreen({ navigation, route }) {
     // Typing indicator
     setBotTyping(true);
 
-    // Bot yanıtı
-    setTimeout(() => {
+    try {
+      // Server API'sine mesaj gönder
+      const userId = await AsyncStorage.getItem('userId');
+      const productId = product?.id || product?._id;
+      
+      const response = await chatbotAPI.sendMessage(userId, question, productId, 'text', null);
+      
       setBotTyping(false);
+      
+      if (response.data?.success && response.data.data) {
+        const botData = response.data.data;
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: botData.text || botData.message || 'Üzgünüm, yanıt veremiyorum.',
+          messageType: botData.type || 'text',
+          action: botData.action,
+          quickReplies: botData.quickReplies,
+          timestamp: new Date(botData.timestamp) || new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      } else {
+        // Fallback: Local bot response
+        const localResponse = getBotResponse(question);
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: localResponse.text || localResponse,
+          messageType: localResponse.type || 'text',
+          action: localResponse.action,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      }
+    } catch (error) {
+      console.error('Chatbot API hatası:', error);
+      setBotTyping(false);
+      
+      // Fallback: Local bot response
       const response = getBotResponse(question);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response,
+        text: response.text || response || 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }, 1000);
+    }
   };
 
   const handleQuickOrder = async () => {
@@ -796,7 +885,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         }
       }
       
-      selectedVariations.color = COLORS_OPTIONS[selectedColor];
+      // Renk seçimi kaldırıldı
 
       const response = await cartAPI.add(userId, pid, quantity, selectedVariations);
 
@@ -1122,24 +1211,6 @@ export default function ProductDetailScreen({ navigation, route }) {
             )}
           </View>
 
-          {/* Color Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Renk</Text>
-            <View style={styles.colorsContainer}>
-              {COLORS_OPTIONS.map((color, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.colorOption,
-                    { backgroundColor: color },
-                    selectedColor === index && styles.colorOptionSelected,
-                  ]}
-                  onPress={() => setSelectedColor(index)}
-                />
-              ))}
-            </View>
-          </View>
-
           {/* Size Selection */}
           {sizeOptions.length > 0 && (
             <View style={styles.section}>
@@ -1449,6 +1520,35 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.quickOrderButtonText}>Sepete Ekle ve Devam Et</Text>
                     </TouchableOpacity>
                   )}
+                  
+                  {/* Quick Replies */}
+                  {message.quickReplies && message.quickReplies.length > 0 && (
+                    <View style={styles.quickRepliesContainer}>
+                      {message.quickReplies.map((reply) => (
+                        <TouchableOpacity
+                          key={reply.id}
+                          style={styles.quickReplyButton}
+                          onPress={() => {
+                            if (reply.action === 'return_request') {
+                              handleQuickAction('İade işlemi');
+                            } else if (reply.action === 'order_tracking') {
+                              handleQuickAction('Sipariş takibi');
+                            } else if (reply.action === 'navigate_orders') {
+                              navigation.navigate('Orders');
+                              setShowChatbot(false);
+                            } else if (reply.action === 'navigate_returns') {
+                              // İade sayfasına yönlendir (eğer varsa)
+                              Alert.alert('İade İşlemi', 'İade işlemleri için lütfen "Hesabım > İadelerim" sayfasına gidin.');
+                            } else {
+                              handleQuickAction(reply.text);
+                            }
+                          }}
+                        >
+                          <Text style={styles.quickReplyText}>{reply.text}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
                 {message.type === 'user' && (
                   <Text style={styles.chatbotMessageTime}>
@@ -1498,6 +1598,13 @@ export default function ProductDetailScreen({ navigation, route }) {
               onPress={() => handleQuickAction('Fiyat')}
             >
               <Text style={styles.chatbotQuickActionText}>Fiyat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.chatbotQuickAction}
+              onPress={() => handleQuickAction('İade işlemi')}
+            >
+              <Ionicons name="return-down-back" size={14} color={COLORS.textMain} />
+              <Text style={styles.chatbotQuickActionText}>İade</Text>
             </TouchableOpacity>
           </View>
 
@@ -3163,6 +3270,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  quickRepliesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  quickReplyButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  quickReplyText: {
+    fontSize: 13,
+    color: COLORS.textMain,
+    fontWeight: '500',
   },
   chatbotInputContainer: {
     flexDirection: 'row',
