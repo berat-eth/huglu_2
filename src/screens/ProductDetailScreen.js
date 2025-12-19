@@ -16,6 +16,24 @@ import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 
 const { width } = Dimensions.get('window');
 
+// İsim maskeleme fonksiyonu: "Berat Şimşek" -> "Be****** Şi*******"
+// Her kelime için: ilk 2 harf + geri kalanı yıldız (minimum 6 yıldız)
+const maskUserName = (name) => {
+  if (!name || !name.trim()) return 'Kullanıcı';
+  
+  const parts = name.trim().split(/\s+/);
+  return parts.map(part => {
+    if (part.length <= 2) {
+      return part + '******';
+    }
+    const firstTwo = part.substring(0, 2);
+    // Orijinal kelime uzunluğuna göre yıldız sayısı, minimum 6
+    const remainingLength = Math.max(part.length - 2, 6);
+    const stars = '*'.repeat(remainingLength);
+    return firstTwo + stars;
+  }).join(' ');
+};
+
 export default function ProductDetailScreen({ navigation, route }) {
   const { product: initialProduct } = route.params || {};
   const [product, setProduct] = useState(initialProduct);
@@ -1291,7 +1309,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Ionicons name="person-circle-outline" size={32} color={COLORS.gray400} />
                       <View style={styles.questionUserInfo}>
                         <Text style={styles.questionUserName}>
-                          {question.userName || question.user?.name || 'Kullanıcı'}
+                          {maskUserName(question.userName || question.user?.name)}
                         </Text>
                         <Text style={styles.questionDate}>
                           {question.createdAt ? new Date(question.createdAt).toLocaleDateString('tr-TR') : 'Yakın zamanda'}
@@ -1317,7 +1335,17 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.answerText}>{question.answer}</Text>
                       {question.answeredBy && (
                         <Text style={styles.answeredBy}>
-                          - {question.answeredBy === 'seller' ? 'Satıcı' : question.answeredBy}
+                          - {(() => {
+                            const answeredBy = question.answeredBy?.toLowerCase() || '';
+                            if (answeredBy === 'seller' || 
+                                answeredBy === 'admin' || 
+                                answeredBy === 'huglu outdoor' || 
+                                answeredBy === 'hugluoutdoor' ||
+                                answeredBy === 'huglu outdoor') {
+                              return 'Huglu Outdoor';
+                            }
+                            return question.answeredBy;
+                          })()}
                         </Text>
                       )}
                     </View>

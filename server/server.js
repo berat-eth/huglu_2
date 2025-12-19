@@ -19356,10 +19356,10 @@ app.post('/api/product-questions/:questionId/answer', async (req, res) => {
     const userId = question.userId;
     const productName = question.productName || 'Ürün';
 
-    // Soruyu güncelle - answeredBy'u "Huglu outdoor" olarak ayarla
+    // Soruyu güncelle - answeredBy'u "Huglu Outdoor" olarak ayarla
     await poolWrapper.execute(
       `UPDATE product_questions
-       SET answer = ?, answeredBy = 'Huglu outdoor', answeredAt = NOW()
+       SET answer = ?, answeredBy = 'Huglu Outdoor', answeredAt = NOW()
        WHERE id = ? AND tenantId = ?`,
       [answer.trim(), questionId, tenantId]
     );
@@ -19548,10 +19548,10 @@ app.post('/api/admin/product-questions/:questionId/answer', async (req, res) => 
     const userId = question.userId;
     const productName = question.productName || 'Ürün';
 
-    // Soruyu güncelle - answeredBy'u "Huglu outdoor" olarak ayarla
+    // Soruyu güncelle - answeredBy'u "Huglu Outdoor" olarak ayarla
     await poolWrapper.execute(
       `UPDATE product_questions
-       SET answer = ?, answeredBy = 'Huglu outdoor', answeredAt = NOW()
+       SET answer = ?, answeredBy = 'Huglu Outdoor', answeredAt = NOW()
        WHERE id = ? AND tenantId = ?`,
       [answer.trim(), questionId, tenantId]
     );

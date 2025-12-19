@@ -23,24 +23,6 @@ interface ProductQuestion {
   updatedAt?: string
 }
 
-// İsim maskeleme fonksiyonu: "Berat Şimşek" -> "Be****** Şi*******"
-// Her kelime için: ilk 2 harf + geri kalanı yıldız (minimum 6 yıldız)
-const maskUserName = (name: string | undefined | null): string => {
-  if (!name || !name.trim()) return 'Anonim'
-  
-  const parts = name.trim().split(/\s+/)
-  return parts.map(part => {
-    if (part.length <= 2) {
-      return part + '******'
-    }
-    const firstTwo = part.substring(0, 2)
-    // Orijinal kelime uzunluğuna göre yıldız sayısı, minimum 6
-    const remainingLength = Math.max(part.length - 2, 6)
-    const stars = '*'.repeat(remainingLength)
-    return firstTwo + stars
-  }).join(' ')
-}
-
 export default function ProductQuestions() {
   const [questions, setQuestions] = useState<ProductQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,7 +56,7 @@ export default function ProductQuestions() {
           productName: q.productName || 'Bilinmeyen Ürün',
           productImage: q.productImage,
           userId: q.userId,
-          userName: maskUserName(q.userName), // İsim maskeleme
+          userName: q.userName || 'Anonim',
           userEmail: q.userEmail,
           userPhone: q.userPhone,
           question: q.question || '',
