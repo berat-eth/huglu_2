@@ -10,13 +10,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
-import { communityAPI } from '../services/api';
+import { communityAPI, productsAPI } from '../services/api';
 
 export default function CreatePostScreen({ navigation, route }) {
   const { image } = route.params || {};
@@ -27,6 +30,10 @@ export default function CreatePostScreen({ navigation, route }) {
   const [posting, setPosting] = useState(false);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const categories = ['Yürüyüş', 'Kamp', 'Tırmanış', 'Diğer'];
 
@@ -52,26 +59,50 @@ export default function CreatePostScreen({ navigation, route }) {
     return matches || [];
   };
 
-  const handleSelectProduct = () => {
-    Alert.alert(
-      'Ürün Seç',
-      'Hangi ürünü etiketlemek istersiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Ürün Listesi',
-          onPress: () => {
-            // Mock product selection
-            setSelectedProduct({
-              name: 'Summit Pro Sırt Çantası 40L',
-              price: '₺1,299.00',
-              image: 'https://images.unsplash.com/photo-1622260614153-03223fb72052?w=200',
-            });
-          },
-        },
-      ]
-    );
+  const loadProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const response = await productsAPI.getAll({ page: 1, limit: 100 });
+      
+      if (response.data?.success) {
+        const productsData = response.data.data?.products || response.data.data || [];
+        setProducts(productsData);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error('❌ Ürünler yüklenemedi:', error);
+      Alert.alert('Hata', 'Ürünler yüklenirken bir hata oluştu');
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
   };
+
+  const handleSelectProduct = () => {
+    setShowProductModal(true);
+    if (products.length === 0) {
+      loadProducts();
+    }
+  };
+
+  const handleProductSelect = (product) => {
+    setSelectedProduct({
+      id: product.id || product._id,
+      name: product.name || product.title || 'Ürün',
+      price: product.price ? `₺${parseFloat(product.price).toFixed(2)}` : 'Fiyat bilgisi yok',
+      image: product.image || product.images?.[0] || product.imageUrl || 'https://via.placeholder.com/200',
+    });
+    setShowProductModal(false);
+    setSearchQuery('');
+  };
+
+  const filteredProducts = products.filter(product => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const name = (product.name || product.title || '').toLowerCase();
+    return name.includes(query);
+  });
 
   const handlePost = async () => {
     if (!userId) {
@@ -274,6 +305,92 @@ export default function CreatePostScreen({ navigation, route }) {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Product Selection Modal */}
+      <Modal
+        visible={showProductModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowProductModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowProductModal(false);
+                setSearchQuery('');
+              }}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={28} color={COLORS.textMain} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Ürün Seç</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={COLORS.gray400} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Ürün ara..."
+              placeholderTextColor={COLORS.gray400}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={COLORS.gray400} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Products List */}
+          {loadingProducts ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Ürünler yükleniyor...</Text>
+            </View>
+          ) : filteredProducts.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cube-outline" size={64} color={COLORS.gray300} />
+              <Text style={styles.emptyText}>
+                {searchQuery ? 'Aradığınız ürün bulunamadı' : 'Henüz ürün yok'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item) => String(item.id || item._id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.productItem}
+                  onPress={() => handleProductSelect(item)}
+                >
+                  <Image
+                    source={{
+                      uri: item.image || item.images?.[0] || item.imageUrl || 'https://via.placeholder.com/100',
+                    }}
+                    style={styles.productItemImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.productItemInfo}>
+                    <Text style={styles.productItemName} numberOfLines={2}>
+                      {item.name || item.title || 'Ürün'}
+                    </Text>
+                    <Text style={styles.productItemPrice}>
+                      {item.price ? `₺${parseFloat(item.price).toFixed(2)}` : 'Fiyat bilgisi yok'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color={COLORS.gray400} />
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.productsList}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -495,5 +612,110 @@ const styles = StyleSheet.create({
   },
   postButton: {
     marginBottom: 0,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundLight,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textMain,
+    paddingVertical: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.gray500,
+  },
+  productsList: {
+    padding: 16,
+  },
+  productItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  productItemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: COLORS.gray200,
+    marginRight: 12,
+  },
+  productItemInfo: {
+    flex: 1,
+  },
+  productItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 4,
+  },
+  productItemPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 });
