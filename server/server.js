@@ -23141,81 +23141,75 @@ async function startServer() {
       };
 
       const recommendedSizes = getRecommendedSize(userHeight, userWeight);
+      // Sadece ilk (en uygun) bedeni öner
+      const recommendedSize = recommendedSizes[0] || recommendedSizes[recommendedSizes.length - 1];
       let responseText = '';
       
       if (userWeight && userWeight > 0) {
         const heightInMeters = userHeight / 100;
         const bmi = userWeight / (heightInMeters * heightInMeters);
-        responseText = `👕 Boy ve kilo bilginize göre (${userHeight} cm, ${userWeight} kg) önerdiğim bedenler:\n\n`;
-        responseText += `✨ Önerilen bedenler: ${recommendedSizes.join(', ')}\n\n`;
+        responseText = `👕 Boy ve kilo bilginize göre (${userHeight} cm, ${userWeight} kg) önerdiğim beden:\n\n`;
+        responseText += `✨ Önerilen beden: ${recommendedSize}\n\n`;
         responseText += `📊 BMI: ${bmi.toFixed(1)} (${bmi < 18.5 ? 'Zayıf' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Fazla Kilolu' : 'Obez'})\n\n`;
-        responseText += `💡 Bu öneriler boy ve kilo kombinasyonunuza göre hesaplanmıştır. Ürünün kesimine ve markasına göre değişiklik gösterebilir.`;
+        responseText += `💡 Bu öneri boy ve kilo kombinasyonunuza göre hesaplanmıştır. Ürünün kesimine ve markasına göre değişiklik gösterebilir.`;
       } else {
-        responseText = `👕 Boy bilginize göre (${userHeight} cm) önerdiğim bedenler:\n\n`;
-        responseText += `✨ Önerilen bedenler: ${recommendedSizes.join(', ')}\n\n`;
+        responseText = `👕 Boy bilginize göre (${userHeight} cm) önerdiğim beden:\n\n`;
+        responseText += `✨ Önerilen beden: ${recommendedSize}\n\n`;
         responseText += `💡 Daha doğru bir öneri için kilo bilginizi de ekleyebilirsiniz. "Kişisel Bilgilerim" sayfasından kilo bilginizi güncelleyin.\n\n`;
-        responseText += `💡 Bu öneriler genel bir rehberdir. Ürünün kesimine ve markasına göre değişiklik gösterebilir.`;
+        responseText += `💡 Bu öneri genel bir rehberdir. Ürünün kesimine ve markasına göre değişiklik gösterebilir.`;
       }
 
       // Eğer productId varsa, o ürünün beden seçeneklerini kontrol et
       if (productId) {
         try {
-          // Ürün varyasyonlarını al
+          // Ürün varyasyonlarını ve seçeneklerini al
           const [variationRows] = await poolWrapper.execute(
-            `SELECT v.id, v.name, v.options
+            `SELECT v.id, v.name, o.value, o.name as optionName
              FROM product_variations v
+             LEFT JOIN product_variation_options o ON o.variationId = v.id AND o.isActive = true
              WHERE v.productId = ? AND v.tenantId = ?
              AND (LOWER(v.name) LIKE '%beden%' OR LOWER(v.name) LIKE '%size%' OR LOWER(v.name) LIKE '%numara%')
-             LIMIT 1`,
+             ORDER BY o.displayOrder, o.value
+             LIMIT 20`,
             [productId, tenantId]
           );
 
           if (variationRows.length > 0) {
-            const variation = variationRows[0];
             let availableSizes = [];
             
-            // Options JSON'dan parse et
-            if (variation.options) {
-              try {
-                const options = typeof variation.options === 'string' 
-                  ? JSON.parse(variation.options) 
-                  : variation.options;
-                
-                if (Array.isArray(options)) {
-                  availableSizes = options.map(opt => opt.value || opt.name || opt).filter(Boolean);
-                } else if (typeof options === 'object') {
-                  availableSizes = Object.keys(options);
+            // Options'ları topla
+            variationRows.forEach(row => {
+              if (row.value) {
+                const sizeValue = row.value || row.optionName;
+                if (sizeValue && !availableSizes.includes(sizeValue)) {
+                  availableSizes.push(sizeValue);
                 }
-              } catch (parseErr) {
-                console.warn('⚠️ Options parse edilemedi:', parseErr);
               }
-            }
+            });
 
             if (availableSizes.length > 0) {
-              // Önerilen bedenlerden mevcut olanları bul
-              const matchingSizes = recommendedSizes.filter(size => 
-                availableSizes.some(avail => 
-                  avail.toString().toUpperCase().includes(size.toUpperCase()) ||
-                  size.toUpperCase().includes(avail.toString().toUpperCase())
-                )
+              // Önerilen bedenin ürün bedenleri arasında olup olmadığını kontrol et
+              const matchingSize = availableSizes.find(avail => 
+                avail.toString().toUpperCase().includes(recommendedSize.toUpperCase()) ||
+                recommendedSize.toUpperCase().includes(avail.toString().toUpperCase())
               );
 
-              if (matchingSizes.length > 0) {
+              if (matchingSize) {
                 if (userWeight && userWeight > 0) {
                   responseText = `👕 Bu ürün için boy ve kilo bilginize göre (${userHeight} cm, ${userWeight} kg) önerdiğim beden:\n\n`;
                 } else {
                   responseText = `👕 Bu ürün için boy bilginize göre (${userHeight} cm) önerdiğim beden:\n\n`;
                 }
-                responseText += `✨ ${matchingSizes[0]} beden size uygun olabilir.\n\n`;
+                responseText += `✨ ${matchingSize} beden size uygun olabilir.\n\n`;
                 responseText += `📋 Mevcut bedenler: ${availableSizes.join(', ')}\n\n`;
                 responseText += `💡 Bu öneri boy${userWeight && userWeight > 0 ? ' ve kilo' : ''} bilginize göre hesaplanmıştır. Ürünün kesimine göre değişiklik gösterebilir.`;
               } else {
                 if (userWeight && userWeight > 0) {
-                  responseText = `👕 Bu ürün için boy ve kilo bilginize göre (${userHeight} cm, ${userWeight} kg) önerdiğim bedenler:\n\n`;
+                  responseText = `👕 Bu ürün için boy ve kilo bilginize göre (${userHeight} cm, ${userWeight} kg) önerdiğim beden:\n\n`;
                 } else {
-                  responseText = `👕 Bu ürün için boy bilginize göre (${userHeight} cm) önerdiğim bedenler:\n\n`;
+                  responseText = `👕 Bu ürün için boy bilginize göre (${userHeight} cm) önerdiğim beden:\n\n`;
                 }
-                responseText += `✨ Önerilen: ${recommendedSizes.join(' veya ')}\n\n`;
+                responseText += `✨ Önerilen: ${recommendedSize}\n\n`;
                 responseText += `📋 Ürünün mevcut bedenleri: ${availableSizes.join(', ')}\n\n`;
                 responseText += `💡 En yakın bedeni seçmenizi öneririm.`;
               }
@@ -23226,8 +23220,8 @@ async function startServer() {
         }
       }
 
-      // Önerilen bedeni response data'ya ekle
-      const recommendedSizeValue = recommendedSizes[0] || null;
+      // Önerilen bedeni response data'ya ekle (sadece tek beden)
+      const recommendedSizeValue = recommendedSize || null;
       
       return {
         id: messageId,
@@ -23237,8 +23231,7 @@ async function startServer() {
         type: 'quick_reply',
         recommendedSize: recommendedSizeValue,
         data: {
-          recommendedSize: recommendedSizeValue,
-          recommendedSizes: recommendedSizes
+          recommendedSize: recommendedSizeValue
         },
         quickReplies: productId ? [
           { id: '1', text: '🛒 Sepete Ekle', action: 'add_to_cart', data: { productId, recommendedSize: recommendedSizeValue } },

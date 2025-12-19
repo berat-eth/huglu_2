@@ -1169,17 +1169,21 @@ export default function ProductDetailScreen({ navigation, route }) {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Beden</Text>
                 <TouchableOpacity>
-                  <Text style={styles.sizeGuide}>Beden Rehberi</Text>
+                  <View style={styles.sizeGuideContainer}>
+                    <Text style={styles.sizeGuide}>Beden Rehberi</Text>
+                    {recommendedSize && (
+                      <View style={styles.recommendedSizeBadge}>
+                        <Ionicons name="sparkles" size={12} color="#FF8C00" />
+                        <Text style={styles.recommendedSizeText}>AI Önerilen: {recommendedSize}</Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               </View>
               <View style={styles.sizesContainer}>
                 {sizeOptions.map((size, index) => {
                   const sizeValue = size.value || size;
                   const isOutOfStock = size.stock !== undefined && size.stock <= 0;
-                  const isRecommended = recommendedSize && (
-                    sizeValue.toString().toUpperCase().includes(recommendedSize.toUpperCase()) ||
-                    recommendedSize.toUpperCase().includes(sizeValue.toString().toUpperCase())
-                  );
                   
                   return (
                     <TouchableOpacity
@@ -1188,21 +1192,16 @@ export default function ProductDetailScreen({ navigation, route }) {
                         styles.sizeOption,
                         selectedSize === index && styles.sizeOptionSelected,
                         isOutOfStock && styles.sizeOptionDisabled,
-                        isRecommended && styles.sizeOptionRecommended,
                       ]}
                       onPress={() => !isOutOfStock && setSelectedSize(index)}
                       activeOpacity={0.85}
                       disabled={isOutOfStock}
                     >
-                      {isRecommended && (
-                        <Text style={styles.recommendedCrown}>👑</Text>
-                      )}
                       <Text
                         style={[
                           styles.sizeText,
                           selectedSize === index && styles.sizeTextSelected,
                           isOutOfStock && styles.sizeTextDisabled,
-                          isRecommended && styles.sizeTextRecommended,
                         ]}
                       >
                         {sizeValue}
@@ -2247,6 +2246,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
   },
+  sizeGuideContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  recommendedSizeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  recommendedSizeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FF8C00',
+  },
   colorsContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -2294,21 +2313,6 @@ const styles = StyleSheet.create({
   sizeTextDisabled: {
     color: COLORS.gray400,
     textDecorationLine: 'line-through',
-  },
-  sizeOptionRecommended: {
-    borderColor: '#FFD700',
-    borderWidth: 2,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-  },
-  sizeTextRecommended: {
-    color: '#FF8C00',
-    fontWeight: '700',
-  },
-  recommendedCrown: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    fontSize: 16,
   },
   outOfStockLine: {
     position: 'absolute',
