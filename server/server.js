@@ -15725,16 +15725,19 @@ app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, address, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, currentPassword, newPassword, dateOfBirth, height, weight } = req.body;
 
+    // Get tenant ID safely
+    const tenantId = req.tenant?.id || 1;
+
     // Get current user - Try with all fields first, fallback if columns don't exist
     let [userRows] = await poolWrapper.execute(
       'SELECT id, name, email, phone, address, password, dateOfBirth, height, weight, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt, tenantId FROM users WHERE id = ? AND tenantId = ?',
-      [id, req.tenant.id]
+      [id, tenantId]
     ).catch(async (error) => {
       if (error.code === 'ER_BAD_FIELD_ERROR') {
         console.log('⚠️ Some columns missing, using fallback query');
         return await poolWrapper.execute(
           'SELECT id, name, email, phone, address, password, createdAt, tenantId FROM users WHERE id = ? AND tenantId = ?',
-          [id, req.tenant.id]
+          [id, tenantId]
         );
       }
       throw error;
@@ -15898,7 +15901,7 @@ app.put('/api/users/:id', async (req, res) => {
 
       await poolWrapper.execute(
         `UPDATE users SET ${updateFields.map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
-        [...updateValues, id, req.tenant.id]
+        [...updateValues, id, tenantId]
       );
     } else {
       // Update user data (no encryption needed)
@@ -15963,7 +15966,7 @@ app.put('/api/users/:id', async (req, res) => {
       if (updateFields.length > 0) {
         await poolWrapper.execute(
           `UPDATE users SET ${updateFields.map(f => `${f} = ?`).join(', ')} WHERE id = ? AND tenantId = ?`,
-          [...updateValues, id, req.tenant.id]
+          [...updateValues, id, tenantId]
         );
       }
     }
@@ -15972,13 +15975,13 @@ app.put('/api/users/:id', async (req, res) => {
       // Try with all fields first, fallback if columns don't exist
       let [updatedUser] = await poolWrapper.execute(
         'SELECT id, name, email, phone, address, dateOfBirth, height, weight, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt FROM users WHERE id = ? AND tenantId = ?',
-        [id, req.tenant.id]
+        [id, tenantId]
       ).catch(async (error) => {
         if (error.code === 'ER_BAD_FIELD_ERROR') {
           console.log('⚠️ Some columns missing, using fallback query');
           return await poolWrapper.execute(
             'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
-            [id, req.tenant.id]
+            [id, tenantId]
           );
         }
         throw error;
@@ -22192,10 +22195,31 @@ async function startServer() {
         }
       }
 
+      // Kullanıcı bilgilerini al (boy bilgisi için)
+      let userInfo = null;
+      if (userId) {
+        try {
+          const [userRows] = await poolWrapper.execute(
+            'SELECT id, name, height, weight FROM users WHERE id = ? AND tenantId = ? LIMIT 1',
+            [userId, tenantId]
+          );
+          if (userRows.length > 0) {
+            userInfo = {
+              id: userRows[0].id,
+              name: userRows[0].name,
+              height: userRows[0].height,
+              weight: userRows[0].weight
+            };
+          }
+        } catch (err) {
+          console.warn('⚠️ Kullanıcı bilgisi alınamadı:', err.message);
+        }
+      }
+
       // Yanıt oluştur
       let response;
       try {
-        response = await generateChatbotResponse(intent, message, actionType, tenantId);
+        response = await generateChatbotResponse(intent, message, actionType, tenantId, userId, productId, userInfo);
       } catch (responseError) {
         console.error('❌ Yanıt oluşturma hatası:', responseError);
         // Fallback yanıt
@@ -22560,6 +22584,7 @@ async function startServer() {
       product_search: ['ürün', 'arama', 'bul', 'var mı', 'stok', 'fiyat', 'ürün arama'],
       campaigns: ['kampanya', 'indirim', 'kupon', 'çek', 'promosyon', 'fırsat', 'özel teklif'],
       recommendations: ['öneri', 'bana ne önerirsin', 'ne alsam', 'beni tanı', 'kişisel öneri', 'kişiselleştir'],
+      size_recommendation: ['beden', 'size', 'hangi beden', 'beden bilgisi', 'beden öner', 'hangi numara', 'numara', 'ölçü', 'boyut'],
       support: ['yardım', 'destek', 'problem', 'sorun', 'şikayet', 'canlı destek'],
       payment: ['ödeme', 'para', 'kredi kartı', 'banka', 'ücret', 'fatura', 'taksit'],
       return: ['iade', 'değişim', 'geri', 'kusur', 'hasarlı', 'yanlış'],
@@ -22591,7 +22616,7 @@ async function startServer() {
   }
 
   // Chatbot yanıt oluşturma fonksiyonu
-  async function generateChatbotResponse(intent, message, actionType, tenantId) {
+  async function generateChatbotResponse(intent, message, actionType, tenantId, userId = null, productId = null, userInfo = null) {
     const timestamp = new Date();
     const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -22613,6 +22638,9 @@ async function startServer() {
 
       case 'recommendations':
         return await handleRecommendations(tenantId);
+
+      case 'size_recommendation':
+        return await handleSizeRecommendation(message, tenantId, userId, productId, userInfo);
 
       case 'unknown':
         return {
@@ -22956,6 +22984,156 @@ async function startServer() {
         quickReplies: [
           { id: '1', text: '🛒 Popüler Ürünler', action: 'view_products' },
           { id: '2', text: '🏠 Ana Menü', action: 'greeting' }
+        ]
+      };
+    }
+  }
+
+  // Beden önerisi fonksiyonu
+  async function handleSizeRecommendation(message, tenantId, userId, productId, userInfo) {
+    try {
+      const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const timestamp = new Date();
+
+      // Kullanıcının boy bilgisini kontrol et
+      let userHeight = null;
+      if (userInfo && userInfo.height) {
+        userHeight = parseInt(userInfo.height);
+      } else if (userId) {
+        // Eğer userInfo'da yoksa tekrar sorgula
+        try {
+          const [userRows] = await poolWrapper.execute(
+            'SELECT height FROM users WHERE id = ? AND tenantId = ? LIMIT 1',
+            [userId, tenantId]
+          );
+          if (userRows.length > 0 && userRows[0].height) {
+            userHeight = parseInt(userRows[0].height);
+          }
+        } catch (err) {
+          console.warn('⚠️ Kullanıcı boy bilgisi alınamadı:', err.message);
+        }
+      }
+
+      // Eğer boy bilgisi yoksa, kullanıcıdan iste
+      if (!userHeight || userHeight <= 0) {
+        return {
+          id: messageId,
+          text: '👕 Size uygun bedeni önerebilmek için boy bilginize ihtiyacım var.\n\nLütfen boyunuzu cm cinsinden paylaşın (örnek: 175) veya "Kişisel Bilgilerim" sayfasından boy bilginizi ekleyin.',
+          isBot: true,
+          timestamp,
+          type: 'quick_reply',
+          quickReplies: [
+            { id: '1', text: '📝 Profilime Git', action: 'navigate_profile' },
+            { id: '2', text: '🔍 Ürün Arama', action: 'product_search' },
+            { id: '3', text: '🎧 Canlı Destek', action: 'live_support' }
+          ]
+        };
+      }
+
+      // Boy bilgisine göre genel beden önerisi
+      const getRecommendedSize = (height) => {
+        if (height < 160) return ['XS', 'S'];
+        if (height < 165) return ['S', 'M'];
+        if (height < 170) return ['M', 'L'];
+        if (height < 175) return ['L', 'XL'];
+        if (height < 180) return ['L', 'XL'];
+        if (height < 185) return ['XL', 'XXL'];
+        return ['XL', 'XXL', 'XXXL'];
+      };
+
+      const recommendedSizes = getRecommendedSize(userHeight);
+      let responseText = `👕 Boy bilginize göre (${userHeight} cm) önerdiğim bedenler:\n\n`;
+      responseText += `✨ Önerilen bedenler: ${recommendedSizes.join(', ')}\n\n`;
+      responseText += `💡 Bu öneriler genel bir rehberdir. Ürünün kesimine ve markasına göre değişiklik gösterebilir.`;
+
+      // Eğer productId varsa, o ürünün beden seçeneklerini kontrol et
+      if (productId) {
+        try {
+          // Ürün varyasyonlarını al
+          const [variationRows] = await poolWrapper.execute(
+            `SELECT v.id, v.name, v.type, v.options
+             FROM product_variations v
+             WHERE v.productId = ? AND v.tenantId = ?
+             AND (LOWER(v.name) LIKE '%beden%' OR LOWER(v.name) LIKE '%size%' OR LOWER(v.name) LIKE '%numara%')
+             LIMIT 1`,
+            [productId, tenantId]
+          );
+
+          if (variationRows.length > 0) {
+            const variation = variationRows[0];
+            let availableSizes = [];
+            
+            // Options JSON'dan parse et
+            if (variation.options) {
+              try {
+                const options = typeof variation.options === 'string' 
+                  ? JSON.parse(variation.options) 
+                  : variation.options;
+                
+                if (Array.isArray(options)) {
+                  availableSizes = options.map(opt => opt.value || opt.name || opt).filter(Boolean);
+                } else if (typeof options === 'object') {
+                  availableSizes = Object.keys(options);
+                }
+              } catch (parseErr) {
+                console.warn('⚠️ Options parse edilemedi:', parseErr);
+              }
+            }
+
+            if (availableSizes.length > 0) {
+              // Önerilen bedenlerden mevcut olanları bul
+              const matchingSizes = recommendedSizes.filter(size => 
+                availableSizes.some(avail => 
+                  avail.toString().toUpperCase().includes(size.toUpperCase()) ||
+                  size.toUpperCase().includes(avail.toString().toUpperCase())
+                )
+              );
+
+              if (matchingSizes.length > 0) {
+                responseText = `👕 Bu ürün için boy bilginize göre (${userHeight} cm) önerdiğim beden:\n\n`;
+                responseText += `✨ ${matchingSizes[0]} beden size uygun olabilir.\n\n`;
+                responseText += `📋 Mevcut bedenler: ${availableSizes.join(', ')}\n\n`;
+                responseText += `💡 Bu öneri genel bir rehberdir. Ürünün kesimine göre değişiklik gösterebilir.`;
+              } else {
+                responseText = `👕 Bu ürün için boy bilginize göre (${userHeight} cm) önerdiğim bedenler:\n\n`;
+                responseText += `✨ Önerilen: ${recommendedSizes.join(' veya ')}\n\n`;
+                responseText += `📋 Ürünün mevcut bedenleri: ${availableSizes.join(', ')}\n\n`;
+                responseText += `💡 En yakın bedeni seçmenizi öneririm.`;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Ürün beden bilgisi alınamadı:', err.message);
+        }
+      }
+
+      return {
+        id: messageId,
+        text: responseText,
+        isBot: true,
+        timestamp,
+        type: 'quick_reply',
+        quickReplies: productId ? [
+          { id: '1', text: '🛒 Sepete Ekle', action: 'add_to_cart', data: { productId, recommendedSize: recommendedSizes[0] } },
+          { id: '2', text: '👀 Ürün Detayı', action: 'view_product', data: { productId } },
+          { id: '3', text: '🔍 Başka Ürün', action: 'product_search' }
+        ] : [
+          { id: '1', text: '🔍 Ürün Arama', action: 'product_search' },
+          { id: '2', text: '📝 Profilimi Güncelle', action: 'navigate_profile' },
+          { id: '3', text: '🎧 Canlı Destek', action: 'live_support' }
+        ]
+      };
+    } catch (error) {
+      console.error('❌ Beden önerisi hatası:', error);
+      return {
+        id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: 'Beden önerisi oluşturulurken bir hata oluştu. Lütfen tekrar deneyin veya canlı destek ile iletişime geçin.',
+        isBot: true,
+        timestamp: new Date(),
+        type: 'quick_reply',
+        quickReplies: [
+          { id: '1', text: '🔄 Tekrar Dene', action: 'size_recommendation' },
+          { id: '2', text: '🎧 Canlı Destek', action: 'live_support' }
         ]
       };
     }
