@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, Modal, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,10 +47,6 @@ export default function ReturnRequestScreen({ navigation, route }) {
   const [additionalComments, setAdditionalComments] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('mail');
   const [step, setStep] = useState(1); // 1: Select items, 2: Reason, 3: Method
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -252,6 +248,34 @@ export default function ReturnRequestScreen({ navigation, route }) {
         {/* Select Items Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>İade Edilecek Ürünleri Seçin</Text>
+          
+          {/* Kargo İade Kodu */}
+          <View style={styles.returnCodeCard}>
+            <View style={styles.returnCodeHeader}>
+              <Ionicons name="cube-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.returnCodeTitle}>Kargo İade Kodu</Text>
+            </View>
+            <View style={styles.returnCodeContent}>
+              <View style={styles.carrierBadge}>
+                <Ionicons name="car-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.carrierText}>DHL Kargo</Text>
+              </View>
+              <Text style={styles.returnCodeDescription}>
+                İade edeceğiniz ürünleri DHL Kargo ile gönderirken bu kodu kullanın
+              </Text>
+              <TouchableOpacity 
+                style={styles.returnCodeButton} 
+                onPress={() => {
+                  Clipboard.setString('3470654462');
+                  setShowSuccessModal(true);
+                  setSuccessMessage('Kargo iade kodu panoya kopyalandı');
+                }}
+              >
+                <Text style={styles.returnCodeValue}>3470654462</Text>
+                <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
           
           {order?.items?.map((item) => {
             const itemId = item.id || item._id || item.orderItemId;
@@ -496,6 +520,65 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textMain,
     marginBottom: 16,
+  },
+  returnCodeCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(17, 212, 33, 0.1)',
+  },
+  returnCodeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  returnCodeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  returnCodeContent: {
+    gap: 12,
+  },
+  carrierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  carrierText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
+  },
+  returnCodeDescription: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    lineHeight: 20,
+  },
+  returnCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.gray50,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  returnCodeValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    letterSpacing: 1,
   },
   itemCard: {
     flexDirection: 'row',

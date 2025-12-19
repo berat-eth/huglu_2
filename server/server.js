@@ -3153,7 +3153,9 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
     }
 
     // Check if order is delivered - iade sadece teslim edilmiş siparişlerde kullanılabilir
-    if (orderItem[0].orderStatus !== 'delivered') {
+    // Both 'delivered' and 'completed' are considered delivered
+    const orderStatus = orderItem[0].orderStatus?.toLowerCase() || '';
+    if (orderStatus !== 'delivered' && orderStatus !== 'completed') {
       return res.status(400).json({
         success: false,
         message: 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir'
@@ -3252,7 +3254,7 @@ app.get('/api/returns/returnable-orders/:userId', async (req, res) => {
       FROM orders o
       JOIN order_items oi ON o.id = oi.orderId
       LEFT JOIN return_requests rr ON oi.id = rr.orderItemId AND rr.status NOT IN ('rejected', 'cancelled')
-      WHERE o.userId = ? AND o.tenantId = ? AND o.status = 'delivered'
+      WHERE o.userId = ? AND o.tenantId = ? AND o.status IN ('delivered', 'completed')
       ORDER BY o.createdAt DESC, oi.id
     `, [userId, tenantId]);
 
@@ -3319,8 +3321,9 @@ app.post('/api/returns', async (req, res) => {
           continue; // Skip if item not found
         }
 
-        // Check if order is delivered
-        if (orderItem[0].orderStatus !== 'delivered') {
+        // Check if order is delivered (both 'delivered' and 'completed' are considered delivered)
+        const orderStatus = orderItem[0].orderStatus?.toLowerCase() || '';
+        if (orderStatus !== 'delivered' && orderStatus !== 'completed') {
           console.log(`⚠️ Order not delivered: orderId=${orderId}, status=${orderItem[0].orderStatus}`);
           continue; // Skip if order not delivered
         }
@@ -3376,8 +3379,9 @@ app.post('/api/returns', async (req, res) => {
         });
       }
 
-      // Check if order is delivered
-      if (orderItem[0].orderStatus !== 'delivered') {
+      // Check if order is delivered (both 'delivered' and 'completed' are considered delivered)
+      const orderStatus = orderItem[0].orderStatus?.toLowerCase() || '';
+      if (orderStatus !== 'delivered' && orderStatus !== 'completed') {
         return res.status(400).json({
           success: false,
           message: 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir'
@@ -3841,7 +3845,7 @@ app.get('/api/orders/returnable', async (req, res) => {
       FROM orders o
       JOIN order_items oi ON o.id = oi.orderId
       LEFT JOIN return_requests rr ON oi.id = rr.orderItemId AND rr.status NOT IN ('rejected', 'cancelled')
-      WHERE o.userId = ? AND o.tenantId = ? AND o.status IN ('delivered')
+      WHERE o.userId = ? AND o.tenantId = ? AND o.status IN ('delivered', 'completed')
       ORDER BY o.createdAt DESC, oi.id
     `, [userId, req.tenant.id]);
 

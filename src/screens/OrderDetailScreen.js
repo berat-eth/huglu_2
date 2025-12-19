@@ -254,7 +254,10 @@ export default function OrderDetailScreen({ navigation, route }) {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Google Maps */}
         <View style={styles.mapContainer}>
           <MapView
@@ -516,21 +519,6 @@ export default function OrderDetailScreen({ navigation, route }) {
                 <Text style={styles.shippingValue}>Henüz atanmadı</Text>
               )}
             </View>
-            {isOrderDelivered() && (
-              <>
-                <View style={styles.shippingDivider} />
-                <View style={styles.shippingRow}>
-                  <Text style={styles.shippingLabel}>Kargo İade Kodu</Text>
-                  <TouchableOpacity style={styles.trackingButton} onPress={() => {
-                    Clipboard.setString('3470654462');
-                    setShowSuccessModal(true);
-                  }}>
-                    <Text style={styles.trackingNumber}>3470654462</Text>
-                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
           </View>
           
           {/* Refund Info - Sadece teslim edilmiş siparişler için */}
@@ -610,6 +598,9 @@ export default function OrderDetailScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundLight,
