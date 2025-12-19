@@ -10,7 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 
@@ -39,6 +39,7 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [reviewImageViewerIndex, setReviewImageViewerIndex] = useState(0);
   const [reviewImageViewerImages, setReviewImageViewerImages] = useState([]);
   const [liveViewers, setLiveViewers] = useState(0);
+  const [recommendedSize, setRecommendedSize] = useState(null);
 
   // Canlı izleyici sayısını başlat ve periyodik güncelle
   useEffect(() => {
@@ -102,6 +103,29 @@ export default function ProductDetailScreen({ navigation, route }) {
                     setIsFavorite(isInFavorites);
                   } else {
                     setIsFavorite(!!data?.isFavorite);
+                  }
+                  
+                  // Chatbot'tan beden önerisi al
+                  try {
+                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                    const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
+                    if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
+                      const responseData = chatbotResponse.data.data;
+                      // Önerilen bedeni data'dan al
+                      if (responseData.recommendedSize) {
+                        setRecommendedSize(responseData.recommendedSize);
+                      } else if (responseData.data?.recommendedSize) {
+                        setRecommendedSize(responseData.data.recommendedSize);
+                      } else if (responseData.quickReplies) {
+                        // Quick reply'lerden önerilen bedeni bul
+                        const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
+                        if (sizeReply?.data?.recommendedSize) {
+                          setRecommendedSize(sizeReply.data.recommendedSize);
+                        }
+                      }
+                    }
+                  } catch (chatbotError) {
+                    console.log('Chatbot beden önerisi alınamadı:', chatbotError);
                   }
                 } else {
                   setIsFavorite(!!data?.isFavorite);
@@ -1143,15 +1167,19 @@ export default function ProductDetailScreen({ navigation, route }) {
           {sizeOptions.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Boyut</Text>
+                <Text style={styles.sectionTitle}>Beden</Text>
                 <TouchableOpacity>
-                  <Text style={styles.sizeGuide}>Boyut Rehberi</Text>
+                  <Text style={styles.sizeGuide}>Beden Rehberi</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.sizesContainer}>
                 {sizeOptions.map((size, index) => {
                   const sizeValue = size.value || size;
                   const isOutOfStock = size.stock !== undefined && size.stock <= 0;
+                  const isRecommended = recommendedSize && (
+                    sizeValue.toString().toUpperCase().includes(recommendedSize.toUpperCase()) ||
+                    recommendedSize.toUpperCase().includes(sizeValue.toString().toUpperCase())
+                  );
                   
                   return (
                     <TouchableOpacity
@@ -1160,16 +1188,21 @@ export default function ProductDetailScreen({ navigation, route }) {
                         styles.sizeOption,
                         selectedSize === index && styles.sizeOptionSelected,
                         isOutOfStock && styles.sizeOptionDisabled,
+                        isRecommended && styles.sizeOptionRecommended,
                       ]}
                       onPress={() => !isOutOfStock && setSelectedSize(index)}
                       activeOpacity={0.85}
                       disabled={isOutOfStock}
                     >
+                      {isRecommended && (
+                        <Text style={styles.recommendedCrown}>👑</Text>
+                      )}
                       <Text
                         style={[
                           styles.sizeText,
                           selectedSize === index && styles.sizeTextSelected,
                           isOutOfStock && styles.sizeTextDisabled,
+                          isRecommended && styles.sizeTextRecommended,
                         ]}
                       >
                         {sizeValue}
@@ -2261,6 +2294,21 @@ const styles = StyleSheet.create({
   sizeTextDisabled: {
     color: COLORS.gray400,
     textDecorationLine: 'line-through',
+  },
+  sizeOptionRecommended: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  sizeTextRecommended: {
+    color: '#FF8C00',
+    fontWeight: '700',
+  },
+  recommendedCrown: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    fontSize: 16,
   },
   outOfStockLine: {
     position: 'absolute',
