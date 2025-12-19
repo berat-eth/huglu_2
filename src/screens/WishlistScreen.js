@@ -60,13 +60,12 @@ export default function WishlistScreen({ navigation }) {
     try {
       console.log('🗑️ Favorilerden çıkarılıyor:', item);
       
-      // favoriteId varsa onu kullan, yoksa productId ile sil
+      // favoriteId varsa onu kullan (endpoint.md'ye göre DELETE /favorites/:favoriteId)
       if (item.id || item._id) {
         const favoriteId = item.id || item._id;
-        await wishlistAPI.remove(favoriteId);
+        await wishlistAPI.remove(favoriteId, userId);
       } else {
-        // Alternatif: productId ile silme
-        await wishlistAPI.removeByProduct(userId, item.productId);
+        throw new Error('Favorite ID bulunamadı');
       }
       
       // Local state'den kaldır
@@ -120,10 +119,10 @@ export default function WishlistScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Tüm favorileri tek tek sil
+              // Tüm favorileri tek tek sil (endpoint.md'ye göre DELETE /favorites/:favoriteId)
               for (const item of wishlistItems) {
                 if (item.id || item._id) {
-                  await wishlistAPI.remove(item.id || item._id);
+                  await wishlistAPI.remove(item.id || item._id, userId);
                 }
               }
               setWishlistItems([]);

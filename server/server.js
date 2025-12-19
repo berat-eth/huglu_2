@@ -15716,6 +15716,69 @@ app.delete('/api/favorites/product/:productId', async (req, res) => {
   }
 });
 
+// Toggle favorite (add if not exists, remove if exists)
+app.post('/api/favorites/toggle', async (req, res) => {
+  try {
+    const { userId, productId } = req.body;
+
+    if (!userId || !productId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and product ID are required'
+      });
+    }
+
+    const tenantId = req.tenant?.id || 1;
+
+    // Check if already favorited
+    const [existing] = await poolWrapper.execute(
+      'SELECT id FROM user_favorites_v2 WHERE userId = ? AND productId = ? AND tenantId = ?',
+      [userId, productId, tenantId]
+    );
+
+    if (existing.length > 0) {
+      // Remove from favorites
+      await poolWrapper.execute(
+        'DELETE FROM user_favorites_v2 WHERE id = ? AND userId = ? AND tenantId = ?',
+        [existing[0].id, userId, tenantId]
+      );
+      res.json({
+        success: true,
+        data: { isFavorite: false },
+        message: 'Removed from favorites'
+      });
+    } else {
+      // Check if product exists
+      const [product] = await poolWrapper.execute(
+        'SELECT id FROM products WHERE id = ? AND tenantId = ?',
+        [productId, tenantId]
+      );
+
+      if (product.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found'
+        });
+      }
+
+      // Add to favorites
+      const [result] = await poolWrapper.execute(
+        'INSERT INTO user_favorites_v2 (tenantId, userId, productId) VALUES (?, ?, ?)',
+        [tenantId, userId, productId]
+      );
+
+      res.json({
+        success: true,
+        data: { id: result.insertId, isFavorite: true },
+        message: 'Added to favorites'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error toggling favorite:', error);
+    res.status(500).json({ success: false, message: 'Error toggling favorite' });
+  }
+});
+
 // ========== User Lists Endpoints ==========
 // Get user lists
 app.get('/api/lists/user/:userId', async (req, res) => {

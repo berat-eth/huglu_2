@@ -8,7 +8,7 @@ import Stories from '../components/Stories';
 import HomeScreenSkeleton from '../components/HomeScreenSkeleton';
 import ServerErrorScreen from './ServerErrorScreen';
 import { COLORS } from '../constants/colors';
-import { productsAPI, slidersAPI, flashDealsAPI, storiesAPI, cartAPI } from '../services/api';
+import { productsAPI, slidersAPI, flashDealsAPI, storiesAPI, cartAPI, wishlistAPI } from '../services/api';
 import { testAPI, testNetworkConnectivity } from '../utils/testAPI';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
@@ -32,6 +32,7 @@ export default function HomeScreen({ navigation }) {
   const [showServerError, setShowServerError] = useState(false);
   const [flashDealsEndTime, setFlashDealsEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [userFavorites, setUserFavorites] = useState([]);
 
   useEffect(() => {
     // İlk yüklemede veri yükle (splash'te preload edilmiş olabilir ama yine de kontrol et)
@@ -202,10 +203,101 @@ export default function HomeScreen({ navigation }) {
       // Sepet sayısını yükle
       if (userId[1]) {
         await loadCartCount(userId[1]);
+        await loadUserFavorites(userId[1]);
       }
     } catch (error) {
       console.error('Kullanıcı bilgisi yüklenemedi:', error);
       setUserName('Misafir');
+    }
+  };
+
+  const loadUserFavorites = async (userId) => {
+    try {
+      const response = await wishlistAPI.get(userId);
+      if (response.data?.success) {
+        const favorites = response.data.data || response.data.favorites || [];
+        const favoriteIds = favorites.map((fav) => fav.productId || fav.id);
+        setUserFavorites(favoriteIds);
+      }
+    } catch (error) {
+      console.log('Favoriler yüklenemedi:', error);
+    }
+  };
+
+  const toggleFavorite = async (product) => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Giriş Gerekli', 'Favorilere eklemek için lütfen giriş yapın');
+        return;
+      }
+
+      const productId = product.id || product._id;
+      if (!productId) return;
+
+      // Optimistic update
+      const isCurrentlyFavorite = userFavorites.includes(productId);
+      const newFavorites = isCurrentlyFavorite
+        ? userFavorites.filter(id => id !== productId)
+        : [...userFavorites, productId];
+      setUserFavorites(newFavorites);
+
+      // Update product state
+      const updateProductFavorite = (productList) => {
+        return productList.map(p => {
+          const pid = p.id || p._id;
+          if (pid === productId) {
+            return { ...p, isFavorite: !isCurrentlyFavorite };
+          }
+          return p;
+        });
+      };
+
+      setProducts(updateProductFavorite(products));
+      setPopularProducts(updateProductFavorite(popularProducts));
+      setNewProducts(updateProductFavorite(newProducts));
+      setPersonalizedProducts(updateProductFavorite(personalizedProducts));
+
+      try {
+        if (isCurrentlyFavorite) {
+          // Favorilerden çıkar - endpoint.md'ye göre favoriteId ile silme
+          const favoritesResponse = await wishlistAPI.get(userId);
+          if (favoritesResponse.data?.success) {
+            const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
+            const favorite = favorites.find((fav) => (fav.productId || fav.id) === productId);
+            
+            if (favorite && (favorite.id || favorite._id)) {
+              // DELETE /favorites/:favoriteId endpoint'ini kullan (endpoint.md'ye göre)
+              await wishlistAPI.remove(favorite.id || favorite._id, userId);
+            } else {
+              throw new Error('Favorite ID bulunamadı');
+            }
+          }
+        } else {
+          // Favorilere ekle - POST /favorites endpoint'ini kullan
+          await wishlistAPI.add(userId, productId);
+        }
+      } catch (error) {
+        // Hata durumunda geri al
+        setUserFavorites(isCurrentlyFavorite ? [...userFavorites, productId] : userFavorites.filter(id => id !== productId));
+        const revertProductFavorite = (productList) => {
+          return productList.map(p => {
+            const pid = p.id || p._id;
+            if (pid === productId) {
+              return { ...p, isFavorite: isCurrentlyFavorite };
+            }
+            return p;
+          });
+        };
+        setProducts(revertProductFavorite(products));
+        setPopularProducts(revertProductFavorite(popularProducts));
+        setNewProducts(revertProductFavorite(newProducts));
+        setPersonalizedProducts(revertProductFavorite(personalizedProducts));
+        console.error('Favori toggle hatası:', error);
+        Alert.alert('Hata', 'Favori işlemi başarısız oldu');
+      }
+    } catch (error) {
+      console.error('Favori toggle hatası:', error);
     }
   };
 
@@ -267,7 +359,12 @@ export default function HomeScreen({ navigation }) {
             .slice(0, 6);
         }
         
-        setPopularProducts(popular);
+        // Favori durumlarını ekle
+        const popularWithFavorites = popular.map(p => ({
+          ...p,
+          isFavorite: userFavorites.includes(p.id || p._id)
+        }));
+        setPopularProducts(popularWithFavorites);
       }
     } catch (error) {
       console.error('❌ Popüler ürünler yüklenemedi:', error.message);
@@ -310,7 +407,12 @@ export default function HomeScreen({ navigation }) {
             .slice(0, 6);
         }
         
-        setNewProducts(newItems);
+        // Favori durumlarını ekle
+        const newItemsWithFavorites = newItems.map(p => ({
+          ...p,
+          isFavorite: userFavorites.includes(p.id || p._id)
+        }));
+        setNewProducts(newItemsWithFavorites);
         if (newItems.length > 0) {
           console.log('   İlk ürün:', newItems[0].name, '- Date:', newItems[0].lastUpdated, '- Stok:', newItems[0].stock);
         }
@@ -776,9 +878,10 @@ export default function HomeScreen({ navigation }) {
         {personalizedProducts.length > 0 && (
           <ProductSlider
             title="Size Özel"
-            products={personalizedProducts}
+            products={personalizedProducts.map(p => ({ ...p, isFavorite: userFavorites.includes(p.id || p._id) }))}
             onSeeAll={() => navigation.navigate('Shop')}
             onProductPress={(product) => navigation.navigate('ProductDetail', { product })}
+            onFavorite={toggleFavorite}
           />
         )}
 
@@ -786,9 +889,10 @@ export default function HomeScreen({ navigation }) {
         {filteredProducts.length > 0 && (
           <ProductSlider
             title="Flaş Fırsatlar"
-            products={filteredProducts.slice(0, 10)}
+            products={filteredProducts.slice(0, 10).map(p => ({ ...p, isFavorite: userFavorites.includes(p.id || p._id) }))}
             onSeeAll={() => navigation.navigate('Shop')}
             onProductPress={(product) => navigation.navigate('ProductDetail', { product })}
+            onFavorite={toggleFavorite}
           />
         )}
 
@@ -796,9 +900,10 @@ export default function HomeScreen({ navigation }) {
         {displayedProducts.length > 0 && (
           <ProductSlider
             title="Yeni Gelenler"
-            products={displayedProducts.slice(0, 12)}
+            products={displayedProducts.slice(0, 12).map(p => ({ ...p, isFavorite: userFavorites.includes(p.id || p._id) }))}
             onSeeAll={() => navigation.navigate('Shop')}
             onProductPress={(product) => navigation.navigate('ProductDetail', { product })}
+            onFavorite={toggleFavorite}
           />
         )}
 

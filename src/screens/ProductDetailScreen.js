@@ -10,7 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 
@@ -84,7 +84,29 @@ export default function ProductDetailScreen({ navigation, route }) {
             
             if (data) {
               setProduct(data);
-              setIsFavorite(!!data?.isFavorite);
+              
+              // Kullanıcının favorilerini kontrol et
+              try {
+                const userId = await AsyncStorage.getItem('userId');
+                if (userId) {
+                  const favoritesResponse = await wishlistAPI.get(userId);
+                  if (favoritesResponse.data?.success) {
+                    const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
+                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                    const isInFavorites = favorites.some((fav: any) => 
+                      (fav.productId || fav.id) === productId
+                    );
+                    setIsFavorite(isInFavorites);
+                  } else {
+                    setIsFavorite(!!data?.isFavorite);
+                  }
+                } else {
+                  setIsFavorite(!!data?.isFavorite);
+                }
+              } catch (favError) {
+                console.log('Favoriler kontrol edilemedi:', favError);
+                setIsFavorite(!!data?.isFavorite);
+              }
             }
         }
       } catch (error) {
@@ -307,6 +329,59 @@ export default function ProductDetailScreen({ navigation, route }) {
     console.log('🔍 Ürün variations analizi - BİTİŞ\n');
     return sizes;
   }, [product]);
+
+  const handleToggleFavorite = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        setShowLoginRequiredModal(true);
+        setLoginRequiredMessage('Favorilere eklemek için lütfen giriş yapın');
+        return;
+      }
+
+      const productId = product?.id || product?._id || initialProduct?.id || initialProduct?._id;
+      if (!productId) {
+        Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+        return;
+      }
+
+      // Optimistic update
+      const previousFavoriteState = isFavorite;
+      setIsFavorite(!isFavorite);
+
+      try {
+        if (previousFavoriteState) {
+          // Favorilerden çıkar
+          // Önce favoriteId'yi bul
+          const favoritesResponse = await wishlistAPI.get(userId);
+          if (favoritesResponse.data?.success) {
+            const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
+            const favorite = favorites.find((fav: any) => (fav.productId || fav.id) === productId);
+            
+            if (favorite && (favorite.id || favorite._id)) {
+              // DELETE /favorites/:favoriteId endpoint'ini kullan (endpoint.md'ye göre)
+              await wishlistAPI.remove(favorite.id || favorite._id, userId);
+            } else {
+              throw new Error('Favorite ID bulunamadı');
+            }
+          }
+        } else {
+          // Favorilere ekle
+          await wishlistAPI.add(userId, productId);
+        }
+        
+        console.log(`✅ Ürün ${previousFavoriteState ? 'favorilerden çıkarıldı' : 'favorilere eklendi'}`);
+      } catch (error) {
+        // Hata durumunda geri al
+        setIsFavorite(previousFavoriteState);
+        console.error('❌ Favori işlemi hatası:', error);
+        Alert.alert('Hata', error.response?.data?.message || 'Favori işlemi başarısız oldu');
+      }
+    } catch (error) {
+      console.error('❌ Favori toggle hatası:', error);
+      Alert.alert('Hata', 'Bir hata oluştu');
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -911,7 +986,10 @@ export default function ProductDetailScreen({ navigation, route }) {
             <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={24} color={COLORS.white} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton} onPress={() => setIsFavorite(!isFavorite)}>
+            <TouchableOpacity 
+              style={styles.headerButton} 
+              onPress={handleToggleFavorite}
+            >
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
                 size={24}

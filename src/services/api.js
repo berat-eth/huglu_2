@@ -313,10 +313,10 @@ export const wishlistAPI = {
   // Gerçek Backend Endpoint'leri
   get: (userId) => api.get(`/favorites/user/${userId}`),
   add: (userId, productId) => api.post('/favorites', { userId, productId }),
-  remove: (favoriteId) => api.delete(`/favorites/${favoriteId}`),
+  remove: (favoriteId, userId) => api.delete(`/favorites/${favoriteId}`, { params: { userId } }),
   
   // Alternatif: productId ile silme (backend'de favoriteId bulunamazsa)
-  removeByProduct: (userId, productId) => api.delete('/favorites', { data: { userId, productId } }),
+  removeByProduct: (userId, productId) => api.delete(`/favorites/product/${productId}`, { params: { userId } }),
   
   // Toggle (varsa sil, yoksa ekle)
   toggle: (userId, productId) => api.post('/favorites/toggle', { userId, productId }),
