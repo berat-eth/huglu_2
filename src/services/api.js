@@ -212,6 +212,14 @@ export const userLevelAPI = {
   addInvitationExp: (userId, invitedUserId) => api.post(`/user-level/${userId}/invitation-exp`, { invitedUserId }),
   addSocialShareExp: (userId, platform, contentType, contentId) => api.post(`/user-level/${userId}/social-share-exp`, { platform, contentType, contentId }),
   claimRewards: (userId, levelId) => api.post(`/user-level/${userId}/claim-rewards`, { levelId }),
+  // Enhanced EXP System
+  addProductViewExp: (userId, productId) => api.post(`/user-level/${userId}/product-view-exp`, { productId }),
+  addToCartExp: (userId, productId) => api.post(`/user-level/${userId}/add-to-cart-exp`, { productId }),
+  addToFavoriteExp: (userId, productId) => api.post(`/user-level/${userId}/add-to-favorite-exp`, { productId }),
+  addDailyLoginExp: (userId) => api.post(`/user-level/${userId}/daily-login-exp`),
+  getStreak: (userId) => api.get(`/user-level/${userId}/streak`),
+  addCommunityExp: (userId, type, postId, commentId) => api.post(`/user-level/${userId}/community-exp`, { type, postId, commentId }),
+  checkLevelUp: (userId) => api.post(`/user-level/${userId}/check-level-up`),
 };
 
 // ==================== WALLET API ====================

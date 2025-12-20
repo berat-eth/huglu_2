@@ -13,6 +13,7 @@ export default function UserLevelScreen({ navigation }) {
   const [levelData, setLevelData] = useState(null);
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState(null);
+  const [streak, setStreak] = useState(null);
 
   useEffect(() => {
     loadUserLevel();
@@ -27,10 +28,11 @@ export default function UserLevelScreen({ navigation }) {
       }
 
       try {
-        const [levelResponse, historyResponse, statsResponse] = await Promise.all([
+        const [levelResponse, historyResponse, statsResponse, streakResponse] = await Promise.all([
           userLevelAPI.getLevel(userId),
           userLevelAPI.getHistory(userId),
           userLevelAPI.getStats(userId),
+          userLevelAPI.getStreak(userId),
         ]);
 
         console.log('📊 Level Response:', JSON.stringify(levelResponse.data, null, 2));
@@ -66,6 +68,14 @@ export default function UserLevelScreen({ navigation }) {
         } else {
           console.log('⚠️ Stats response not successful');
           setStats(null);
+        }
+
+        if (streakResponse.data?.success) {
+          setStreak(streakResponse.data.data);
+          console.log('✅ Streak loaded:', streakResponse.data.data);
+        } else {
+          console.log('⚠️ Streak response not successful');
+          setStreak(null);
         }
       } catch (apiError) {
         console.error('❌ API hatası:', apiError.message);
@@ -232,6 +242,30 @@ export default function UserLevelScreen({ navigation }) {
           </View>
         </View>
 
+        {streak && (
+          <View style={styles.streakCard}>
+            <View style={styles.streakHeader}>
+              <Ionicons name="flame" size={24} color="#FF6B6B" />
+              <Text style={styles.streakTitle}>Günlük Giriş Serisi</Text>
+            </View>
+            <View style={styles.streakInfo}>
+              <View style={styles.streakItem}>
+                <Text style={styles.streakLabel}>Mevcut Seri</Text>
+                <Text style={styles.streakValue}>{streak.currentStreak} gün</Text>
+              </View>
+              <View style={styles.streakItem}>
+                <Text style={styles.streakLabel}>En Uzun Seri</Text>
+                <Text style={styles.streakValue}>{streak.longestStreak} gün</Text>
+              </View>
+            </View>
+            <Text style={styles.streakHint}>
+              {streak.currentStreak >= 7 ? '🔥 Harika! 7 günlük streak bonusu kazanıyorsunuz!' :
+               streak.currentStreak >= 3 ? '💪 Devam edin! 7 güne ulaşın ve bonus kazanın!' :
+               '💡 Her gün giriş yaparak streak bonusu kazanın!'}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kazanma Yolları</Text>
@@ -244,6 +278,51 @@ export default function UserLevelScreen({ navigation }) {
               <Text style={styles.earnDescription}>Her alışverişte puan kazan</Text>
             </View>
             <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+EXP</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.earnCard} onPress={async () => {
+            try {
+              const userId = await AsyncStorage.getItem('userId');
+              if (userId) {
+                const response = await userLevelAPI.addDailyLoginExp(userId);
+                if (response.data?.success) {
+                  Alert.alert('Başarılı', `Günlük giriş bonusu: +${response.data.expGained} EXP`);
+                  loadUserLevel();
+                }
+              }
+            } catch (error) {
+              console.error('Daily login error:', error);
+            }
+          }}>
+            <View style={styles.earnIcon}><Ionicons name="calendar" size={20} color={COLORS.primary} /></View>
+            <View style={styles.earnContent}>
+              <Text style={styles.earnTitle}>Günlük Giriş</Text>
+              <Text style={styles.earnDescription}>Her gün giriş yaparak bonus kazan</Text>
+            </View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+20 EXP</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.earnCard} onPress={() => navigation.navigate('ProductList')}>
+            <View style={styles.earnIcon}><Ionicons name="eye" size={20} color={COLORS.primary} /></View>
+            <View style={styles.earnContent}>
+              <Text style={styles.earnTitle}>Ürün Görüntüle</Text>
+              <Text style={styles.earnDescription}>Günde 10 ürüne kadar (5 EXP/ürün)</Text>
+            </View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+5 EXP</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.earnCard} onPress={() => navigation.navigate('ProductList')}>
+            <View style={styles.earnIcon}><Ionicons name="cart-outline" size={20} color={COLORS.primary} /></View>
+            <View style={styles.earnContent}>
+              <Text style={styles.earnTitle}>Sepete Ekle</Text>
+              <Text style={styles.earnDescription}>Her ürün için bir kez</Text>
+            </View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+10 EXP</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.earnCard} onPress={() => navigation.navigate('Wishlist')}>
+            <View style={styles.earnIcon}><Ionicons name="heart" size={20} color={COLORS.primary} /></View>
+            <View style={styles.earnContent}>
+              <Text style={styles.earnTitle}>Favorilere Ekle</Text>
+              <Text style={styles.earnDescription}>Her ürün için bir kez</Text>
+            </View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+15 EXP</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.earnCard} onPress={() => navigation.navigate('Referral')}>
             <View style={styles.earnIcon}><Ionicons name="people" size={20} color={COLORS.primary} /></View>
@@ -259,7 +338,7 @@ export default function UserLevelScreen({ navigation }) {
               <Text style={styles.earnTitle}>Sosyal Medyada Paylaş</Text>
               <Text style={styles.earnDescription}>İstek listeni veya ürünleri paylaş</Text>
             </View>
-            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+50 EXP</Text></View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+25 EXP</Text></View>
           </TouchableOpacity>
           <View style={styles.earnCard}>
             <View style={styles.earnIcon}><Ionicons name="create" size={20} color={COLORS.primary} /></View>
@@ -269,6 +348,14 @@ export default function UserLevelScreen({ navigation }) {
             </View>
             <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+50 EXP</Text></View>
           </View>
+          <TouchableOpacity style={styles.earnCard} onPress={() => navigation.navigate('Community')}>
+            <View style={styles.earnIcon}><Ionicons name="people-circle" size={20} color={COLORS.primary} /></View>
+            <View style={styles.earnContent}>
+              <Text style={styles.earnTitle}>Topluluk Paylaşımı</Text>
+              <Text style={styles.earnDescription}>Post paylaş, beğen, yorum yap</Text>
+            </View>
+            <View style={styles.earnPoints}><Text style={styles.earnPointsText}>+30 EXP</Text></View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -380,4 +467,12 @@ const styles = StyleSheet.create({
   emptyHistory: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
   emptyHistoryText: { fontSize: 16, fontWeight: '600', color: COLORS.gray600, marginTop: 16, marginBottom: 8 },
   emptyHistorySubtext: { fontSize: 14, color: COLORS.gray500, textAlign: 'center', lineHeight: 20 },
+  streakCard: { marginHorizontal: 16, marginBottom: 24, padding: 20, backgroundColor: COLORS.white, borderRadius: 16, borderWidth: 1, borderColor: COLORS.gray100 },
+  streakHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  streakTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textMain },
+  streakInfo: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
+  streakItem: { alignItems: 'center' },
+  streakLabel: { fontSize: 12, color: COLORS.gray500, marginBottom: 4 },
+  streakValue: { fontSize: 24, fontWeight: '800', color: COLORS.primary },
+  streakHint: { fontSize: 13, color: COLORS.gray600, textAlign: 'center', marginTop: 8, lineHeight: 18 },
 });

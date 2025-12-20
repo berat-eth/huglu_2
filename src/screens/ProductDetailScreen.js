@@ -10,7 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 import { useAlert } from '../hooks/useAlert';
@@ -47,7 +47,7 @@ const maskUserName = (name) => {
 
 export default function ProductDetailScreen({ navigation, route }) {
   const alert = useAlert();
-  const { product: initialProduct } = route.params || {};
+  const { product: initialProduct, productId: routeProductId } = route.params || {};
   const [product, setProduct] = useState(initialProduct);
   const [selectedSize, setSelectedSize] = useState(0);
   const [isFavorite, setIsFavorite] = useState(initialProduct?.isFavorite || false);
@@ -93,10 +93,26 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   useEffect(() => {
     const fetchDetail = async () => {
-      if (!initialProduct?.id && !initialProduct?._id) return;
+      // Get productId from either product object or route params
+      const productId = routeProductId || initialProduct?.id || initialProduct?._id;
+      if (!productId) {
+        // If we have initialProduct but no id, use it directly
+        if (initialProduct) {
+          setProduct(initialProduct);
+          setLoadingDetail(false);
+        }
+        return;
+      }
+      
+      // If we already have the product and it matches, don't refetch
+      if (initialProduct && (initialProduct.id === productId || initialProduct._id === productId)) {
+        setProduct(initialProduct);
+        setLoadingDetail(false);
+        return;
+      }
+      
       try {
         setLoadingDetail(true);
-        const productId = initialProduct.id || initialProduct._id;
         
         // 1. Ürün detayını al
         const response = await productsAPI.getById(productId);
@@ -130,6 +146,14 @@ export default function ProductDetailScreen({ navigation, route }) {
               try {
                 const userId = await AsyncStorage.getItem('userId');
                 if (userId) {
+                  // Award EXP for viewing product
+                  try {
+                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                    await userLevelAPI.addProductViewExp(userId, productId);
+                  } catch (expError) {
+                    console.log('Product view EXP error:', expError);
+                    // Don't fail if EXP addition fails
+                  }
                   const favoritesResponse = await wishlistAPI.get(userId);
                   if (favoritesResponse.data?.success) {
                     const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
@@ -224,7 +248,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     };
 
     fetchDetail();
-  }, [initialProduct]);
+  }, [initialProduct, routeProductId]);
 
   // Soruları yükle
   useEffect(() => {

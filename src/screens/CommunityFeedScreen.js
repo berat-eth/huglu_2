@@ -185,18 +185,25 @@ export default function CommunityFeedScreen({ navigation, route }) {
     alert.show('Paylaş', 'Paylaşım özelliği yakında eklenecek!');
   };
 
-  const handleProductClick = (post) => {
+  const handleProductClick = async (post) => {
     if (post.productId) {
+      // Navigate with productId - ProductDetailScreen will fetch the product
       navigation.navigate('ProductDetail', { productId: post.productId });
-    } else {
+    } else if (post.productName) {
+      // Try to find product by name if productId is not available
       alert.show(
         post.productName || 'Ürün',
         `Fiyat: ${post.productPrice || 'Bilinmiyor'}\n\nÜrün detaylarına gitmek ister misiniz?`,
         [
           { text: 'İptal', style: 'cancel' },
-          { text: 'Ürüne Git', onPress: () => {} },
+          { text: 'Ürüne Git', onPress: () => {
+            // You could implement a search by product name here if needed
+            alert.show('Bilgi', 'Ürün ID bulunamadı. Lütfen ürünü mağazadan arayın.');
+          } },
         ]
       );
+    } else {
+      alert.show('Bilgi', 'Bu gönderi ile ilişkili bir ürün bulunamadı.');
     }
   };
 
@@ -330,15 +337,22 @@ export default function CommunityFeedScreen({ navigation, route }) {
             </View>
 
             {/* Product Tag */}
+            {post.productId && (
             <TouchableOpacity
               style={styles.productTag}
               onPress={() => handleProductClick(post)}
             >
-              <Image
-                source={{ uri: post.productImage }}
-                style={styles.productTagImage}
-                resizeMode="cover"
-              />
+              {post.productImage ? (
+                <Image
+                  source={{ uri: post.productImage }}
+                  style={styles.productTagImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.productTagImage, styles.productTagImagePlaceholder]}>
+                  <Ionicons name="image-outline" size={24} color={COLORS.gray400} />
+                </View>
+              )}
               <View style={styles.productTagInfo}>
                 <Text style={styles.productTagName} numberOfLines={1}>
                   {post.productName}
@@ -347,6 +361,7 @@ export default function CommunityFeedScreen({ navigation, route }) {
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
             </TouchableOpacity>
+            )}
           </View>
         ))}
 
@@ -572,6 +587,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: COLORS.gray200,
     marginRight: 12,
+  },
+  productTagImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray200,
   },
   productTagInfo: {
     flex: 1,

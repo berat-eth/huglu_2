@@ -16003,6 +16003,26 @@ app.post('/api/favorites', async (req, res) => {
       [tenantId, userId, productId]
     );
 
+    // Award EXP for adding to favorites (one-time per product)
+    try {
+      const [existingExp] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'add_to_favorite' 
+         AND productId = ?`,
+        [userId, tenantId, productId]
+      );
+
+      if (existingExp.length === 0) {
+        await poolWrapper.execute(
+          'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+          [userId, tenantId, 'add_to_favorite', 15, `Favorilere ekleme`, productId]
+        );
+      }
+    } catch (expError) {
+      console.error('Error adding favorite EXP:', expError);
+      // Don't fail the request if EXP addition fails
+    }
+
     res.json({
       success: true,
       data: { id: result.insertId },
@@ -20229,6 +20249,29 @@ async function startServer() {
 
       const cartItemId = result.insertId || result.affectedRows;
       console.log(`✅ Server: Cart updated for user ${userId}, item ${cartItemId}`);
+
+      // Award EXP for adding to cart (one-time per product per day)
+      if (userId !== 1) { // Don't award EXP to guest users
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const [existingExp] = await poolWrapper.execute(
+            `SELECT id FROM user_exp_transactions 
+             WHERE userId = ? AND tenantId = ? AND source = 'add_to_cart' 
+             AND productId = ? AND DATE(timestamp) = ?`,
+            [userId, tenantId, productId, today]
+          );
+
+          if (existingExp.length === 0) {
+            await poolWrapper.execute(
+              'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+              [userId, tenantId, 'add_to_cart', 10, `Sepete ekleme`, productId]
+            );
+          }
+        } catch (expError) {
+          console.error('Error adding cart EXP:', expError);
+          // Don't fail the request if EXP addition fails
+        }
+      }
 
       res.json({
         success: true,
@@ -24805,7 +24848,18 @@ async function startServer() {
       'social_share': 'Sosyal Paylaşım',
       'social-share-exp': 'Sosyal Paylaşım',
       'manual_add': 'Manuel Ekleme',
-      'manual_remove': 'Manuel Çıkarma'
+      'manual_remove': 'Manuel Çıkarma',
+      'product_view': 'Ürün Görüntüleme',
+      'add_to_cart': 'Sepete Ekleme',
+      'add_to_favorite': 'Favorilere Ekleme',
+      'daily_login': 'Günlük Giriş',
+      'streak_bonus': 'Streak Bonusu',
+      'level_up': 'Seviye Atlama',
+      'community_post': 'Topluluk Paylaşımı',
+      'community_like': 'Topluluk Beğeni',
+      'community_comment': 'Topluluk Yorum',
+      'quest_complete': 'Görev Tamamlama',
+      'weekly_challenge': 'Haftalık Zorluk'
     };
     return titles[source] || 'Aktivite';
   }
@@ -24927,6 +24981,495 @@ async function startServer() {
     } catch (error) {
       console.error(' Error claiming rewards:', error);
       res.status(500).json({ success: false, message: 'Ödül kullanılamadı' });
+    }
+  });
+
+  // ==================== ENHANCED EXP SYSTEM ====================
+
+  // Add EXP for product view (with daily limit)
+  app.post('/api/user-level/:userId/product-view-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { productId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !productId) {
+        return res.status(400).json({ success: false, message: 'userId and productId are required' });
+      }
+
+      // Check daily limit (max 10 product views per day = 50 EXP)
+      const today = new Date().toISOString().split('T')[0];
+      const [todayViews] = await poolWrapper.execute(
+        `SELECT COUNT(*) as count FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'product_view' 
+         AND DATE(timestamp) = ?`,
+        [userId, tenantId, today]
+      );
+
+      const dailyViewCount = todayViews[0]?.count || 0;
+      const maxDailyViews = 10;
+      const expPerView = 5;
+
+      if (dailyViewCount >= maxDailyViews) {
+        return res.json({
+          success: true,
+          message: 'Günlük ürün görüntüleme limitine ulaştınız',
+          expGained: 0,
+          dailyLimitReached: true
+        });
+      }
+
+      // Check if this product was already viewed today
+      const [existingView] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'product_view' 
+         AND productId = ? AND DATE(timestamp) = ?`,
+        [userId, tenantId, productId, today]
+      );
+
+      if (existingView.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Bu ürün bugün zaten görüntülendi',
+          expGained: 0,
+          alreadyViewed: true
+        });
+      }
+
+      // Add EXP
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, 'product_view', expPerView, `Ürün görüntüleme`, productId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Ürün görüntüleme EXP\'si eklendi',
+        expGained: expPerView,
+        remainingViews: maxDailyViews - dailyViewCount - 1
+      });
+    } catch (error) {
+      console.error('Error adding product view EXP:', error);
+      res.status(500).json({ success: false, message: 'Ürün görüntüleme EXP\'si eklenemedi' });
+    }
+  });
+
+  // Add EXP for adding to cart
+  app.post('/api/user-level/:userId/add-to-cart-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { productId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !productId) {
+        return res.status(400).json({ success: false, message: 'userId and productId are required' });
+      }
+
+      // Check if already added to cart today (max 1 EXP per product per day)
+      const today = new Date().toISOString().split('T')[0];
+      const [existing] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'add_to_cart' 
+         AND productId = ? AND DATE(timestamp) = ?`,
+        [userId, tenantId, productId, today]
+      );
+
+      if (existing.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Bu ürün bugün zaten sepete eklendi',
+          expGained: 0,
+          alreadyAdded: true
+        });
+      }
+
+      const expAmount = 10;
+
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, 'add_to_cart', expAmount, `Sepete ekleme`, productId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Sepete ekleme EXP\'si eklendi',
+        expGained: expAmount
+      });
+    } catch (error) {
+      console.error('Error adding cart EXP:', error);
+      res.status(500).json({ success: false, message: 'Sepete ekleme EXP\'si eklenemedi' });
+    }
+  });
+
+  // Add EXP for adding to favorites
+  app.post('/api/user-level/:userId/add-to-favorite-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { productId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !productId) {
+        return res.status(400).json({ success: false, message: 'userId and productId are required' });
+      }
+
+      // Check if already favorited (one-time EXP per product)
+      const [existing] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'add_to_favorite' 
+         AND productId = ?`,
+        [userId, tenantId, productId]
+      );
+
+      if (existing.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Bu ürün zaten favorilere eklendi',
+          expGained: 0,
+          alreadyFavorited: true
+        });
+      }
+
+      const expAmount = 15;
+
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, productId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, 'add_to_favorite', expAmount, `Favorilere ekleme`, productId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Favorilere ekleme EXP\'si eklendi',
+        expGained: expAmount
+      });
+    } catch (error) {
+      console.error('Error adding favorite EXP:', error);
+      res.status(500).json({ success: false, message: 'Favorilere ekleme EXP\'si eklenemedi' });
+    }
+  });
+
+  // Daily login bonus with streak system
+  app.post('/api/user-level/:userId/daily-login-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'userId is required' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Check if already logged in today
+      const [existing] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'daily_login' 
+         AND DATE(timestamp) = ?`,
+        [userId, tenantId, today]
+      );
+
+      if (existing.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Bugün zaten giriş yaptınız',
+          expGained: 0,
+          alreadyLoggedIn: true
+        });
+      }
+
+      // Calculate current streak
+      const [lastLogin] = await poolWrapper.execute(
+        `SELECT DATE(timestamp) as loginDate FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'daily_login' 
+         ORDER BY timestamp DESC LIMIT 1`,
+        [userId, tenantId]
+      );
+
+      let currentStreak = 1;
+      if (lastLogin.length > 0) {
+        const lastLoginDate = new Date(lastLogin[0].loginDate);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        lastLoginDate.setHours(0, 0, 0, 0);
+
+        if (lastLoginDate.getTime() === yesterday.getTime()) {
+          // Consecutive login
+          // Count streak
+          const [streakRows] = await poolWrapper.execute(
+            `SELECT DATE(timestamp) as loginDate FROM user_exp_transactions 
+             WHERE userId = ? AND tenantId = ? AND source = 'daily_login' 
+             ORDER BY timestamp DESC LIMIT 7`,
+            [userId, tenantId]
+          );
+
+          let consecutiveDays = 1;
+          let checkDate = new Date();
+          checkDate.setDate(checkDate.getDate() - 1);
+          checkDate.setHours(0, 0, 0, 0);
+
+          for (const row of streakRows) {
+            const rowDate = new Date(row.loginDate);
+            rowDate.setHours(0, 0, 0, 0);
+            if (rowDate.getTime() === checkDate.getTime()) {
+              consecutiveDays++;
+              checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+              break;
+            }
+          }
+          currentStreak = consecutiveDays + 1;
+        }
+      }
+
+      // Base daily login EXP
+      let expAmount = 20;
+
+      // Streak bonuses
+      let streakBonus = 0;
+      if (currentStreak >= 7) {
+        streakBonus = 50; // 7-day streak bonus
+      } else if (currentStreak >= 3) {
+        streakBonus = 20; // 3-day streak bonus
+      }
+
+      const totalExp = expAmount + streakBonus;
+
+      // Add daily login EXP
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'daily_login', expAmount, `Günlük giriş bonusu`]
+      );
+
+      // Add streak bonus if applicable
+      if (streakBonus > 0) {
+        await poolWrapper.execute(
+          'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+          [userId, tenantId, 'streak_bonus', streakBonus, `${currentStreak} günlük streak bonusu`]
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Günlük giriş bonusu eklendi',
+        expGained: totalExp,
+        baseExp: expAmount,
+        streakBonus: streakBonus,
+        currentStreak: currentStreak
+      });
+    } catch (error) {
+      console.error('Error adding daily login EXP:', error);
+      res.status(500).json({ success: false, message: 'Günlük giriş EXP\'si eklenemedi' });
+    }
+  });
+
+  // Get streak information
+  app.get('/api/user-level/:userId/streak', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'userId is required' });
+      }
+
+      const [logins] = await poolWrapper.execute(
+        `SELECT DATE(timestamp) as loginDate FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'daily_login' 
+         ORDER BY timestamp DESC LIMIT 30`,
+        [userId, tenantId]
+      );
+
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let tempStreak = 0;
+      let lastDate = null;
+
+      for (const row of logins) {
+        const loginDate = new Date(row.loginDate);
+        loginDate.setHours(0, 0, 0, 0);
+
+        if (lastDate === null) {
+          // First login
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const diffDays = Math.floor((today.getTime() - loginDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 0 || diffDays === 1) {
+            currentStreak = 1;
+            tempStreak = 1;
+            lastDate = loginDate;
+          }
+        } else {
+          const diffDays = Math.floor((lastDate.getTime() - loginDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            tempStreak++;
+            if (currentStreak === 0 || lastDate.getTime() === new Date().setHours(0, 0, 0, 0)) {
+              currentStreak = tempStreak;
+            }
+          } else {
+            longestStreak = Math.max(longestStreak, tempStreak);
+            tempStreak = 1;
+          }
+          lastDate = loginDate;
+        }
+      }
+
+      longestStreak = Math.max(longestStreak, tempStreak);
+
+      res.json({
+        success: true,
+        data: {
+          currentStreak: currentStreak,
+          longestStreak: longestStreak,
+          totalLogins: logins.length
+        }
+      });
+    } catch (error) {
+      console.error('Error getting streak:', error);
+      res.status(500).json({ success: false, message: 'Streak bilgisi alınamadı' });
+    }
+  });
+
+  // Community interaction EXP
+  app.post('/api/user-level/:userId/community-exp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { type, postId, commentId } = req.body;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId || !type) {
+        return res.status(400).json({ success: false, message: 'userId and type are required' });
+      }
+
+      const expAmounts = {
+        'post': 30,
+        'like': 5,
+        'comment': 15
+      };
+
+      const expAmount = expAmounts[type] || 0;
+      if (expAmount === 0) {
+        return res.status(400).json({ success: false, message: 'Invalid type' });
+      }
+
+      const sourceMap = {
+        'post': 'community_post',
+        'like': 'community_like',
+        'comment': 'community_comment'
+      };
+
+      const source = sourceMap[type];
+      const description = type === 'post' ? 'Topluluk paylaşımı' :
+                         type === 'like' ? 'Topluluk beğeni' :
+                         'Topluluk yorum';
+
+      // Check daily limit for likes (max 20 likes per day = 100 EXP)
+      if (type === 'like') {
+        const today = new Date().toISOString().split('T')[0];
+        const [todayLikes] = await poolWrapper.execute(
+          `SELECT COUNT(*) as count FROM user_exp_transactions 
+           WHERE userId = ? AND tenantId = ? AND source = 'community_like' 
+           AND DATE(timestamp) = ?`,
+          [userId, tenantId, today]
+        );
+
+        if (todayLikes[0]?.count >= 20) {
+          return res.json({
+            success: true,
+            message: 'Günlük beğeni limitine ulaştınız',
+            expGained: 0,
+            dailyLimitReached: true
+          });
+        }
+      }
+
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, source, expAmount, description]
+      );
+
+      res.json({
+        success: true,
+        message: 'Topluluk etkileşim EXP\'si eklendi',
+        expGained: expAmount
+      });
+    } catch (error) {
+      console.error('Error adding community EXP:', error);
+      res.status(500).json({ success: false, message: 'Topluluk etkileşim EXP\'si eklenemedi' });
+    }
+  });
+
+  // Check and award level up bonus
+  app.post('/api/user-level/:userId/check-level-up', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const tenantId = req.tenant?.id || 1;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'userId is required' });
+      }
+
+      // Get user's total EXP
+      const [expRows] = await poolWrapper.execute(
+        'SELECT SUM(amount) as total_exp FROM user_exp_transactions WHERE userId = ? AND tenantId = ?',
+        [userId, tenantId]
+      );
+
+      const totalExp = expRows[0]?.total_exp || 0;
+
+      // Level definitions
+      const levels = [
+        { id: 'bronze', minExp: 0, maxExp: 1500 },
+        { id: 'iron', minExp: 1500, maxExp: 4500 },
+        { id: 'gold', minExp: 4500, maxExp: 10500 },
+        { id: 'platinum', minExp: 10500, maxExp: 22500 },
+        { id: 'diamond', minExp: 22500, maxExp: Infinity }
+      ];
+
+      // Find current level
+      let currentLevel = levels[0];
+      for (let i = levels.length - 1; i >= 0; i--) {
+        if (totalExp >= levels[i].minExp) {
+          currentLevel = levels[i];
+          break;
+        }
+      }
+
+      // Check if level up bonus already awarded for this level
+      const [existingBonus] = await poolWrapper.execute(
+        `SELECT id FROM user_exp_transactions 
+         WHERE userId = ? AND tenantId = ? AND source = 'level_up' 
+         AND description LIKE ?`,
+        [userId, tenantId, `%${currentLevel.id}%`]
+      );
+
+      if (existingBonus.length > 0) {
+        return res.json({
+          success: true,
+          leveledUp: false,
+          message: 'Seviye atlama bonusu zaten verildi'
+        });
+      }
+
+      // Award level up bonus (100 EXP per level)
+      const levelIndex = levels.findIndex(l => l.id === currentLevel.id);
+      const bonusExp = (levelIndex + 1) * 100;
+
+      await poolWrapper.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description) VALUES (?, ?, ?, ?, ?)',
+        [userId, tenantId, 'level_up', bonusExp, `Seviye atlama bonusu: ${currentLevel.id}`]
+      );
+
+      res.json({
+        success: true,
+        leveledUp: true,
+        message: 'Seviye atlama bonusu verildi',
+        expGained: bonusExp,
+        newLevel: currentLevel.id
+      });
+    } catch (error) {
+      console.error('Error checking level up:', error);
+      res.status(500).json({ success: false, message: 'Seviye kontrolü yapılamadı' });
     }
   });
 
