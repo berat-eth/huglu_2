@@ -118,6 +118,19 @@ hermesEnabled=true
 EOF
         
         echo -e "${GREEN}✓ Gradle konfigürasyonu kontrol edildi${NC}"
+        
+        # Gradle cache'ini temizle (prebuild sonrası)
+        echo -e "${YELLOW}🧹 Gradle cache temizleniyor (prebuild sonrası)...${NC}"
+        if [ -d "android" ]; then
+            cd android
+            if [ -f "gradlew" ]; then
+                chmod +x gradlew
+                # Kotlin DSL cache'ini temizle
+                rm -rf ~/.gradle/caches/*/kotlin-dsl 2>/dev/null || true
+                rm -rf ~/.gradle/caches/8.8/kotlin-dsl 2>/dev/null || true
+            fi
+            cd ..
+        fi
     fi
 }
 
@@ -131,13 +144,19 @@ build_apk() {
         chmod +x gradlew
     fi
     
+    # Gradle cache'ini temizle
+    echo -e "${YELLOW}🧹 Gradle cache temizleniyor...${NC}"
+    rm -rf ~/.gradle/caches/8.8/kotlin-dsl 2>/dev/null || true
+    rm -rf ~/.gradle/caches/*/kotlin-dsl 2>/dev/null || true
+    ./gradlew clean --no-daemon || true
+    
     # Clean build
     echo -e "${YELLOW}🧹 Clean build yapılıyor...${NC}"
-    ./gradlew clean || true
+    ./gradlew clean --no-daemon || true
     
     # Release build
     echo -e "${YELLOW}📦 Release APK build ediliyor...${NC}"
-    ./gradlew assembleRelease
+    ./gradlew assembleRelease --no-daemon
     
     cd ..
     echo -e "${GREEN}✓ APK başarıyla oluşturuldu${NC}"
