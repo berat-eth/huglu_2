@@ -63,6 +63,10 @@ install_dependencies() {
     echo -e "${YELLOW}📦 Bağımlılıklar yükleniyor...${NC}"
     npm install --legacy-peer-deps
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
+    
+    # Expo paketlerini uyumlu versiyonlara güncelle
+    echo -e "${YELLOW}🔄 Expo paketleri uyumlu versiyonlara güncelleniyor...${NC}"
+    npx expo install --fix || echo -e "${YELLOW}⚠️  expo install --fix atlandı (opsiyonel)${NC}"
 }
 
 # Expo prebuild
