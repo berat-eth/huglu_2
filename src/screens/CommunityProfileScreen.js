@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   RefreshControl,
   Dimensions,
   Modal,
@@ -18,10 +17,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { communityAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 const { width } = Dimensions.get('window');
 
 export default function CommunityProfileScreen({ navigation, route }) {
+  const alert = useAlert();
   const { userId: profileUserId } = route.params || {};
   const [currentUserId, setCurrentUserId] = useState(null);
   const [userName, setUserName] = useState('');
@@ -106,7 +107,7 @@ export default function CommunityProfileScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('❌ Paylaşımlar yüklenemedi:', error);
-      Alert.alert('Hata', 'Paylaşımlar yüklenirken bir hata oluştu');
+      alert.show('Hata', 'Paylaşımlar yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -171,7 +172,7 @@ export default function CommunityProfileScreen({ navigation, route }) {
 
   const handleFollow = async () => {
     if (!currentUserId) {
-      Alert.alert('Giriş Gerekli', 'Takip etmek için lütfen giriş yapın.');
+      alert.show('Giriş Gerekli', 'Takip etmek için lütfen giriş yapın.');
       return;
     }
 
@@ -187,7 +188,7 @@ export default function CommunityProfileScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Takip işlemi hatası:', error);
-      Alert.alert('Hata', 'Takip işlemi sırasında bir hata oluştu');
+      alert.show('Hata', 'Takip işlemi sırasında bir hata oluştu');
     }
   };
 
@@ -216,20 +217,20 @@ export default function CommunityProfileScreen({ navigation, route }) {
             : p
         ));
         setEditModalVisible(false);
-        Alert.alert('Başarılı', 'Paylaşım güncellendi');
+        alert.show('Başarılı', 'Paylaşım güncellendi');
       } else {
         throw new Error(response.data?.message || 'Güncelleme başarısız');
       }
     } catch (error) {
       console.error('❌ Güncelleme hatası:', error);
-      Alert.alert('Hata', 'Paylaşım güncellenirken bir hata oluştu');
+      alert.show('Hata', 'Paylaşım güncellenirken bir hata oluştu');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeletePost = (postId) => {
-    Alert.alert(
+    alert.show(
       'Paylaşımı Sil',
       'Bu paylaşımı silmek istediğinize emin misiniz?',
       [
@@ -243,11 +244,11 @@ export default function CommunityProfileScreen({ navigation, route }) {
               if (response.data && response.data.success) {
                 setPosts(posts.filter(p => p.id !== postId));
                 setStats(prev => ({ ...prev, totalPosts: prev.totalPosts - 1 }));
-                Alert.alert('Başarılı', 'Paylaşım silindi');
+                alert.show('Başarılı', 'Paylaşım silindi');
               }
             } catch (error) {
               console.error('❌ Silme hatası:', error);
-              Alert.alert('Hata', 'Paylaşım silinirken bir hata oluştu');
+              alert.show('Hata', 'Paylaşım silinirken bir hata oluştu');
             }
           },
         },
@@ -515,6 +516,9 @@ export default function CommunityProfileScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+
+      {/* Custom Alert */}
+      {alert.AlertComponent()}
     </SafeAreaView>
   );
 }

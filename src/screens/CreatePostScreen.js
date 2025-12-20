@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Modal,
@@ -20,10 +19,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { communityAPI, productsAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 import * as ImagePicker from 'expo-image-picker';
 
 export default function CreatePostScreen({ navigation, route }) {
+  const alert = useAlert();
   const { image: initialImage } = route.params || {};
   const [image, setImage] = useState(initialImage || null);
   const [caption, setCaption] = useState('');
@@ -72,7 +73,7 @@ export default function CreatePostScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('❌ Ürünler yüklenemedi:', error);
-      Alert.alert('Hata', 'Ürünler yüklenirken bir hata oluştu');
+      alert.show('Hata', 'Ürünler yüklenirken bir hata oluştu');
       setProducts([]);
     } finally {
       setLoadingProducts(false);
@@ -109,7 +110,7 @@ export default function CreatePostScreen({ navigation, route }) {
       // Request permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
+        alert.show('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
         return;
       }
 
@@ -126,12 +127,12 @@ export default function CreatePostScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Fotoğraf seçme hatası:', error);
-      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu');
+      alert.show('Hata', 'Fotoğraf seçilirken bir hata oluştu');
     }
   };
 
   const handleRemoveImage = () => {
-    Alert.alert(
+    alert.show(
       'Görseli Kaldır',
       'Görseli kaldırmak istediğinize emin misiniz?',
       [
@@ -147,17 +148,17 @@ export default function CreatePostScreen({ navigation, route }) {
 
   const handlePost = async () => {
     if (!userId) {
-      Alert.alert('Giriş Gerekli', 'Gönderi paylaşmak için lütfen giriş yapın.');
+      alert.show('Giriş Gerekli', 'Gönderi paylaşmak için lütfen giriş yapın.');
       return;
     }
 
     if (!image) {
-      Alert.alert('Hata', 'Lütfen bir fotoğraf seçin');
+      alert.show('Hata', 'Lütfen bir fotoğraf seçin');
       return;
     }
 
     if (!caption.trim()) {
-      Alert.alert('Hata', 'Lütfen bir açıklama yazın');
+      alert.show('Hata', 'Lütfen bir açıklama yazın');
       return;
     }
 
@@ -181,7 +182,7 @@ export default function CreatePostScreen({ navigation, route }) {
       const response = await communityAPI.createPost(postData);
 
       if (response.data && response.data.success) {
-        Alert.alert('Başarılı! 🎉', 'Maceranız paylaşıldı!', [
+        alert.show('Başarılı! 🎉', 'Maceranız paylaşıldı!', [
           { 
             text: 'Tamam', 
             onPress: () => {
@@ -200,7 +201,7 @@ export default function CreatePostScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('❌ Gönderi oluşturulamadı:', error);
-      Alert.alert(
+      alert.show(
         'Hata', 
         error.response?.data?.message || error.message || 'Gönderi paylaşılırken bir hata oluştu'
       );
@@ -452,6 +453,9 @@ export default function CreatePostScreen({ navigation, route }) {
           )}
         </SafeAreaView>
       </Modal>
+
+      {/* Custom Alert */}
+      {alert.AlertComponent()}
     </SafeAreaView>
   );
 }

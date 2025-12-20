@@ -57,24 +57,24 @@ export default function ProductionPlanning() {
   const [loadingSizeStocks, setLoadingSizeStocks] = useState(false)
 
   const statusColors = {
-    'Planlandı': 'bg-blue-100 text-blue-700 border-blue-200',
-    'Üretimde': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    'Tamamlandı': 'bg-green-100 text-green-700 border-green-200',
-    'Gecikmiş': 'bg-red-100 text-red-700 border-red-200',
+    'Planlandı': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    'Üretimde': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+    'Tamamlandı': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+    'Gecikmiş': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
   }
 
   const priorityColors = {
-    'Düşük': 'bg-slate-100 text-slate-700',
-    'Orta': 'bg-blue-100 text-blue-700',
-    'Yüksek': 'bg-orange-100 text-orange-700',
-    'Acil': 'bg-red-100 text-red-700',
+    'Düşük': 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
+    'Orta': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+    'Yüksek': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    'Acil': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
   }
 
   const importanceColors = {
-    'Düşük': 'bg-gray-100 text-gray-700',
-    'Orta': 'bg-blue-100 text-blue-700',
-    'Yüksek': 'bg-orange-100 text-orange-700',
-    'Kritik': 'bg-red-100 text-red-700',
+    'Düşük': 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+    'Orta': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+    'Yüksek': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    'Kritik': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
   }
 
   const statusIcons = {
@@ -525,7 +525,7 @@ export default function ProductionPlanning() {
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all ${showFilters ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200'} border`}
+              className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all ${showFilters ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'} border`}
             >
               <Filter className="w-4 h-4" />
               <span>Filtreler</span>
@@ -535,7 +535,7 @@ export default function ProductionPlanning() {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
             >
               <option value="all">Tüm Durumlar</option>
               <option value="Planlandı">Planlandı</option>
@@ -576,15 +576,15 @@ export default function ProductionPlanning() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="mt-4 pt-4 border-t border-slate-200"
+              className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700"
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Fabrika</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fabrika</label>
                   <select
                     value={filterFactory}
                     onChange={e => setFilterFactory(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   >
                     <option value="all">Tüm Fabrikalar</option>
                     <option value="Fabrika 1">Fabrika 1</option>
@@ -593,10 +593,10 @@ export default function ProductionPlanning() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Tarih Aralığı</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tarih Aralığı</label>
                   <input
                     type="date"
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
                 <div className="flex items-end">
@@ -608,7 +608,7 @@ export default function ProductionPlanning() {
                       setFilterFactory('all')
                       setSearchQuery('')
                     }}
-                    className="w-full px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                    className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                   >
                     Filtreleri Temizle
                   </button>
@@ -623,8 +623,8 @@ export default function ProductionPlanning() {
       <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">Düşük Stoklu Ürünler</h3>
-            <p className="text-slate-500 text-sm mt-1">Üretim talebi oluşturmak için ürün seçin</p>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Düşük Stoklu Ürünler</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Üretim talebi oluşturmak için ürün seçin</p>
           </div>
           <button
             onClick={() => {
@@ -694,21 +694,21 @@ export default function ProductionPlanning() {
                 } finally { setLoadingLowStock(false) }
               })()
             }}
-            className="px-4 py-2 bg-slate-100 rounded-lg text-slate-700 hover:bg-slate-200 text-sm transition-colors"
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 text-sm transition-colors"
           >
             Yenile
           </button>
         </div>
 
         {(loadingLowStock || searching) && (
-          <div className="text-center py-8 text-slate-500">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full mx-auto mb-2"></div>
             Yükleniyor...
           </div>
         )}
 
         {errorLowStock && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
             {errorLowStock}
           </div>
         )}
@@ -717,51 +717,51 @@ export default function ProductionPlanning() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Görsel</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Ürün Adı</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">SKU</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">XS</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">S</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">M</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">L</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">XL</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">2XL</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">3XL</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">4XL</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">5XL</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Toplam</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">İşlem</th>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Görsel</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Ürün Adı</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">SKU</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">XS</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">S</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">M</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">L</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">XL</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">2XL</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">3XL</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">4XL</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">5XL</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Toplam</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">İşlem</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {lowStock.map((product, index) => (
                   <motion.tr
                     key={product.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:bg-slate-50 transition-colors"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     <td className="px-4 py-3">
                       {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-14 h-14 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                        <img src={product.image} alt={product.name} className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-sm" />
                       ) : (
-                        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center">
-                          <Package className="w-6 h-6 text-slate-400" />
+                        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                          <Package className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800">{product.name}</p>
+                      <p className="font-medium text-slate-800 dark:text-slate-200">{product.name}</p>
                     </td>
-                    <td className="px-4 py-3 text-slate-600 font-mono text-sm">{product.sku || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm">{product.sku || '-'}</td>
                     {['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'].map(size => (
                       <td key={size} className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                          (product.sizes?.[size] || 0) === 0 ? 'bg-red-100 text-red-700' :
-                          (product.sizes?.[size] || 0) < 10 ? 'bg-orange-100 text-orange-700' :
-                          'bg-green-100 text-green-700'
+                          (product.sizes?.[size] || 0) === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                          (product.sizes?.[size] || 0) < 10 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                          'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                         }`}>
                           {product.sizes?.[size] || 0}
                         </span>
@@ -769,9 +769,9 @@ export default function ProductionPlanning() {
                     ))}
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                        product.stock === 0 ? 'bg-red-100 text-red-700' :
-                        product.stock < 50 ? 'bg-orange-100 text-orange-700' :
-                        'bg-green-100 text-green-700'
+                        product.stock === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                        product.stock < 50 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                        'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                       }`}>
                         {product.stock}
                       </span>
@@ -795,7 +795,7 @@ export default function ProductionPlanning() {
 
       {/* Üretim Planları Listesi */}
       <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6">
-        <h3 className="text-xl font-bold text-slate-800 mb-4">Aktif Üretim Planları</h3>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Aktif Üretim Planları</h3>
         <div className="space-y-4">
           {plans.map((plan, index) => {
             const StatusIcon = statusIcons[plan.status]
@@ -807,7 +807,7 @@ export default function ProductionPlanning() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-gradient-to-r from-white to-slate-50 border border-slate-200 rounded-xl p-5 hover:shadow-xl transition-all"
+                className="bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-xl transition-all"
               >
                 <div className="flex items-start justify-between gap-6 flex-wrap lg:flex-nowrap">
                   {/* Sol - Ürün Bilgileri */}
@@ -817,8 +817,8 @@ export default function ProductionPlanning() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-slate-800">{plan.productName}</h3>
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-md font-mono">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{plan.productName}</h3>
+                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs rounded-md font-mono">
                           {plan.productCode}
                         </span>
                         <span className={`px-2 py-0.5 text-xs rounded-md font-medium ${priorityColors[plan.priority]}`}>
@@ -828,7 +828,7 @@ export default function ProductionPlanning() {
                           {plan.importance_level}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-600 mb-3">
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-3">
                         <span className="flex items-center">
                           <Factory className="w-4 h-4 mr-1" />
                           {plan.factory}
@@ -842,10 +842,10 @@ export default function ProductionPlanning() {
                       {/* İlerleme Çubuğu */}
                       <div className="mb-2">
                         <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-slate-600">Üretim İlerlemesi</span>
-                          <span className="font-bold text-slate-800">{progress}%</span>
+                          <span className="text-slate-600 dark:text-slate-400">Üretim İlerlemesi</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{progress}%</span>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-3">
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                           <div
                             className={`h-3 rounded-full transition-all ${progress === 100 ? 'bg-green-500' :
                                 progress >= 70 ? 'bg-blue-500' :
@@ -856,22 +856,22 @@ export default function ProductionPlanning() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-500">{plan.notes}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{plan.notes}</p>
                     </div>
                   </div>
 
                   {/* Orta - Miktar Bilgileri */}
                   <div className="flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Planlanan</p>
-                      <p className="text-2xl font-bold text-slate-800">{plan.plannedQuantity.toLocaleString()}</p>
-                      <p className="text-xs text-slate-500">{plan.unit}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Planlanan</p>
+                      <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{plan.plannedQuantity.toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{plan.unit}</p>
                     </div>
-                    <div className="text-4xl text-slate-300">→</div>
+                    <div className="text-4xl text-slate-300 dark:text-slate-600">→</div>
                     <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Üretilen</p>
-                      <p className="text-2xl font-bold text-green-600">{plan.producedQuantity.toLocaleString()}</p>
-                      <p className="text-xs text-slate-500">{plan.unit}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Üretilen</p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{plan.producedQuantity.toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{plan.unit}</p>
                     </div>
                   </div>
 
@@ -885,11 +885,11 @@ export default function ProductionPlanning() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setEditingPlan(plan)}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
-                      <button className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                      <button className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
@@ -916,13 +916,13 @@ export default function ProductionPlanning() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <div className="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
-                <h3 className="text-2xl font-bold text-slate-800">Yeni Üretim Planı</h3>
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-800">
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Yeni Üretim Planı</h3>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-800 dark:text-slate-200"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -931,20 +931,20 @@ export default function ProductionPlanning() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Ürün Adı</label>
-                    <input type="text" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ürün Adı</label>
+                    <input type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Ürün Kodu</label>
-                    <input type="text" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ürün Kodu</label>
+                    <input type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Planlanan Miktar</label>
-                    <input type="number" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Planlanan Miktar</label>
+                    <input type="number" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Birim</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Birim</label>
+                    <select className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
                       <option>Adet</option>
                       <option>Çift</option>
                       <option>Kg</option>
@@ -952,24 +952,24 @@ export default function ProductionPlanning() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Başlangıç Tarihi</label>
-                    <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Başlangıç Tarihi</label>
+                    <input type="date" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Bitiş Tarihi</label>
-                    <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bitiş Tarihi</label>
+                    <input type="date" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Fabrika</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fabrika</label>
+                    <select className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
                       <option>Fabrika 1</option>
                       <option>Fabrika 2</option>
                       <option>Fabrika 3</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Öncelik</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Öncelik</label>
+                    <select className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
                       <option>Düşük</option>
                       <option>Orta</option>
                       <option>Yüksek</option>
@@ -978,8 +978,8 @@ export default function ProductionPlanning() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Notlar</label>
-                  <textarea rows={3} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Notlar</label>
+                  <textarea rows={3} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"></textarea>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
@@ -988,7 +988,7 @@ export default function ProductionPlanning() {
                   </button>
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="flex-1 bg-slate-100 text-slate-700 px-6 py-3 rounded-xl hover:bg-slate-200 transition-colors font-medium"
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-6 py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors font-medium"
                   >
                     İptal
                   </button>
@@ -1014,7 +1014,7 @@ export default function ProductionPlanning() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             >
               {/* Modal Header */}
               <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-3xl">
@@ -1044,13 +1044,13 @@ export default function ProductionPlanning() {
               {/* Modal Body */}
               <div className="p-6">
                 <div className="mb-6">
-                  <h4 className="text-lg font-bold text-slate-800 mb-2">Beden Seçimi ve Miktar Belirleme</h4>
-                  <p className="text-slate-500 text-sm">Her beden için üretilecek miktarı girin</p>
+                  <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Beden Seçimi ve Miktar Belirleme</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">Her beden için üretilecek miktarı girin</p>
                 </div>
 
                 {/* Önem Seviyesi Seçimi */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-slate-700 mb-3">Önem Seviyesi</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Önem Seviyesi</label>
                   <div className="grid grid-cols-4 gap-3">
                     {(['Düşük', 'Orta', 'Yüksek', 'Kritik'] as const).map((level) => (
                       <button
@@ -1059,7 +1059,7 @@ export default function ProductionPlanning() {
                         className={`px-4 py-3 rounded-xl font-medium transition-all ${
                           selectedImportance === level
                             ? `${importanceColors[level]} border-2 border-current shadow-lg`
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                         }`}
                       >
                         {level}
@@ -1071,13 +1071,13 @@ export default function ProductionPlanning() {
                 {/* Mevcut Beden Stokları */}
                 {selectedProduct.sizes && Object.keys(selectedProduct.sizes).length > 0 && (
                   <div className="mb-6">
-                    <h4 className="text-lg font-bold text-slate-800 mb-3">Mevcut Beden Stokları</h4>
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3">Mevcut Beden Stokları</h4>
                     <div className="grid grid-cols-4 gap-3">
                       {Object.entries(selectedProduct.sizes).map(([size, stock]) => (
-                        <div key={size} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <div key={size} className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
                           <div className="text-center">
-                            <div className="text-sm font-medium text-slate-600">{size}</div>
-                            <div className={`text-lg font-bold ${stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{size}</div>
+                            <div className={`text-lg font-bold ${stock > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                               {stock} adet
                             </div>
                           </div>
@@ -1094,12 +1094,12 @@ export default function ProductionPlanning() {
                       key={size}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border-2 border-slate-200 hover:border-blue-400 transition-all"
+                      className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all"
                     >
                       <label className="block mb-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-lg font-bold text-slate-800">{size}</span>
-                          <span className={`px-2 py-1 rounded-md text-xs font-semibold ${sizeQuantities[size] > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'
+                          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">{size}</span>
+                          <span className={`px-2 py-1 rounded-md text-xs font-semibold ${sizeQuantities[size] > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400'
                             }`}>
                             {sizeQuantities[size] > 0 ? `${sizeQuantities[size]} adet` : 'Boş'}
                           </span>
@@ -1110,7 +1110,7 @@ export default function ProductionPlanning() {
                             min="0"
                             value={sizeQuantities[size]}
                             onChange={(e) => handleSizeQuantityChange(size, parseInt(e.target.value) || 0)}
-                            className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-semibold"
+                            className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                             placeholder="0"
                           />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
@@ -1134,27 +1134,27 @@ export default function ProductionPlanning() {
                 </div>
 
                 {/* Özet Bilgiler */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6 border border-blue-200">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 mb-6 border border-blue-200 dark:border-blue-800">
                   <div className="grid grid-cols-4 gap-4">
                     <div className="text-center">
-                      <p className="text-sm text-slate-600 mb-1">Toplam Miktar</p>
-                      <p className="text-3xl font-bold text-blue-600">{getTotalQuantity()}</p>
-                      <p className="text-xs text-slate-500">adet</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Toplam Miktar</p>
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{getTotalQuantity()}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">adet</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-slate-600 mb-1">Seçilen Beden</p>
-                      <p className="text-3xl font-bold text-purple-600">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Seçilen Beden</p>
+                      <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                         {Object.values(sizeQuantities).filter(q => q > 0).length}
                       </p>
-                      <p className="text-xs text-slate-500">beden</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">beden</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-slate-600 mb-1">Mevcut Stok</p>
-                      <p className="text-3xl font-bold text-orange-600">{selectedProduct.stock}</p>
-                      <p className="text-xs text-slate-500">adet</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Mevcut Stok</p>
+                      <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{selectedProduct.stock}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">adet</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-slate-600 mb-1">Önem Seviyesi</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Önem Seviyesi</p>
                       <p className={`text-2xl font-bold px-3 py-1 rounded-lg ${importanceColors[selectedImportance]}`}>
                         {selectedImportance}
                       </p>
@@ -1164,7 +1164,7 @@ export default function ProductionPlanning() {
 
                 {/* Hızlı Seçim Butonları */}
                 <div className="mb-6">
-                  <p className="text-sm font-medium text-slate-700 mb-3">Hızlı Miktar Seçimi (Tüm Bedenler)</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Hızlı Miktar Seçimi (Tüm Bedenler)</p>
                   <div className="flex gap-2 flex-wrap">
                     {[10, 25, 50, 100, 200].map(qty => (
                       <button
@@ -1176,7 +1176,7 @@ export default function ProductionPlanning() {
                           })
                           setSizeQuantities(newQuantities)
                         }}
-                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium"
+                        className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors text-sm font-medium"
                       >
                         {qty} adet
                       </button>
@@ -1189,7 +1189,7 @@ export default function ProductionPlanning() {
                         })
                         setSizeQuantities(newQuantities)
                       }}
-                      className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg transition-colors text-sm font-medium"
                     >
                       Temizle
                     </button>
@@ -1202,7 +1202,7 @@ export default function ProductionPlanning() {
                     onClick={handleCreateProductionRequest}
                     disabled={getTotalQuantity() === 0}
                     className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${getTotalQuantity() === 0
-                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                         : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-[1.02]'
                       }`}
                   >
@@ -1213,7 +1213,7 @@ export default function ProductionPlanning() {
                   </button>
                   <button
                     onClick={() => setShowSizeModal(false)}
-                    className="px-8 py-4 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-bold text-lg"
+                    className="px-8 py-4 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors font-bold text-lg"
                   >
                     İptal
                   </button>

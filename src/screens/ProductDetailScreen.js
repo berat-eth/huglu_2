@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, Share, Modal, TextInput, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Share, Modal, TextInput, Animated } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { COLORS } from '../constants/colors';
 import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
+import { useAlert } from '../hooks/useAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ const maskUserName = (name) => {
 };
 
 export default function ProductDetailScreen({ navigation, route }) {
+  const alert = useAlert();
   const { product: initialProduct } = route.params || {};
   const [product, setProduct] = useState(initialProduct);
   const [selectedSize, setSelectedSize] = useState(0);
@@ -140,27 +142,65 @@ export default function ProductDetailScreen({ navigation, route }) {
                     setIsFavorite(!!data?.isFavorite);
                   }
                   
-                  // Chatbot'tan beden önerisi al
+                  // Chatbot'tan beden önerisi al (sadece ürünün beden seçenekleri varsa)
                   try {
                     const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
-                    const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
-                    if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
-                      const responseData = chatbotResponse.data.data;
-                      // Önerilen bedeni data'dan al
-                      if (responseData.recommendedSize) {
-                        setRecommendedSize(responseData.recommendedSize);
-                      } else if (responseData.data?.recommendedSize) {
-                        setRecommendedSize(responseData.data.recommendedSize);
-                      } else if (responseData.quickReplies) {
-                        // Quick reply'lerden önerilen bedeni bul
-                        const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
-                        if (sizeReply?.data?.recommendedSize) {
-                          setRecommendedSize(sizeReply.data.recommendedSize);
+                    
+                    // Önce ürünün beden seçeneklerini kontrol et
+                    const hasSizeOptions = (() => {
+                      // variationDetails kontrolü
+                      if (data.variationDetails) {
+                        try {
+                          const details = typeof data.variationDetails === 'string' 
+                            ? JSON.parse(data.variationDetails) 
+                            : data.variationDetails;
+                          if (Array.isArray(details) && details.length > 0) {
+                            return details.some(v => {
+                              const variationName = (v.name || '').toLowerCase();
+                              return variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
+                            });
+                          }
+                        } catch (e) {
+                          console.error('variationDetails parse hatası:', e);
                         }
                       }
+                      
+                      // variations array kontrolü
+                      if (Array.isArray(data.variations) && data.variations.length > 0) {
+                        return data.variations.some(v => {
+                          const variationName = (v.name || '').toLowerCase();
+                          return variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
+                        });
+                      }
+                      
+                      return false;
+                    })();
+                    
+                    // Eğer ürünün beden seçenekleri varsa, AI önerisini al
+                    if (hasSizeOptions) {
+                      const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
+                      if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
+                        const responseData = chatbotResponse.data.data;
+                        // Önerilen bedeni data'dan al
+                        if (responseData.recommendedSize) {
+                          setRecommendedSize(responseData.recommendedSize);
+                        } else if (responseData.data?.recommendedSize) {
+                          setRecommendedSize(responseData.data.recommendedSize);
+                        } else if (responseData.quickReplies) {
+                          // Quick reply'lerden önerilen bedeni bul
+                          const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
+                          if (sizeReply?.data?.recommendedSize) {
+                            setRecommendedSize(sizeReply.data.recommendedSize);
+                          }
+                        }
+                      }
+                    } else {
+                      // Beden seçeneği yoksa öneriyi temizle
+                      setRecommendedSize(null);
                     }
                   } catch (chatbotError) {
                     console.log('Chatbot beden önerisi alınamadı:', chatbotError);
+                    setRecommendedSize(null);
                   }
                 } else {
                   setIsFavorite(!!data?.isFavorite);
@@ -430,7 +470,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       const productId = product?.id || product?._id || initialProduct?.id || initialProduct?._id;
       if (!productId) {
-        Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+        alert.show('Hata', 'Ürün bilgisi bulunamadı');
         return;
       }
 
@@ -464,11 +504,11 @@ export default function ProductDetailScreen({ navigation, route }) {
         // Hata durumunda geri al
         setIsFavorite(previousFavoriteState);
         console.error('❌ Favori işlemi hatası:', error);
-        Alert.alert('Hata', error.response?.data?.message || 'Favori işlemi başarısız oldu');
+        alert.show('Hata', error.response?.data?.message || 'Favori işlemi başarısız oldu');
       }
     } catch (error) {
       console.error('❌ Favori toggle hatası:', error);
-      Alert.alert('Hata', 'Bir hata oluştu');
+      alert.show('Hata', 'Bir hata oluştu');
     }
   };
 
@@ -490,7 +530,7 @@ export default function ProductDetailScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Paylaşım hatası:', error);
-      Alert.alert('Hata', 'Ürün paylaşılırken bir hata oluştu.');
+      alert.show('Hata', 'Ürün paylaşılırken bir hata oluştu.');
     }
   };
 
@@ -709,13 +749,13 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const pickImage = async () => {
     if (reviewImages.length >= 5) {
-      Alert.alert('Limit', 'En fazla 5 görsel ekleyebilirsiniz');
+      alert.show('Limit', 'En fazla 5 görsel ekleyebilirsiniz');
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekiyor');
+      alert.show('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekiyor');
       return;
     }
 
@@ -736,7 +776,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const handleSubmitReview = async () => {
     if (!newReviewComment.trim()) {
-      Alert.alert('Hata', 'Lütfen yorum yazın');
+      alert.show('Hata', 'Lütfen yorum yazın');
       return;
     }
 
@@ -754,12 +794,12 @@ export default function ProductDetailScreen({ navigation, route }) {
     setNewReviewComment('');
     setNewReviewRating(5);
     setReviewImages([]);
-    Alert.alert('Başarılı', 'Yorumunuz eklendi!');
+    alert.show('Başarılı', 'Yorumunuz eklendi!');
   };
 
   const handleSubmitQuestion = async () => {
     if (!newQuestion.trim()) {
-      Alert.alert('Hata', 'Lütfen sorunuzu yazın');
+      alert.show('Hata', 'Lütfen sorunuzu yazın');
       return;
     }
 
@@ -810,13 +850,13 @@ export default function ProductDetailScreen({ navigation, route }) {
           console.log('Sorular yeniden yüklenemedi:', refreshError);
         }
         
-        Alert.alert('Başarılı', 'Sorunuz gönderildi! Satıcı en kısa sürede yanıtlayacaktır.');
+        alert.show('Başarılı', 'Sorunuz gönderildi! Satıcı en kısa sürede yanıtlayacaktır.');
       } else {
-        Alert.alert('Hata', response.data?.message || 'Soru gönderilemedi');
+        alert.show('Hata', response.data?.message || 'Soru gönderilemedi');
       }
     } catch (error) {
       console.error('Soru gönderme hatası:', error);
-      Alert.alert('Hata', 'Soru gönderilirken bir hata oluştu');
+      alert.show('Hata', 'Soru gönderilirken bir hata oluştu');
     } finally {
       setSubmittingQuestion(false);
     }
@@ -840,7 +880,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     try {
       const productId = product?.id || product?._id;
       if (!productId) {
-        Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+        alert.show('Hata', 'Ürün bilgisi bulunamadı');
         return;
       }
 
@@ -850,7 +890,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       // Ürün zaten listede mi kontrol et
       if (productIds.includes(productId)) {
-        Alert.alert(
+        alert.show(
           'Karşılaştırma Listesi',
           'Bu ürün zaten karşılaştırma listesinde. Karşılaştırma sayfasına gitmek ister misiniz?',
           [
@@ -863,7 +903,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       // Maksimum 4 ürün karşılaştırılabilir
       if (productIds.length >= 4) {
-        Alert.alert('Limit', 'En fazla 4 ürün karşılaştırabilirsiniz');
+        alert.show('Limit', 'En fazla 4 ürün karşılaştırabilirsiniz');
         return;
       }
 
@@ -871,7 +911,7 @@ export default function ProductDetailScreen({ navigation, route }) {
       productIds.push(productId);
       await AsyncStorage.setItem('compareProducts', JSON.stringify(productIds));
 
-      Alert.alert(
+      alert.show(
         'Başarılı! 🎉',
         'Ürün karşılaştırma listesine eklendi',
         [
@@ -881,13 +921,13 @@ export default function ProductDetailScreen({ navigation, route }) {
       );
     } catch (error) {
       console.error('Karşılaştırma listesine eklenemedi:', error);
-      Alert.alert('Hata', 'Ürün eklenirken bir hata oluştu');
+      alert.show('Hata', 'Ürün eklenirken bir hata oluştu');
     }
   };
 
   const handleAddToCart = async () => {
     if (!product?.id && !product?._id) {
-      Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+      alert.show('Hata', 'Ürün bilgisi bulunamadı');
       return;
     }
 
@@ -936,7 +976,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         setShowAddToCartSuccessModal(true);
       } else {
-        Alert.alert('Hata', response.data?.message || 'Sepete eklenemedi');
+        alert.show('Hata', response.data?.message || 'Sepete eklenemedi');
       }
     } catch (error) {
       console.error('Sepete ekleme hatası:', {
@@ -949,7 +989,7 @@ export default function ProductDetailScreen({ navigation, route }) {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
                           'Sepete eklenirken bir hata oluştu';
-      Alert.alert('Hata', errorMessage);
+      alert.show('Hata', errorMessage);
     } finally {
       setAddingCart(false);
     }
@@ -1259,7 +1299,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 <TouchableOpacity>
                   <View style={styles.sizeGuideContainer}>
                     <Text style={styles.sizeGuide}>Beden Rehberi</Text>
-                    {recommendedSize && (
+                    {recommendedSize && sizeOptions.length > 0 && (
                       <View style={styles.recommendedSizeBadge}>
                         <Ionicons name="sparkles" size={12} color="#FF8C00" />
                         <Text style={styles.recommendedSizeText}>AI Önerilen: {recommendedSize}</Text>
@@ -2266,6 +2306,9 @@ export default function ProductDetailScreen({ navigation, route }) {
           navigation.navigate('Cart');
         }}
       />
+
+      {/* Custom Alert */}
+      {alert.AlertComponent()}
     </View>
   );
 }

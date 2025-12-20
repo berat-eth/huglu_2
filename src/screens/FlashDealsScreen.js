@@ -12,7 +12,8 @@ export default function FlashDealsScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [flashDeals, setFlashDeals] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 4, minutes: 23, seconds: 12 });
+  const [flashDealsEndTime, setFlashDealsEndTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
     loadFlashDeals();
@@ -20,32 +21,35 @@ export default function FlashDealsScreen({ navigation }) {
 
   // Countdown timer
   useEffect(() => {
+    if (!flashDealsEndTime) {
+      return;
+    }
+
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        let { days, hours, minutes, seconds } = prev;
-        
-        if (seconds > 0) {
-          seconds--;
-        } else if (minutes > 0) {
-          minutes--;
-          seconds = 59;
-        } else if (hours > 0) {
-          hours--;
-          minutes = 59;
-          seconds = 59;
-        } else if (days > 0) {
-          days--;
-          hours = 23;
-          minutes = 59;
-          seconds = 59;
-        }
-        
-        return { days, hours, minutes, seconds };
-      });
+      const now = new Date().getTime();
+      const endTime = new Date(flashDealsEndTime).getTime();
+      const distance = endTime - now;
+
+      if (distance < 0) {
+        clearInterval(timer);
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      // Günleri hesapla
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      // Kalan saatleri hesapla (günler çıkarıldıktan sonra)
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      // Kalan dakikaları hesapla
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      // Kalan saniyeleri hesapla
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimeLeft({ days, hours, minutes, seconds });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [flashDealsEndTime]);
 
   const loadFlashDeals = async () => {
     try {
@@ -56,6 +60,28 @@ export default function FlashDealsScreen({ navigation }) {
         const deals = response.data.data || [];
         setFlashDeals(deals);
         console.log('Flash Deals yüklendi:', deals.length);
+        
+        // Flash deals'den en yakın bitiş tarihini al ve timer'ı ayarla
+        if (deals.length > 0) {
+          // Tüm aktif flash deals'lerin end_date'lerini al
+          const endDates = deals
+            .map(deal => deal.end_date)
+            .filter(date => date != null)
+            .map(date => new Date(date));
+          
+          if (endDates.length > 0) {
+            // En yakın bitiş tarihini bul (en küçük tarih)
+            const nearestEndDate = new Date(Math.min(...endDates.map(d => d.getTime())));
+            setFlashDealsEndTime(nearestEndDate);
+            console.log('⏰ Flash Deals bitiş tarihi ayarlandı:', nearestEndDate);
+          } else {
+            // Eğer end_date yoksa varsayılan olarak 6 saat sonra bitecek şekilde ayarla
+            const defaultEndTime = new Date();
+            defaultEndTime.setHours(defaultEndTime.getHours() + 6);
+            setFlashDealsEndTime(defaultEndTime);
+            console.log('⏰ Flash Deals bitiş tarihi bulunamadı, varsayılan ayarlandı:', defaultEndTime);
+          }
+        }
       }
     } catch (error) {
       console.error('Flash Deals yükleme hatası:', error);
@@ -151,13 +177,17 @@ export default function FlashDealsScreen({ navigation }) {
         <View style={styles.countdownSection}>
           <Text style={styles.countdownTitle}>KAMPANYA BİTİŞ SÜRESİ</Text>
           <View style={styles.timerContainer}>
-            <View style={styles.timerBlock}>
-              <View style={styles.timerBox}>
-                <Text style={styles.timerNumber}>{String(timeLeft.days).padStart(2, '0')}</Text>
-              </View>
-              <Text style={styles.timerLabel}>Gün</Text>
-            </View>
-            <Text style={styles.timerSeparator}>:</Text>
+            {timeLeft.days > 0 && (
+              <>
+                <View style={styles.timerBlock}>
+                  <View style={styles.timerBox}>
+                    <Text style={styles.timerNumber}>{String(timeLeft.days).padStart(2, '0')}</Text>
+                  </View>
+                  <Text style={styles.timerLabel}>Gün</Text>
+                </View>
+                <Text style={styles.timerSeparator}>:</Text>
+              </>
+            )}
             <View style={styles.timerBlock}>
               <View style={[styles.timerBox, styles.timerBoxActive]}>
                 <Text style={[styles.timerNumber, styles.timerNumberActive]}>

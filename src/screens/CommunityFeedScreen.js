@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   RefreshControl,
   Dimensions,
 } from 'react-native';
@@ -16,15 +15,20 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { communityAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
+import CustomPrompt from '../components/CustomPrompt';
 
 const { width } = Dimensions.get('window');
 
 export default function CommunityFeedScreen({ navigation, route }) {
+  const alert = useAlert();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState(null);
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false);
+  const [currentPostId, setCurrentPostId] = useState(null);
   
   // Check if we're in tab navigator mode
   const isInTabNavigator = navigation.getParent()?.getState()?.type === 'tab';
@@ -67,7 +71,7 @@ export default function CommunityFeedScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('❌ Gönderiler yüklenemedi:', error);
-      Alert.alert('Hata', 'Gönderiler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      alert.show('Hata', 'Gönderiler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
       setPosts([]);
     } finally {
       setLoading(false);
@@ -85,7 +89,7 @@ export default function CommunityFeedScreen({ navigation, route }) {
       // İzin kontrolü
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
+        alert.show('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
         return;
       }
 
@@ -102,13 +106,13 @@ export default function CommunityFeedScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Fotoğraf seçme hatası:', error);
-      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu');
+      alert.show('Hata', 'Fotoğraf seçilirken bir hata oluştu');
     }
   };
 
   const handleLike = async (postId) => {
     if (!userId) {
-      Alert.alert('Giriş Gerekli', 'Beğenmek için lütfen giriş yapın.');
+      alert.show('Giriş Gerekli', 'Beğenmek için lütfen giriş yapın.');
       return;
     }
 
@@ -143,56 +147,48 @@ export default function CommunityFeedScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('❌ Like error:', error);
-      Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu.');
+      alert.show('Hata', 'Beğeni işlemi sırasında bir hata oluştu.');
     }
   };
 
   const handleComment = async (postId) => {
     if (!userId) {
-      Alert.alert('Giriş Gerekli', 'Yorum yapmak için lütfen giriş yapın.');
+      alert.show('Giriş Gerekli', 'Yorum yapmak için lütfen giriş yapın.');
       return;
     }
 
-    Alert.prompt(
-      'Yorum Yap',
-      'Yorumunuzu yazın:',
-      [
-        {
-          text: 'İptal',
-          style: 'cancel',
-        },
-        {
-          text: 'Gönder',
-          onPress: async (comment) => {
-            if (comment && comment.trim()) {
-              try {
-                const response = await communityAPI.addComment(postId, userId, comment);
-                if (response.data && response.data.success) {
-                  // Reload posts to get updated comment count
-                  loadPosts();
-                  Alert.alert('Başarılı', 'Yorumunuz eklendi!');
-                }
-              } catch (error) {
-                console.error('❌ Comment error:', error);
-                Alert.alert('Hata', 'Yorum eklenirken bir hata oluştu.');
-              }
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setCurrentPostId(postId);
+    setShowCommentPrompt(true);
+  };
+
+  const handleCommentSubmit = async (comment) => {
+    if (!comment || !comment.trim() || !currentPostId) return;
+
+    try {
+      const response = await communityAPI.addComment(currentPostId, userId, comment);
+      if (response.data && response.data.success) {
+        // Reload posts to get updated comment count
+        loadPosts();
+        alert.show('Başarılı', 'Yorumunuz eklendi!');
+      }
+    } catch (error) {
+      console.error('❌ Comment error:', error);
+      alert.show('Hata', 'Yorum eklenirken bir hata oluştu.');
+    } finally {
+      setShowCommentPrompt(false);
+      setCurrentPostId(null);
+    }
   };
 
   const handleShare = async (post) => {
-    Alert.alert('Paylaş', 'Paylaşım özelliği yakında eklenecek!');
+    alert.show('Paylaş', 'Paylaşım özelliği yakında eklenecek!');
   };
 
   const handleProductClick = (post) => {
     if (post.productId) {
       navigation.navigate('ProductDetail', { productId: post.productId });
     } else {
-      Alert.alert(
+      alert.show(
         post.productName || 'Ürün',
         `Fiyat: ${post.productPrice || 'Bilinmiyor'}\n\nÜrün detaylarına gitmek ister misiniz?`,
         [
@@ -365,6 +361,22 @@ export default function CommunityFeedScreen({ navigation, route }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Custom Alert */}
+      {alert.AlertComponent()}
+
+      {/* Custom Prompt */}
+      <CustomPrompt
+        visible={showCommentPrompt}
+        onClose={() => {
+          setShowCommentPrompt(false);
+          setCurrentPostId(null);
+        }}
+        title="Yorum Yap"
+        message="Yorumunuzu yazın:"
+        placeholder="Yorumunuzu buraya yazın..."
+        onSubmit={handleCommentSubmit}
+      />
     </SafeAreaView>
   );
 }

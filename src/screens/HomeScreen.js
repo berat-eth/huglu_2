@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Alert, Dimensions, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,8 +13,10 @@ import { testAPI, testNetworkConnectivity } from '../utils/testAPI';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
 import { updateCartBadge } from '../utils/cartBadge';
+import { useAlert } from '../hooks/useAlert';
 
 export default function HomeScreen({ navigation }) {
+  const alert = useAlert();
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ export default function HomeScreen({ navigation }) {
   const [storyVisible, setStoryVisible] = useState(false);
   const [showServerError, setShowServerError] = useState(false);
   const [flashDealsEndTime, setFlashDealsEndTime] = useState(null);
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [userFavorites, setUserFavorites] = useState([]);
 
   useEffect(() => {
@@ -59,28 +61,30 @@ export default function HomeScreen({ navigation }) {
   // Flash Deals Timer
   useEffect(() => {
     if (!flashDealsEndTime) {
-      // Varsayılan olarak 6 saat sonra bitecek şekilde ayarla
-      const endTime = new Date();
-      endTime.setHours(endTime.getHours() + 6);
-      setFlashDealsEndTime(endTime);
       return;
     }
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const distance = flashDealsEndTime.getTime() - now;
+      const endTime = new Date(flashDealsEndTime).getTime();
+      const distance = endTime - now;
 
       if (distance < 0) {
         clearInterval(timer);
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
 
+      // Günleri hesapla
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      // Kalan saatleri hesapla (günler çıkarıldıktan sonra)
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      // Kalan dakikaları hesapla
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      // Kalan saniyeleri hesapla
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-      setTimeLeft({ hours, minutes, seconds });
+      setTimeLeft({ days, hours, minutes, seconds });
     }, 1000);
 
     return () => clearInterval(timer);
@@ -165,7 +169,7 @@ export default function HomeScreen({ navigation }) {
     const hasInternet = await testNetworkConnectivity();
     
     if (!hasInternet) {
-      Alert.alert(
+      alert.show(
         'İnternet Bağlantısı Yok',
         'Lütfen internet bağlantınızı kontrol edin.',
         [{ text: 'Tamam' }]
@@ -177,7 +181,7 @@ export default function HomeScreen({ navigation }) {
     const apiWorking = await testAPI();
     
     if (!apiWorking) {
-      Alert.alert(
+      alert.show(
         'API Bağlantı Hatası',
         'Sunucuya bağlanılamıyor. Lütfen daha sonra tekrar deneyin.',
         [
@@ -228,7 +232,7 @@ export default function HomeScreen({ navigation }) {
     try {
       const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
-        Alert.alert('Giriş Gerekli', 'Favorilere eklemek için lütfen giriş yapın');
+        alert.show('Giriş Gerekli', 'Favorilere eklemek için lütfen giriş yapın');
         return;
       }
 
@@ -294,7 +298,7 @@ export default function HomeScreen({ navigation }) {
         setNewProducts(revertProductFavorite(newProducts));
         setPersonalizedProducts(revertProductFavorite(personalizedProducts));
         console.error('Favori toggle hatası:', error);
-        Alert.alert('Hata', 'Favori işlemi başarısız oldu');
+        alert.show('Hata', 'Favori işlemi başarısız oldu');
       }
     } catch (error) {
       console.error('Favori toggle hatası:', error);
@@ -514,6 +518,28 @@ export default function HomeScreen({ navigation }) {
         
         setProducts(allProducts);
         setProducts([]);
+        
+        // Flash deals'den en yakın bitiş tarihini al ve timer'ı ayarla
+        if (flashDealsData.length > 0) {
+          // Tüm aktif flash deals'lerin end_date'lerini al
+          const endDates = flashDealsData
+            .map(deal => deal.end_date)
+            .filter(date => date != null)
+            .map(date => new Date(date));
+          
+          if (endDates.length > 0) {
+            // En yakın bitiş tarihini bul (en küçük tarih)
+            const nearestEndDate = new Date(Math.min(...endDates.map(d => d.getTime())));
+            setFlashDealsEndTime(nearestEndDate);
+            console.log('⏰ Flash Deals bitiş tarihi ayarlandı:', nearestEndDate);
+          } else {
+            // Eğer end_date yoksa varsayılan olarak 6 saat sonra bitecek şekilde ayarla
+            const defaultEndTime = new Date();
+            defaultEndTime.setHours(defaultEndTime.getHours() + 6);
+            setFlashDealsEndTime(defaultEndTime);
+            console.log('⏰ Flash Deals bitiş tarihi bulunamadı, varsayılan ayarlandı:', defaultEndTime);
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Flash Deals yüklenemedi:', {
@@ -855,8 +881,16 @@ export default function HomeScreen({ navigation }) {
               <Ionicons name="flash" size={28} color={COLORS.white} />
             </View>
             <View style={styles.flashDealsText}>
-              <Text style={styles.flashDealsTitle}>Flash Deals</Text>
+              <Text style={styles.flashDealsTitle}>Flash İndirimler</Text>
               <View style={styles.timerContainer}>
+                {timeLeft.days > 0 && (
+                  <>
+                    <View style={styles.timerBox}>
+                      <Text style={styles.timerValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
+                    </View>
+                    <Text style={styles.timerSeparator}>:</Text>
+                  </>
+                )}
                 <View style={styles.timerBox}>
                   <Text style={styles.timerValue}>{String(timeLeft.hours).padStart(2, '0')}</Text>
                 </View>
@@ -885,10 +919,10 @@ export default function HomeScreen({ navigation }) {
           />
         )}
 
-        {/* Flaş İndirimler Slider */}
+        {/* Flash İndirimler Slider */}
         {filteredProducts.length > 0 && (
           <ProductSlider
-            title="Flaş Fırsatlar"
+            title="Flash İndirimler"
             products={filteredProducts.slice(0, 10).map(p => ({ ...p, isFavorite: userFavorites.includes(p.id || p._id) }))}
             onSeeAll={() => navigation.navigate('Shop')}
             onProductPress={(product) => navigation.navigate('ProductDetail', { product })}
@@ -941,6 +975,9 @@ export default function HomeScreen({ navigation }) {
           }}
         />
       </Modal>
+
+      {/* Custom Alert */}
+      {alert.AlertComponent()}
     </SafeAreaView>
   );
 }
