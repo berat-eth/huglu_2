@@ -387,12 +387,23 @@ export const chatbotAPI = {
   createSession: (userId) => api.post('/chatbot/session', { userId }),
 };
 
-// ==================== ANALYTICS API ====================
+// ==================== EVENTS API (Hafif Veri Toplama) ====================
+export const eventsAPI = {
+  trackEvent: (eventData) => api.post('/events/track', eventData),
+  trackBatch: (events) => api.post('/events/batch', { events }),
+  startSession: (sessionData) => api.post('/events/session/start', sessionData),
+  endSession: (sessionData) => api.post('/events/session/end', sessionData),
+};
+
+// ==================== ANALYTICS API (Deprecated - eventsAPI kullanın) ====================
 export const analyticsAPI = {
-  trackEvent: (eventData) => api.post('/user-data/behavior/track', eventData),
-  startSession: (sessionData) => api.post('/user-data/behavior/session/start', sessionData),
-  endSession: (sessionData) => api.post('/user-data/behavior/session/end', sessionData),
-  linkDevice: (deviceId, userId) => api.post('/user-data/behavior/link-device', { deviceId, userId }),
+  trackEvent: (eventData) => eventsAPI.trackEvent(eventData),
+  startSession: (sessionData) => eventsAPI.startSession(sessionData),
+  endSession: (sessionData) => eventsAPI.endSession(sessionData),
+  linkDevice: (deviceId, userId) => {
+    console.warn('⚠️ linkDevice endpoint deprecated. Device linking artık otomatik yapılıyor.');
+    return Promise.resolve({ success: true });
+  },
 };
 
 // ==================== REFERRAL API ====================

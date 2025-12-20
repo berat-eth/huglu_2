@@ -57,6 +57,8 @@ async function createDatabaseSchema(pool) {
           'user_behavior_events',
           'user_sessions',
           'device_analytics_aggregates',
+          'user_events',
+          'user_sessions_v2',
           // Integrations
           'integrations',
           // Invoices
@@ -2885,6 +2887,79 @@ async function createDatabaseSchema(pool) {
       } catch (error) {
         console.warn('⚠️ Could not add columns to user_sessions:', error.message);
       }
+
+      // User events table - Hafif zaman serisi odaklı event tablosu
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS user_events (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NULL,
+          deviceId VARCHAR(255) NOT NULL,
+          sessionId VARCHAR(255) NOT NULL,
+          eventType VARCHAR(50) NOT NULL,
+          screenName VARCHAR(255) NULL,
+          properties JSON,
+          timestamp DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+          INDEX idx_tenant_time (tenantId, timestamp),
+          INDEX idx_user_time (userId, timestamp),
+          INDEX idx_device_time (deviceId, timestamp),
+          INDEX idx_session (sessionId),
+          INDEX idx_event_type (eventType),
+          INDEX idx_screen (screenName),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ user_events table ready');
+
+      // Partitioning için kontrol ve ekleme (MySQL 5.7+)
+      try {
+        const [partitions] = await pool.execute(`
+          SELECT PARTITION_NAME 
+          FROM INFORMATION_SCHEMA.PARTITIONS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'user_events'
+            AND PARTITION_NAME IS NOT NULL
+        `);
+        
+        if (partitions.length === 0) {
+          // Partition yoksa ekle
+          await pool.execute(`
+            ALTER TABLE user_events
+            PARTITION BY RANGE (TO_DAYS(timestamp)) (
+              PARTITION p_current VALUES LESS THAN (TO_DAYS(CURDATE() + INTERVAL 1 MONTH)),
+              PARTITION p_future VALUES LESS THAN MAXVALUE
+            )
+          `);
+          console.log('✅ user_events table partitioned');
+        }
+      } catch (error) {
+        // Partitioning desteklenmiyorsa veya hata varsa devam et
+        console.warn('⚠️ Could not partition user_events table:', error.message);
+      }
+
+      // User sessions v2 table - Basitleştirilmiş session tablosu
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS user_sessions_v2 (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NULL,
+          deviceId VARCHAR(255) NOT NULL,
+          sessionId VARCHAR(255) UNIQUE NOT NULL,
+          startTime DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+          endTime DATETIME(3) NULL,
+          duration INT NULL,
+          eventCount INT DEFAULT 0,
+          metadata JSON,
+          INDEX idx_tenant_time (tenantId, startTime),
+          INDEX idx_user (userId),
+          INDEX idx_device (deviceId),
+          INDEX idx_session (sessionId),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ user_sessions_v2 table ready');
 
       // Device analytics aggregates table - Periyodik olarak hesaplanan aggregate veriler
       await pool.execute(`

@@ -78,6 +78,8 @@ android.nonTransitiveRClass=false
 android.nonFinalResIds=false
 # Expo için gerekli ayarlar
 expo.autolinking=true
+# Hermes JavaScript Engine
+hermesEnabled=true
 EOF
     
     # settings.gradle dosyasını kontrol et

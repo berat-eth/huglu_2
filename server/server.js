@@ -1240,12 +1240,6 @@ let profileScheduler;
 const scheduledTasks = {
   queryLogInterval: null,
   poolMonitoringInterval: null,
-  dailyAggregationTimeout: null,
-  dailyAggregationInterval: null,
-  weeklyAggregationTimeout: null,
-  weeklyAggregationInterval: null,
-  monthlyAggregationTimeout: null,
-  monthlyAggregationInterval: null
 };
 
 // ⚡ OPTIMIZASYON: Async Query Logger (non-blocking)
@@ -1573,103 +1567,6 @@ async function initializeDatabase() {
       console.warn(' Could not start Profile Scheduler:', e.message);
     }
 
-    // Initialize Analytics Aggregation Scheduler
-    try {
-      const AggregationService = require('./services/aggregation-service');
-      const aggregationService = new AggregationService();
-
-      // Günlük özet - Her gün saat 02:00'de çalışır
-      const dailyAggregationInterval = 24 * 60 * 60 * 1000; // 24 saat
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(2, 0, 0, 0);
-      const msUntilTomorrow = tomorrow.getTime() - now.getTime();
-
-      scheduledTasks.dailyAggregationTimeout = setTimeout(() => {
-        // İlk çalıştırma
-        aggregationService.aggregateAllTenantsDaily().catch(err => {
-          if (err.message !== 'Pool is closed') {
-            console.error(' Daily aggregation error:', err);
-          }
-        });
-
-        // Sonraki çalıştırmalar için interval
-        scheduledTasks.dailyAggregationInterval = setInterval(() => {
-          aggregationService.aggregateAllTenantsDaily().catch(err => {
-            if (err.message !== 'Pool is closed') {
-              console.error(' Daily aggregation error:', err);
-            }
-          });
-        }, dailyAggregationInterval);
-      }, msUntilTomorrow);
-
-      // Haftalık özet - Her Pazartesi saat 03:00'de çalışır
-      const weeklyAggregationInterval = 7 * 24 * 60 * 60 * 1000; // 7 gün
-      const nextMonday = new Date(now);
-      const dayOfWeek = now.getDay();
-      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
-      nextMonday.setDate(now.getDate() + daysUntilMonday);
-      nextMonday.setHours(3, 0, 0, 0);
-      const msUntilMonday = nextMonday.getTime() - now.getTime();
-
-      scheduledTasks.weeklyAggregationTimeout = setTimeout(() => {
-        // İlk çalıştırma
-        aggregationService.aggregateAllTenantsWeekly().catch(err => {
-          if (err.message !== 'Pool is closed') {
-            console.error(' Weekly aggregation error:', err);
-          }
-        });
-
-        // Sonraki çalıştırmalar için interval
-        scheduledTasks.weeklyAggregationInterval = setInterval(() => {
-          aggregationService.aggregateAllTenantsWeekly().catch(err => {
-            if (err.message !== 'Pool is closed') {
-              console.error(' Weekly aggregation error:', err);
-            }
-          });
-        }, weeklyAggregationInterval);
-      }, msUntilMonday);
-
-      // Aylık özet - Her ayın 1'i saat 04:00'de çalışır
-      const nextMonth = new Date(now);
-      nextMonth.setMonth(now.getMonth() + 1);
-      nextMonth.setDate(1);
-      nextMonth.setHours(4, 0, 0, 0);
-      let msUntilNextMonth = nextMonth.getTime() - now.getTime();
-      
-      // 32-bit signed integer limitini aşmamak için maksimum 24 gün ile sınırla
-      // 24 gün = 24 * 24 * 60 * 60 * 1000 = 2,073,600,000 ms (32-bit limit: 2,147,483,647)
-      const MAX_TIMEOUT_MS = 24 * 24 * 60 * 60 * 1000;
-      if (msUntilNextMonth > MAX_TIMEOUT_MS) {
-        msUntilNextMonth = MAX_TIMEOUT_MS;
-        console.warn(`⚠️ Monthly aggregation timeout capped at ${MAX_TIMEOUT_MS}ms (24 days)`);
-      }
-
-      scheduledTasks.monthlyAggregationTimeout = setTimeout(() => {
-        // İlk çalıştırma
-        aggregationService.aggregateAllTenantsMonthly().catch(err => {
-          if (err.message !== 'Pool is closed') {
-            console.error(' Monthly aggregation error:', err);
-          }
-        });
-
-        // Sonraki çalıştırmalar için interval (yaklaşık 30 gün)
-        // 32-bit limit için maksimum değer kullan
-        const monthlyInterval = Math.min(30 * 24 * 60 * 60 * 1000, MAX_TIMEOUT_MS);
-        scheduledTasks.monthlyAggregationInterval = setInterval(() => {
-          aggregationService.aggregateAllTenantsMonthly().catch(err => {
-            if (err.message !== 'Pool is closed') {
-              console.error(' Monthly aggregation error:', err);
-            }
-          });
-        }, monthlyInterval);
-      }, msUntilNextMonth);
-
-      console.log(' Analytics Aggregation Scheduler started');
-    } catch (e) {
-      console.warn(' Could not start Analytics Aggregation Scheduler:', e.message);
-    }
 
     // Log security initialization
     dbSecurity.logDatabaseAccess('system', 'DATABASE_INIT', 'system', {
@@ -2325,13 +2222,14 @@ try {
   console.warn(' Scrapers routes could not be mounted:', e.message);
 }
 
-// Analytics Routes
+
+// Events Routes - Hafif veri toplama sistemi
 try {
-  const analyticsRoutes = require('./routes/analytics');
-  app.use('/api/admin/analytics', analyticsRoutes);
-  console.log(' Analytics routes mounted at /api/admin/analytics');
+  const eventsRoutes = require('./routes/events');
+  app.use('/api/events', eventsRoutes);
+  console.log('✅ Events routes mounted at /api/events');
 } catch (e) {
-  console.warn(' Analytics routes could not be mounted:', e.message);
+  console.warn('⚠️ Events routes could not be mounted:', e.message);
 }
 
 // ML Routes
@@ -25641,30 +25539,6 @@ async function startServer() {
     if (scheduledTasks.poolMonitoringInterval) {
       clearInterval(scheduledTasks.poolMonitoringInterval);
       scheduledTasks.poolMonitoringInterval = null;
-    }
-    if (scheduledTasks.dailyAggregationTimeout) {
-      clearTimeout(scheduledTasks.dailyAggregationTimeout);
-      scheduledTasks.dailyAggregationTimeout = null;
-    }
-    if (scheduledTasks.dailyAggregationInterval) {
-      clearInterval(scheduledTasks.dailyAggregationInterval);
-      scheduledTasks.dailyAggregationInterval = null;
-    }
-    if (scheduledTasks.weeklyAggregationTimeout) {
-      clearTimeout(scheduledTasks.weeklyAggregationTimeout);
-      scheduledTasks.weeklyAggregationTimeout = null;
-    }
-    if (scheduledTasks.weeklyAggregationInterval) {
-      clearInterval(scheduledTasks.weeklyAggregationInterval);
-      scheduledTasks.weeklyAggregationInterval = null;
-    }
-    if (scheduledTasks.monthlyAggregationTimeout) {
-      clearTimeout(scheduledTasks.monthlyAggregationTimeout);
-      scheduledTasks.monthlyAggregationTimeout = null;
-    }
-    if (scheduledTasks.monthlyAggregationInterval) {
-      clearInterval(scheduledTasks.monthlyAggregationInterval);
-      scheduledTasks.monthlyAggregationInterval = null;
     }
     if (profileScheduler) {
       clearInterval(profileScheduler);
