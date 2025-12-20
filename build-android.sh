@@ -23,6 +23,57 @@ if [ "$EUID" -eq 0 ]; then
     sleep 5
 fi
 
+# Swap alanı oluştur
+setup_swap() {
+    echo -e "${YELLOW}💾 Swap alanı kontrol ediliyor...${NC}"
+    
+    # Mevcut swap'ı kontrol et
+    SWAP_SIZE=$(free -m | grep Swap | awk '{print $2}')
+    SWAP_FILE="/swapfile"
+    
+    if [ "$SWAP_SIZE" -lt 5120 ]; then
+        echo -e "${YELLOW}📦 5GB swap alanı oluşturuluyor...${NC}"
+        
+        # Root kontrolü
+        if [ "$EUID" -ne 0 ]; then
+            echo -e "${RED}❌ Swap oluşturmak için root yetkisi gereklidir.${NC}"
+            echo -e "${YELLOW}Lütfen script'i sudo ile çalıştırın veya manuel olarak swap oluşturun:${NC}"
+            echo "sudo fallocate -l 5G $SWAP_FILE"
+            echo "sudo chmod 600 $SWAP_FILE"
+            echo "sudo mkswap $SWAP_FILE"
+            echo "sudo swapon $SWAP_FILE"
+            exit 1
+        fi
+        
+        # Swap dosyası varsa kaldır
+        if [ -f "$SWAP_FILE" ]; then
+            echo -e "${YELLOW}Eski swap dosyası kaldırılıyor...${NC}"
+            swapoff $SWAP_FILE 2>/dev/null || true
+            rm -f $SWAP_FILE
+        fi
+        
+        # 5GB swap dosyası oluştur
+        fallocate -l 5G $SWAP_FILE
+        chmod 600 $SWAP_FILE
+        mkswap $SWAP_FILE
+        swapon $SWAP_FILE
+        
+        echo -e "${GREEN}✓ 5GB swap alanı oluşturuldu ve etkinleştirildi${NC}"
+        
+        # Swap'ı kalıcı yap (opsiyonel)
+        if ! grep -q "$SWAP_FILE" /etc/fstab; then
+            echo "$SWAP_FILE none swap sw 0 0" >> /etc/fstab
+            echo -e "${GREEN}✓ Swap kalıcı olarak yapılandırıldı${NC}"
+        fi
+    else
+        echo -e "${GREEN}✓ Swap alanı yeterli (${SWAP_SIZE}MB)${NC}"
+    fi
+    
+    # Swap durumunu göster
+    echo -e "${BLUE}📊 Mevcut bellek durumu:${NC}"
+    free -h
+}
+
 # Gerekli araçları kontrol et
 check_requirements() {
     echo -e "${YELLOW}📋 Gereksinimler kontrol ediliyor...${NC}"
@@ -105,7 +156,11 @@ run_prebuild() {
         mkdir -p android
         cat > android/gradle.properties << 'EOF'
 # Project-wide Gradle settings.
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+org.gradle.daemon=true
+org.gradle.parallel=true
+org.gradle.caching=true
+org.gradle.configureondemand=true
 android.useAndroidX=true
 android.enableJetifier=true
 android.defaults.buildfeatures.buildconfig=true
@@ -115,22 +170,11 @@ android.nonFinalResIds=false
 expo.autolinking=true
 # Hermes JavaScript Engine
 hermesEnabled=true
+# Kotlin daemon ayarları
+kotlin.daemon.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
 EOF
         
         echo -e "${GREEN}✓ Gradle konfigürasyonu kontrol edildi${NC}"
-        
-        # Gradle cache'ini temizle (prebuild sonrası)
-        echo -e "${YELLOW}🧹 Gradle cache temizleniyor (prebuild sonrası)...${NC}"
-        if [ -d "android" ]; then
-            cd android
-            if [ -f "gradlew" ]; then
-                chmod +x gradlew
-                # Kotlin DSL cache'ini temizle
-                rm -rf ~/.gradle/caches/*/kotlin-dsl 2>/dev/null || true
-                rm -rf ~/.gradle/caches/8.8/kotlin-dsl 2>/dev/null || true
-            fi
-            cd ..
-        fi
     fi
 }
 
@@ -144,19 +188,32 @@ build_apk() {
         chmod +x gradlew
     fi
     
-    # Gradle cache'ini temizle
-    echo -e "${YELLOW}🧹 Gradle cache temizleniyor...${NC}"
-    rm -rf ~/.gradle/caches/8.8/kotlin-dsl 2>/dev/null || true
-    rm -rf ~/.gradle/caches/*/kotlin-dsl 2>/dev/null || true
-    ./gradlew clean --no-daemon || true
+    # Gradle daemon'ları durdur (sorunları önlemek için)
+    echo -e "${YELLOW}🛑 Gradle daemon'ları durduruluyor...${NC}"
+    ./gradlew --stop || true
+    sleep 2
     
     # Clean build
     echo -e "${YELLOW}🧹 Clean build yapılıyor...${NC}"
-    ./gradlew clean --no-daemon || true
+    ./gradlew clean || true
     
-    # Release build
+    # Release build (daemon olmadan deneme)
     echo -e "${YELLOW}📦 Release APK build ediliyor...${NC}"
-    ./gradlew assembleRelease --no-daemon
+    
+    # İlk deneme
+    if ! ./gradlew assembleRelease --no-daemon; then
+        echo -e "${YELLOW}⚠️  İlk build denemesi başarısız, daemon'ları temizleyip tekrar deniyor...${NC}"
+        ./gradlew --stop || true
+        sleep 3
+        
+        # İkinci deneme (daemon ile)
+        echo -e "${YELLOW}🔄 Build tekrar deneniyor...${NC}"
+        ./gradlew assembleRelease || {
+            echo -e "${RED}❌ Build başarısız oldu. Lütfen hataları kontrol edin.${NC}"
+            cd ..
+            exit 1
+        }
+    fi
     
     cd ..
     echo -e "${GREEN}✓ APK başarıyla oluşturuldu${NC}"
@@ -187,6 +244,7 @@ show_apk_location() {
 # Ana build fonksiyonu
 main() {
     check_requirements
+    setup_swap
     install_dependencies
     run_prebuild
     build_apk
