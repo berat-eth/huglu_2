@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { communityAPI } from '../services/api';
@@ -84,26 +84,27 @@ export default function CommunityFeedScreen({ navigation, route }) {
     loadPosts();
   };
 
-  const handlePostAdventure = async () => {
+  const handlePostAdventure = () => {
     try {
-      // İzin kontrolü
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        alert.show('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
-        return;
-      }
-
-      // Fotoğraf seçme
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        navigation.navigate('CreatePost', { image: result.assets[0].uri });
-      }
+      launchImageLibrary(
+        {
+          mediaType: 'photo',
+          quality: 0.8,
+          selectionLimit: 1,
+        },
+        (response) => {
+          if (response.didCancel) {
+            return;
+          }
+          if (response.errorMessage) {
+            alert.show('Hata', response.errorMessage || 'Fotoğraf seçilirken bir hata oluştu');
+            return;
+          }
+          if (response.assets && response.assets.length > 0) {
+            navigation.navigate('CreatePost', { image: response.assets[0].uri });
+          }
+        }
+      );
     } catch (error) {
       console.error('Fotoğraf seçme hatası:', error);
       alert.show('Hata', 'Fotoğraf seçilirken bir hata oluştu');

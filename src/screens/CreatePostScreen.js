@@ -21,7 +21,7 @@ import { COLORS } from '../constants/colors';
 import { communityAPI, productsAPI } from '../services/api';
 import { useAlert } from '../hooks/useAlert';
 
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 export default function CreatePostScreen({ navigation, route }) {
   const alert = useAlert();
@@ -105,26 +105,27 @@ export default function CreatePostScreen({ navigation, route }) {
     return name.includes(query);
   });
 
-  const handleSelectImage = async () => {
+  const handleSelectImage = () => {
     try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        alert.show('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir');
-        return;
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1], // Square or 9:16 will be handled by server
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setImage(result.assets[0].uri);
-      }
+      launchImageLibrary(
+        {
+          mediaType: 'photo',
+          quality: 0.8,
+          selectionLimit: 1,
+        },
+        (response) => {
+          if (response.didCancel) {
+            return;
+          }
+          if (response.errorMessage) {
+            alert.show('Hata', response.errorMessage || 'Fotoğraf seçilirken bir hata oluştu');
+            return;
+          }
+          if (response.assets && response.assets.length > 0) {
+            setImage(response.assets[0].uri);
+          }
+        }
+      );
     } catch (error) {
       console.error('Fotoğraf seçme hatası:', error);
       alert.show('Hata', 'Fotoğraf seçilirken bir hata oluştu');

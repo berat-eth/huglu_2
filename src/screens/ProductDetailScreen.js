@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Share, Modal, TextInput, Animated } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
@@ -747,27 +747,31 @@ export default function ProductDetailScreen({ navigation, route }) {
     }, 300);
   };
 
-  const pickImage = async () => {
+  const pickImage = () => {
     if (reviewImages.length >= 5) {
       alert.show('Limit', 'En fazla 5 görsel ekleyebilirsiniz');
       return;
     }
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert.show('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekiyor');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: false,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setReviewImages([...reviewImages, result.assets[0].uri]);
-    }
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 1,
+      },
+      (response) => {
+        if (response.didCancel) {
+          return;
+        }
+        if (response.errorMessage) {
+          alert.show('Hata', response.errorMessage || 'Fotoğraf seçilirken bir hata oluştu');
+          return;
+        }
+        if (response.assets && response.assets.length > 0) {
+          setReviewImages([...reviewImages, response.assets[0].uri]);
+        }
+      }
+    );
   };
 
   const removeImage = (index) => {
