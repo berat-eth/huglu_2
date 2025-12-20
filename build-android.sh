@@ -61,6 +61,14 @@ check_requirements() {
 # Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}📦 Bağımlılıklar yükleniyor...${NC}"
+    
+    # Node modules ve cache temizle
+    echo -e "${YELLOW}🧹 Eski node_modules temizleniyor...${NC}"
+    rm -rf node_modules
+    rm -f package-lock.json
+    rm -rf .expo
+    
+    # Bağımlılıkları yükle
     npm install --legacy-peer-deps
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
     

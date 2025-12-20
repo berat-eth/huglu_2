@@ -53,7 +53,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Uygulamanın fotoğraflarınıza erişmesine izin verin.",
+          "cameraPermission": "Uygulamanın kameraya erişmesine izin verin."
+        }
+      ]
     ]
   }
 }
