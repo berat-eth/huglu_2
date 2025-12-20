@@ -61,7 +61,7 @@ check_requirements() {
 # Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}📦 Bağımlılıklar yükleniyor...${NC}"
-    npm install
+    npm install --legacy-peer-deps
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 

@@ -34,7 +34,7 @@ echo -e "${GREEN}✓ package-lock.json oluşturuldu${NC}"
 
 # 3. Bağımlılıkları yükle
 echo -e "${YELLOW}[3/7] Bağımlılıklar yükleniyor...${NC}"
-npm install
+npm install --legacy-peer-deps
 echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 
 # 4. Expo prebuild (temiz)
