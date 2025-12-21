@@ -310,7 +310,7 @@ export default function ProductQuestions() {
                       </div>
                     )}
 
-                    {question.helpfulCount > 0 && (
+                    {(question.helpfulCount ?? 0) > 0 && (
                       <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                         <ThumbsUp className="w-4 h-4" />
                         <span>{question.helpfulCount} kişi faydalı buldu</span>
