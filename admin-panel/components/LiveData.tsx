@@ -76,14 +76,12 @@ export default function LiveData() {
       const timeRange = '1h' // Varsayılan 1 saat
       
       const [liveUsersRes, liveViewsRes, analyticsRes] = await Promise.all([
-        api.get<any>('/admin/live-users', { params: { timeRange } }),
-        api.get<any>('/admin/live-views', { params: { timeRange } }),
+        api.get<any>('/admin/live-users', { timeRange }),
+        api.get<any>('/admin/live-views', { timeRange }),
         api.get<any>('/admin/analytics/batch', { 
-          params: { 
-            timeRange, 
-            sections: 'overview,behavior',
-            tenantId: 1 
-          } 
+          timeRange, 
+          sections: 'overview,behavior',
+          tenantId: '1'
         }).catch(() => ({ success: false, data: null })) // Analytics optional
       ])
 

@@ -69,7 +69,11 @@ export default function Analytics() {
       }
 
       if (activeSection === 'overview') {
-        const batchRes = await api.get(`/admin/analytics/batch?timeRange=${timeRange}&tenantId=${tenantId}&sections=overview,users,behavior,funnel,performance`) as any
+        const batchRes = await api.get('/admin/analytics/batch', {
+          timeRange,
+          tenantId: String(tenantId),
+          sections: 'overview,users,behavior,funnel,performance'
+        }) as any
         const batchData = batchRes.data || {}
         
         setOverview(batchData.overview)
@@ -81,35 +85,39 @@ export default function Analytics() {
         analyticsCache.set(cacheKey, { data: batchData, timestamp: Date.now() })
       } else {
         let endpoint = ''
+        let params: Record<string, string> = { timeRange, tenantId: String(tenantId) }
+        
         switch (activeSection) {
           case 'users':
-            endpoint = `/admin/analytics/users?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/users'
             break
           case 'behavior':
-            endpoint = `/admin/analytics/behavior?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/behavior'
             break
           case 'funnel':
-            endpoint = `/admin/analytics/funnel?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/funnel'
             break
           case 'performance':
-            endpoint = `/admin/analytics/performance?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/performance'
             break
           case 'segments':
-            endpoint = `/admin/analytics/segments?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/segments'
             break
           case 'products':
-            endpoint = `/admin/analytics/products?timeRange=${timeRange}&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/products'
             break
           case 'timeseries':
-            endpoint = `/admin/analytics/timeseries?metric=users&timeRange=${timeRange}&interval=day&tenantId=${tenantId}`
+            endpoint = '/admin/analytics/timeseries'
+            params = { ...params, metric: 'users', interval: 'day' }
             break
           case 'characteristics':
-            endpoint = `/admin/analytics/characteristics?tenantId=${tenantId}`
+            endpoint = '/admin/analytics/characteristics'
+            params = { tenantId: String(tenantId) }
             break
         }
 
         if (endpoint) {
-          const res = await api.get(endpoint) as any
+          const res = await api.get(endpoint, params) as any
           const data = res.data
 
           switch (activeSection) {

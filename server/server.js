@@ -5442,6 +5442,569 @@ app.get('/api/admin/analytics/conversion', authenticateAdmin, async (req, res) =
   }
 });
 
+// ==================== ADMIN ANALYTICS ENDPOINTS ====================
+
+// Admin Analytics - Batch (Birden fazla section'ı tek seferde getir)
+app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    const sections = (req.query.sections || '').split(',').filter(s => s.trim());
+    
+    const result = {};
+    
+    // Time range'e göre tarih aralığını belirle
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h':
+        startDate = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '6h':
+        startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+        break;
+      case '24h':
+      case '1d':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+      case '1m':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Overview
+    if (sections.includes('overview')) {
+      const [overviewData] = await poolWrapper.execute(`
+        SELECT 
+          COUNT(DISTINCT ue.userId) as totalUsers,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as activeUsers,
+          COUNT(DISTINCT us.sessionId) as totalSessions,
+          COUNT(ue.id) as totalEvents,
+          COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.totalAmount ELSE 0 END), 0) as totalRevenue,
+          AVG(us.duration) as avgSessionDuration,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'screen_view' AND ue.timestamp >= ? THEN ue.userId END) as dau,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+        FROM user_events ue
+        LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+        LEFT JOIN orders o ON ue.userId = o.userId AND o.tenantId = ue.tenantId AND o.createdAt >= ?
+        WHERE ue.tenantId = ?
+      `, [startDate, startDate, startDate, tenantId]);
+
+      result.overview = overviewData[0] || {};
+    }
+
+    // Users
+    if (sections.includes('users')) {
+      const [usersData] = await poolWrapper.execute(`
+        SELECT 
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as newUsers,
+          COUNT(DISTINCT CASE WHEN ue.timestamp < ? AND ue.userId IN (
+            SELECT DISTINCT userId FROM user_events WHERE timestamp >= ? AND tenantId = ?
+          ) THEN ue.userId END) as returningUsers,
+          COUNT(DISTINCT ue.userId) as totalUsers,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+        FROM user_events ue
+        WHERE ue.tenantId = ?
+      `, [startDate, startDate, startDate, tenantId, tenantId]);
+
+      result.users = usersData[0] || {};
+    }
+
+    // Behavior
+    if (sections.includes('behavior')) {
+      const [behaviorData] = await poolWrapper.execute(`
+        SELECT 
+          ue.screenName,
+          COUNT(*) as views,
+          COUNT(DISTINCT ue.userId) as uniqueUsers,
+          AVG(CASE WHEN ue2.eventType = 'screen_exit' THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(ue2.properties, '$.duration')) AS UNSIGNED) ELSE NULL END) as avgDuration
+        FROM user_events ue
+        LEFT JOIN user_events ue2 ON ue.sessionId = ue2.sessionId 
+          AND ue2.eventType = 'screen_exit' 
+          AND ue2.screenName = ue.screenName
+        WHERE ue.tenantId = ? 
+          AND ue.eventType = 'screen_view'
+          AND ue.timestamp >= ?
+        GROUP BY ue.screenName
+        ORDER BY views DESC
+        LIMIT 20
+      `, [tenantId, startDate]);
+
+      result.behavior = behaviorData || [];
+    }
+
+    // Funnel
+    if (sections.includes('funnel')) {
+      const [funnelData] = await poolWrapper.execute(`
+        SELECT 
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' THEN ue.userId END) as productViews,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' THEN ue.userId END) as addToCart,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' THEN ue.userId END) as purchases,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND ue.timestamp >= ? THEN ue.userId END) as productViewsPeriod,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND ue.timestamp >= ? THEN ue.userId END) as addToCartPeriod,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND ue.timestamp >= ? THEN ue.userId END) as purchasesPeriod
+        FROM user_events ue
+        WHERE ue.tenantId = ?
+      `, [startDate, startDate, startDate, tenantId]);
+
+      const funnel = funnelData[0] || {};
+      result.funnel = {
+        productViews: funnel.productViews || 0,
+        addToCart: funnel.addToCart || 0,
+        purchases: funnel.purchases || 0,
+        viewToCartRate: funnel.productViewsPeriod > 0 
+          ? ((funnel.addToCartPeriod / funnel.productViewsPeriod) * 100).toFixed(2) 
+          : 0,
+        cartToPurchaseRate: funnel.addToCartPeriod > 0 
+          ? ((funnel.purchasesPeriod / funnel.addToCartPeriod) * 100).toFixed(2) 
+          : 0,
+        overallConversionRate: funnel.productViewsPeriod > 0 
+          ? ((funnel.purchasesPeriod / funnel.productViewsPeriod) * 100).toFixed(2) 
+          : 0
+      };
+    }
+
+    // Performance
+    if (sections.includes('performance')) {
+      const [performanceData] = await poolWrapper.execute(`
+        SELECT 
+          AVG(CASE WHEN ue.eventType = 'performance' THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.value')) AS UNSIGNED) ELSE NULL END) as avgPageLoadTime,
+          COUNT(CASE WHEN ue.eventType = 'error' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0) as errorRate,
+          COUNT(CASE WHEN ue.eventType = 'error' AND JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.errorMessage')) LIKE '%crash%' THEN 1 END) as crashCount
+        FROM user_events ue
+        WHERE ue.tenantId = ? AND ue.timestamp >= ?
+      `, [tenantId, startDate]);
+
+      result.performance = performanceData[0] || {};
+    }
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ Error getting batch analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting batch analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Users
+app.get('/api/admin/analytics/users', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [usersData] = await poolWrapper.execute(`
+      SELECT 
+        COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as newUsers,
+        COUNT(DISTINCT CASE WHEN ue.timestamp < ? AND ue.userId IN (
+          SELECT DISTINCT userId FROM user_events WHERE timestamp >= ? AND tenantId = ?
+        ) THEN ue.userId END) as returningUsers,
+        COUNT(DISTINCT ue.userId) as totalUsers,
+        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
+        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+      FROM user_events ue
+      WHERE ue.tenantId = ?
+    `, [startDate, startDate, startDate, tenantId, tenantId]);
+
+    res.json({
+      success: true,
+      data: usersData[0] || {}
+    });
+  } catch (error) {
+    console.error('❌ Error getting users analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting users analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Behavior
+app.get('/api/admin/analytics/behavior', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [behaviorData] = await poolWrapper.execute(`
+      SELECT 
+        ue.screenName,
+        COUNT(*) as views,
+        COUNT(DISTINCT ue.userId) as uniqueUsers,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'click' THEN ue.id END) as clicks,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'scroll' THEN ue.id END) as scrolls
+      FROM user_events ue
+      WHERE ue.tenantId = ? 
+        AND ue.eventType = 'screen_view'
+        AND ue.timestamp >= ?
+      GROUP BY ue.screenName
+      ORDER BY views DESC
+      LIMIT 20
+    `, [tenantId, startDate]);
+
+    res.json({
+      success: true,
+      data: behaviorData || []
+    });
+  } catch (error) {
+    console.error('❌ Error getting behavior analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting behavior analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Funnel
+app.get('/api/admin/analytics/funnel', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [funnelData] = await poolWrapper.execute(`
+      SELECT 
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND ue.timestamp >= ? THEN ue.userId END) as productViews,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND ue.timestamp >= ? THEN ue.userId END) as addToCart,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND ue.timestamp >= ? THEN ue.userId END) as purchases
+      FROM user_events ue
+      WHERE ue.tenantId = ?
+    `, [startDate, startDate, startDate, tenantId]);
+
+    const funnel = funnelData[0] || {};
+    res.json({
+      success: true,
+      data: {
+        productViews: funnel.productViews || 0,
+        addToCart: funnel.addToCart || 0,
+        purchases: funnel.purchases || 0,
+        viewToCartRate: funnel.productViews > 0 
+          ? ((funnel.addToCart / funnel.productViews) * 100).toFixed(2) 
+          : 0,
+        cartToPurchaseRate: funnel.addToCart > 0 
+          ? ((funnel.purchases / funnel.addToCart) * 100).toFixed(2) 
+          : 0,
+        overallConversionRate: funnel.productViews > 0 
+          ? ((funnel.purchases / funnel.productViews) * 100).toFixed(2) 
+          : 0
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting funnel analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting funnel analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Performance
+app.get('/api/admin/analytics/performance', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [performanceData] = await poolWrapper.execute(`
+      SELECT 
+        AVG(CASE WHEN ue.eventType = 'performance' THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.value')) AS UNSIGNED) ELSE NULL END) as avgPageLoadTime,
+        COUNT(CASE WHEN ue.eventType = 'error' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0) as errorRate,
+        COUNT(CASE WHEN ue.eventType = 'error' AND JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.errorMessage')) LIKE '%crash%' THEN 1 END) as crashCount,
+        AVG(us.duration) as avgSessionDuration
+      FROM user_events ue
+      LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+      WHERE ue.tenantId = ? AND ue.timestamp >= ?
+    `, [tenantId, startDate]);
+
+    res.json({
+      success: true,
+      data: performanceData[0] || {}
+    });
+  } catch (error) {
+    console.error('❌ Error getting performance analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting performance analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Products
+app.get('/api/admin/analytics/products', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const [productsData] = await poolWrapper.execute(`
+      SELECT 
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productId')) as productId,
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productName')) as productName,
+        COUNT(CASE WHEN ue.eventType = 'product_view' THEN 1 END) as views,
+        COUNT(CASE WHEN ue.eventType = 'add_to_cart' THEN 1 END) as addToCart,
+        COUNT(CASE WHEN ue.eventType = 'purchase' THEN 1 END) as purchases
+      FROM user_events ue
+      WHERE ue.tenantId = ?
+        AND ue.timestamp >= ?
+        AND (ue.eventType = 'product_view' OR ue.eventType = 'add_to_cart' OR ue.eventType = 'purchase')
+        AND JSON_EXTRACT(ue.properties, '$.productId') IS NOT NULL
+      GROUP BY productId, productName
+      ORDER BY views DESC
+      LIMIT 20
+    `, [tenantId, startDate]);
+
+    res.json({
+      success: true,
+      data: productsData || []
+    });
+  } catch (error) {
+    console.error('❌ Error getting products analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting products analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Time Series
+app.get('/api/admin/analytics/timeseries', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    const interval = req.query.interval || 'day'; // hour, day, week, month
+    const metric = req.query.metric || 'users'; // users, events, revenue
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    let dateFormat, groupBy;
+    switch (interval) {
+      case 'hour':
+        dateFormat = '%Y-%m-%d %H:00:00';
+        groupBy = 'DATE_FORMAT(ue.timestamp, "%Y-%m-%d %H:00:00")';
+        break;
+      case 'day':
+        dateFormat = '%Y-%m-%d';
+        groupBy = 'DATE(ue.timestamp)';
+        break;
+      case 'week':
+        dateFormat = '%Y-%u';
+        groupBy = 'YEARWEEK(ue.timestamp)';
+        break;
+      case 'month':
+        dateFormat = '%Y-%m';
+        groupBy = 'DATE_FORMAT(ue.timestamp, "%Y-%m")';
+        break;
+      default:
+        dateFormat = '%Y-%m-%d';
+        groupBy = 'DATE(ue.timestamp)';
+    }
+
+    let selectClause;
+    switch (metric) {
+      case 'users':
+        selectClause = 'COUNT(DISTINCT ue.userId) as value';
+        break;
+      case 'events':
+        selectClause = 'COUNT(*) as value';
+        break;
+      case 'revenue':
+        selectClause = 'COALESCE(SUM(CASE WHEN o.status != "cancelled" THEN o.totalAmount ELSE 0 END), 0) as value';
+        break;
+      default:
+        selectClause = 'COUNT(DISTINCT ue.userId) as value';
+    }
+
+    const [timeseriesData] = await poolWrapper.execute(`
+      SELECT 
+        ${groupBy} as date,
+        ${selectClause}
+      FROM user_events ue
+      ${metric === 'revenue' ? 'LEFT JOIN orders o ON ue.userId = o.userId AND o.tenantId = ue.tenantId AND DATE(o.createdAt) = DATE(ue.timestamp)' : ''}
+      WHERE ue.tenantId = ? AND ue.timestamp >= ?
+      GROUP BY ${groupBy}
+      ORDER BY date ASC
+    `, [tenantId, startDate]);
+
+    res.json({
+      success: true,
+      data: timeseriesData || []
+    });
+  } catch (error) {
+    console.error('❌ Error getting timeseries analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting timeseries analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Segments
+app.get('/api/admin/analytics/segments', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+    const timeRange = req.query.timeRange || '7d';
+    
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '1h': startDate = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': case '1d': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '7d': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '30d': case '1m': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      default: startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Basit segment analizi - daha gelişmiş segmentasyon için customer_segments tablosu kullanılabilir
+    const [segmentsData] = await poolWrapper.execute(`
+      SELECT 
+        CASE 
+          WHEN eventCount >= 50 THEN 'Çok Aktif'
+          WHEN eventCount >= 20 THEN 'Aktif'
+          WHEN eventCount >= 5 THEN 'Orta'
+          ELSE 'Az Aktif'
+        END as segment,
+        COUNT(*) as userCount,
+        AVG(eventCount) as avgEvents
+      FROM (
+        SELECT 
+          ue.userId,
+          COUNT(*) as eventCount
+        FROM user_events ue
+        WHERE ue.tenantId = ? AND ue.timestamp >= ?
+        GROUP BY ue.userId
+      ) as userStats
+      GROUP BY segment
+      ORDER BY avgEvents DESC
+    `, [tenantId, startDate]);
+
+    res.json({
+      success: true,
+      data: segmentsData || []
+    });
+  } catch (error) {
+    console.error('❌ Error getting segments analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting segments analytics',
+      error: error.message
+    });
+  }
+});
+
+// Admin Analytics - Characteristics
+app.get('/api/admin/analytics/characteristics', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || parseInt(req.query.tenantId) || 1;
+
+    const [characteristicsData] = await poolWrapper.execute(`
+      SELECT 
+        COUNT(DISTINCT ue.deviceId) as uniqueDevices,
+        COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.platform')) = 'ios' THEN ue.deviceId END) as iosDevices,
+        COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.platform')) = 'android' THEN ue.deviceId END) as androidDevices,
+        COUNT(DISTINCT ue.sessionId) as totalSessions,
+        AVG(us.duration) as avgSessionDuration,
+        AVG(us.eventCount) as avgEventsPerSession
+      FROM user_events ue
+      LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+      WHERE ue.tenantId = ?
+    `, [tenantId]);
+
+    res.json({
+      success: true,
+      data: characteristicsData[0] || {}
+    });
+  } catch (error) {
+    console.error('❌ Error getting characteristics analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting characteristics analytics',
+      error: error.message
+    });
+  }
+});
+
 // Admin - Google Maps Data Scraper (placeholder)
 // POST /api/admin/scrapers/google-maps { query, city }
 app.post('/api/admin/scrapers/google-maps', authenticateAdmin, async (req, res) => {
