@@ -478,7 +478,7 @@ export default function Dashboard() {
           // Live views removed
           const totalViews = 0
           const addedToCart = 0
-          const purchases = views.filter((v:any)=>v.purchased).length
+          const purchases = 0
           const score = (n:number, base:number) => Math.min(100, Math.round((n/Math.max(base,1))*100))
           setCustomerBehavior([
             { metric: 'Ürün Görüntüleme', value: Math.min(100, totalViews) },
