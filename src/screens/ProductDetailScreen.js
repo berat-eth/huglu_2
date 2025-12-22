@@ -106,21 +106,28 @@ export default function ProductDetailScreen({ navigation, route }) {
         return;
       }
       
-      // If we already have the product and it matches, don't refetch
-      if (initialProduct && (initialProduct.id === productId || initialProduct._id === productId)) {
-        setProduct(initialProduct);
-        setLoadingDetail(false);
-        return;
-      }
-      
       try {
         setLoadingDetail(true);
         
-        // 1. Ürün detayını al
+        // 1. Ürün detayını al - Her zaman API'den güncel veriyi çek
         const response = await productsAPI.getById(productId);
         
         if (response.data?.success) {
-            const data = response.data.data?.product || response.data.data || response.data;
+            let data = response.data.data?.product || response.data.data || response.data;
+            
+            // initialProduct varsa ve bazı alanlar eksikse, onları birleştir
+            if (initialProduct) {
+              data = {
+                ...initialProduct,
+                ...data,
+                // Önemli: API'den gelen variations ve images alanlarını koru
+                variations: data.variations || initialProduct.variations,
+                images: data.images || initialProduct.images,
+                gallery: data.gallery || initialProduct.gallery,
+                variationDetails: data.variationDetails || initialProduct.variationDetails,
+                xmlOptions: data.xmlOptions || initialProduct.xmlOptions,
+              };
+            }
             
             // Debug: API'den gelen görsel verilerini logla
             console.log('🔍 API\'den gelen TÜM ürün verisi:', JSON.stringify(data, null, 2));
@@ -153,12 +160,20 @@ export default function ProductDetailScreen({ navigation, route }) {
                 
                 console.log('📦 Backend\'den gelen variations:', JSON.stringify(variations, null, 2));
                 
-                // Varyasyonları ürün datasına ekle
-                data.variations = variations;
+                // Varyasyonları ürün datasına ekle (öncelik API'den gelen veriye)
+                if (Array.isArray(variations) && variations.length > 0) {
+                  data.variations = variations;
+                } else if (!data.variations) {
+                  // Eğer API'den variations gelmediyse ve data'da da yoksa, initialProduct'tan al
+                  data.variations = initialProduct?.variations;
+                }
               }
             } catch (variationError) {
               console.error('❌ Variations endpoint hatası:', variationError);
-              // Varyasyon endpoint'i yoksa devam et
+              // Varyasyon endpoint'i yoksa, initialProduct'tan variations'ı koru
+              if (!data.variations && initialProduct?.variations) {
+                data.variations = initialProduct.variations;
+              }
             }
             
             if (data) {
@@ -1282,6 +1297,27 @@ export default function ProductDetailScreen({ navigation, route }) {
   }, [product]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Product değiştiğinde image index ve selected size'ı sıfırla
+  useEffect(() => {
+    setCurrentImageIndex(0);
+    setSelectedSize(0);
+  }, [product?.id, product?._id]);
+  
+  // productImages değiştiğinde currentImageIndex'i geçerli tut
+  useEffect(() => {
+    if (productImages.length > 0 && currentImageIndex >= productImages.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [productImages.length]);
+  
+  // sizeOptions değiştiğinde selectedSize'ı geçerli tut
+  useEffect(() => {
+    if (sizeOptions.length > 0 && selectedSize >= sizeOptions.length) {
+      setSelectedSize(0);
+    }
+  }, [sizeOptions.length]);
+  
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
