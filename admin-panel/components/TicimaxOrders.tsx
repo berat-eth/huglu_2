@@ -272,6 +272,12 @@ export default function TicimaxOrders() {
   const handleGenerateCargoSlip = async () => {
     if (!selectedOrder) return
     
+    // Ticimax için referans numarası zorunlu kontrolü
+    if (!referenceNumber || referenceNumber.trim() === '') {
+      alert('Ticimax için referans numarası zorunludur. Lütfen referans numarasını girin.')
+      return
+    }
+    
     // API base URL'i fonksiyonun başında tanımla
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
     
@@ -826,21 +832,22 @@ export default function TicimaxOrders() {
 
                 {/* Referans Numarası */}
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Referans Numarası</h3>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Referans Numarası <span className="text-red-500">*</span></h3>
                   <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Referans Numarası
+                        Referans Numarası <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={referenceNumber}
                         onChange={(e) => setReferenceNumber(e.target.value)}
-                        placeholder="Referans numarasını girin"
+                        placeholder="Referans numarasını girin (Zorunlu)"
+                        required
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        Bu referans numarası kargo fişindeki kargo bilgileri kısmında görüntülenecek ve EAN-16 barkodu oluşturulacak.
+                        Bu referans numarası kargo fişindeki kargo bilgileri kısmında görüntülenecek ve EAN-16 barkodu oluşturulacak. <span className="text-red-500 font-semibold">Ticimax için zorunludur.</span>
                       </p>
                     </div>
                   </div>

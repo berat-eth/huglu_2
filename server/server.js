@@ -12044,6 +12044,16 @@ app.post('/api/admin/generate-cargo-slip', authenticateAdmin, async (req, res) =
       });
     }
 
+    // Validasyon: Ticimax için referans numarası zorunlu
+    if (provider === 'ticimax') {
+      if (!referenceNumber || typeof referenceNumber !== 'string' || referenceNumber.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Ticimax için referans numarası zorunludur. Lütfen referans numarasını girin.' 
+        });
+      }
+    }
+
     // invoiceUrl admin endpoint ise, müşteri erişimi için share token URL'ine çevir
     let finalInvoiceUrl = invoiceUrl || null;
     
