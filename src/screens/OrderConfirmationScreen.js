@@ -8,6 +8,7 @@ import { COLORS } from '../constants/colors';
 import { cartAPI, ordersAPI, userLevelAPI, userAPI, walletAPI } from '../services/api';
 import OrderSuccessModal from '../components/OrderSuccessModal';
 import ErrorModal from '../components/ErrorModal';
+import analytics from '../services/analytics';
 
 export default function OrderConfirmationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
@@ -135,6 +136,19 @@ export default function OrderConfirmationScreen({ navigation, route }) {
       if (response.data?.success) {
         // Sipariş başarılı
         const orderId = response.data.data?.orderId || response.data.orderId;
+        
+        // Analytics: Purchase tracking
+        try {
+          await analytics.trackPurchase(orderId, {
+            amount: total,
+            itemCount: cartItems.length,
+            paymentMethod: finalPaymentMethod,
+            shipping: shipping,
+            subtotal: subtotal
+          });
+        } catch (analyticsError) {
+          console.log('Analytics purchase error:', analyticsError);
+        }
         
         // Alışveriş EXP'si ekle
         try {

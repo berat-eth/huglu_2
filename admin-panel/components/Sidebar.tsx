@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, BarChart3, Bell, LogOut, ShoppingBasket, Megaphone, Image, FileText, UserCog, UsersRound, Radio, MessageSquare, Shield, Crown, Ticket, Star, AlertTriangle, Menu, X, Database, Sparkles, Mail, Smartphone, Factory, ClipboardList, PackageCheck, Wallet, CreditCard, RotateCcw, Gift, Disc, FolderTree, Activity, DollarSign, Link, Monitor, Brain, Briefcase, Map, Search, SquareStack, Eye, Link2, Receipt, Key, List, HelpCircle } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingCart, Users, Settings, BarChart3, Bell, LogOut, ShoppingBasket, Megaphone, Image, FileText, UserCog, UsersRound, Radio, MessageSquare, Shield, Crown, Ticket, Star, AlertTriangle, Menu, X, Database, Sparkles, Mail, Smartphone, Factory, ClipboardList, PackageCheck, Wallet, CreditCard, RotateCcw, Gift, Disc, FolderTree, Activity, DollarSign, Link, Monitor, Brain, Briefcase, Map, Search, SquareStack, Eye, Link2, Receipt, Key, List, HelpCircle, MousePointer } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface SidebarProps {
@@ -149,6 +149,18 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
       title: 'Ticimax',
       items: [
         { id: 'ticimax-orders', label: 'Ticimax Siparişleri', icon: ShoppingCart },
+      ]
+    },
+    {
+      title: 'Analitik',
+      items: [
+        { id: 'analytics-dashboard', label: 'Analitik Dashboard', icon: BarChart3 },
+        { id: 'realtime-analytics', label: 'Gerçek Zamanlı', icon: Activity },
+        { id: 'ecommerce-analytics', label: 'E-Ticaret Analitiği', icon: ShoppingCart },
+        { id: 'user-analytics', label: 'Kullanıcı Analitiği', icon: Users },
+        { id: 'behavior-analytics', label: 'Davranış Analitiği', icon: MousePointer },
+        { id: 'analytics-reports', label: 'Raporlar', icon: FileText },
+        { id: 'analytics-settings', label: 'Analitik Ayarları', icon: Settings },
       ]
     },
     {

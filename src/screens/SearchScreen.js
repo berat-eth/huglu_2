@@ -8,6 +8,7 @@ import { COLORS } from '../constants/colors';
 import { productsAPI } from '../services/api';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import voiceRecognitionService from '../services/voiceRecognition';
+import analytics from '../services/analytics';
 
 const RECENT_SEARCHES = ['Çadır', 'Kamp Ekipmanı', 'Trekking Bot', 'Sırt Çantası'];
 
@@ -74,6 +75,13 @@ export default function SearchScreen({ navigation }) {
       setIsSearching(true);
       try {
         console.log('🔍 Arama yapılıyor:', query);
+        
+        // Analytics: Search tracking
+        try {
+          await analytics.trackSearch(query);
+        } catch (analyticsError) {
+          console.log('Analytics search error:', analyticsError);
+        }
         
         // Normal arama yap
         const response = await productsAPI.search(query);

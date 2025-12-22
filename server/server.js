@@ -25928,7 +25928,7 @@ async function startServer() {
         logger.warn('⚠️ Real-time Service initialization failed:', err.message);
       });
       
-      logger.log(`📊 Analytics jobs started\n`);
+      logger.log(`📊 Analytics jobs and worker started\n`);
     } catch (error) {
       logger.warn('⚠️ Analytics jobs could not be started:', error.message);
     }

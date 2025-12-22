@@ -7,3 +7,4 @@ export * from './walletService';
 export * from './reviewService';
 export * from './giftCardService';
 export * from './crmService';
+export { analyticsService } from './analyticsService';

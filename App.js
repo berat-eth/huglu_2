@@ -8,6 +8,7 @@ import * as Font from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
 import { testProductDetail } from './src/utils/testAPI';
 import { testMaintenanceMode } from './src/utils/testMaintenance';
+import analytics from './src/services/analytics';
 
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
@@ -179,6 +180,21 @@ function App() {
     }
     loadFonts();
     
+    // Analytics'i başlat
+    async function initAnalytics() {
+      try {
+        await analytics.initialize();
+        await analytics.startSession();
+        // Session heartbeat - her 30 saniyede bir
+        setInterval(() => {
+          analytics.heartbeat();
+        }, 30000);
+      } catch (error) {
+        console.error('Analytics initialization error:', error);
+      }
+    }
+    initAnalytics();
+    
     // BAKIM MODU TEST - Bakım modu kontrolünü test et
     setTimeout(() => {
       testMaintenanceMode();
@@ -199,7 +215,22 @@ function App() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      onReady={() => {
+        // Navigation hazır olduğunda analytics'i başlat
+        analytics.initialize().catch(console.error);
+      }}
+      onStateChange={(state) => {
+        // Screen değişikliklerini track et
+        if (state) {
+          const route = state.routes[state.index];
+          if (route) {
+            const screenName = route.name;
+            analytics.trackScreenView(screenName).catch(console.error);
+          }
+        }
+      }}
+    >
       <StatusBar style="auto" />
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />

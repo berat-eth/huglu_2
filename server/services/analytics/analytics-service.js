@@ -40,10 +40,10 @@ class AnalyticsService {
       }
 
       // Event type validation
-      const validEventTypes = [
-        'screen_view', 'product_view', 'add_to_cart', 'remove_from_cart',
-        'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'custom'
-      ];
+    const validEventTypes = [
+      'screen_view', 'product_view', 'add_to_cart', 'remove_from_cart',
+      'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'checkout_start', 'custom'
+    ];
       if (!validEventTypes.includes(eventType)) {
         throw new Error(`Invalid eventType: ${eventType}`);
       }

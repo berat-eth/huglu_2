@@ -3110,7 +3110,7 @@ async function createDatabaseSchema(pool) {
           userId INT NULL,
           deviceId VARCHAR(255) NOT NULL,
           sessionId VARCHAR(255) NOT NULL,
-          eventType ENUM('screen_view', 'product_view', 'add_to_cart', 'remove_from_cart', 'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'custom') NOT NULL,
+          eventType ENUM('screen_view', 'product_view', 'add_to_cart', 'remove_from_cart', 'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'checkout_start', 'custom') NOT NULL,
           screenName VARCHAR(255) NULL,
           properties JSON,
           productId INT NULL,

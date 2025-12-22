@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cartAPI } from '../services/api';
 import { COLORS } from '../constants/colors';
 import { updateCartBadge } from '../utils/cartBadge';
+import analytics from '../services/analytics';
 
 export default function CartScreen({ navigation }) {
   const [cartItems, setCartItems] = useState([]);
@@ -118,7 +119,21 @@ export default function CartScreen({ navigation }) {
     try {
       await cartAPI.remove(cartItemId);
       const updatedItems = cartItems.filter(item => item.id !== cartItemId);
+      const removedItem = cartItems.find(item => item.id === cartItemId);
       setCartItems(updatedItems);
+      
+      // Analytics: Remove from cart tracking
+      if (removedItem) {
+        try {
+          await analytics.trackRemoveFromCart(productId, {
+            productName: removedItem.name,
+            quantity: removedItem.quantity,
+            price: removedItem.price
+          });
+        } catch (analyticsError) {
+          console.log('Analytics remove from cart error:', analyticsError);
+        }
+      }
       
       // Badge'i güncelle
       if (userId) {
@@ -378,12 +393,26 @@ export default function CartScreen({ navigation }) {
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.checkoutButton}
-          onPress={() => navigation.navigate('PaymentMethod', { 
-            cartTotal: total,
-            subtotal,
-            shipping,
-            hasFreeShipping 
-          })}
+          onPress={async () => {
+            // Analytics: Checkout start tracking
+            try {
+              await analytics.trackCheckoutStart({
+                cartValue: total,
+                itemCount: cartItems.length,
+                subtotal: subtotal,
+                shipping: shipping
+              });
+            } catch (analyticsError) {
+              console.log('Analytics checkout start error:', analyticsError);
+            }
+            
+            navigation.navigate('PaymentMethod', { 
+              cartTotal: total,
+              subtotal,
+              shipping,
+              hasFreeShipping 
+            });
+          }}
         >
           <Text style={styles.checkoutButtonText}>Ödemeye Geç</Text>
           <View style={styles.checkoutPrice}>

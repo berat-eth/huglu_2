@@ -14,6 +14,7 @@ import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 import { useAlert } from '../hooks/useAlert';
+import analytics from '../services/analytics';
 
 const { width } = Dimensions.get('window');
 
@@ -150,6 +151,18 @@ export default function ProductDetailScreen({ navigation, route }) {
                   try {
                     const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
                     await userLevelAPI.addProductViewExp(userId, productId);
+                    
+                    // Analytics: Product view tracking
+                    try {
+                      await analytics.trackProductView(productId, {
+                        productName: data.name,
+                        categoryId: data.categoryId,
+                        price: data.price,
+                        originalPrice: data.originalPrice
+                      });
+                    } catch (analyticsError) {
+                      console.log('Analytics product view error:', analyticsError);
+                    }
                   } catch (expError) {
                     console.log('Product view EXP error:', expError);
                     // Don't fail if EXP addition fails
@@ -1001,6 +1014,19 @@ export default function ProductDetailScreen({ navigation, route }) {
         // Badge'i güncelle
         const { updateCartBadge } = require('../utils/cartBadge');
         await updateCartBadge(userId);
+        
+        // Analytics: Add to cart tracking
+        try {
+          await analytics.trackAddToCart(pid, {
+            productName: product.name,
+            quantity: quantity,
+            price: product.price,
+            categoryId: product.categoryId,
+            selectedVariations: selectedVariations
+          });
+        } catch (analyticsError) {
+          console.log('Analytics add to cart error:', analyticsError);
+        }
         
         setShowAddToCartSuccessModal(true);
       } else {

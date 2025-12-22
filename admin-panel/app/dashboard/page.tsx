@@ -63,6 +63,13 @@ import TrendyolProducts from '@/components/TrendyolProducts'
 import HepsiburadaOrders from '@/components/HepsiburadaOrders'
 import TicimaxOrders from '@/components/TicimaxOrders'
 import PlatformBrain from '@/components/PlatformBrain'
+import AnalyticsDashboard from '@/components/AnalyticsDashboard'
+import RealtimeAnalytics from '@/components/RealtimeAnalytics'
+import EcommerceAnalytics from '@/components/EcommerceAnalytics'
+import UserAnalytics from '@/components/UserAnalytics'
+import BehaviorAnalytics from '@/components/BehaviorAnalytics'
+import AnalyticsReports from '@/components/AnalyticsReports'
+import AnalyticsSettings from '@/components/AnalyticsSettings'
 
 
 export default function DashboardPage() {
@@ -286,6 +293,14 @@ export default function DashboardPage() {
           {activeTab === 'hepsiburada-orders' && <HepsiburadaOrders />}
           {activeTab === 'ticimax-orders' && <TicimaxOrders />}
           {activeTab === 'invoices' && <Invoices />}
+
+          {activeTab === 'analytics-dashboard' && <AnalyticsDashboard />}
+          {activeTab === 'realtime-analytics' && <RealtimeAnalytics />}
+          {activeTab === 'ecommerce-analytics' && <EcommerceAnalytics />}
+          {activeTab === 'user-analytics' && <UserAnalytics />}
+          {activeTab === 'behavior-analytics' && <BehaviorAnalytics />}
+          {activeTab === 'analytics-reports' && <AnalyticsReports />}
+          {activeTab === 'analytics-settings' && <AnalyticsSettings />}
         </main>
       </div>
     </div>

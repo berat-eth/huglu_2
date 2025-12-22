@@ -34,7 +34,7 @@ class EventProcessor {
     // Event type validation
     const validEventTypes = [
       'screen_view', 'product_view', 'add_to_cart', 'remove_from_cart',
-      'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'custom'
+      'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'checkout_start', 'custom'
     ];
 
     if (!validEventTypes.includes(eventData.eventType)) {
