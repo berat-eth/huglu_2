@@ -16960,7 +16960,7 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     
     // Optimize: Admin detail için gerekli column'lar (isActive ve excludeFromXml dahil)
     const [rows] = await poolWrapper.execute(
-      'SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId FROM products WHERE id = ?',
+      'SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId FROM products WHERE id = ?',
       [productId]
     );
 
@@ -17010,7 +17010,7 @@ app.post('/api/admin/products', authenticateAdmin, async (req, res) => {
     `, [tenantId, name, description, parseFloat(price), parseFloat(taxRate || 0), !!priceIncludesTax, category, image, parseInt(stock || 0, 10), brand]);
 
     // Optimize: Sadece gerekli column'lar
-    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, brand, category, description, stock, sku, lastUpdated, createdAt, tenantId FROM products WHERE id = ?', [result.insertId]);
+    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, brand, category, description, stock, sku, lastUpdated, tenantId FROM products WHERE id = ?', [result.insertId]);
     
     // ✅ OPTIMIZASYON: Cache invalidation - Yeni ürün eklendiğinde ilgili cache'leri temizle
     try {
@@ -17098,7 +17098,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
       console.warn(' Cache invalidation error:', error.message);
     }
     // Optimize: Sadece gerekli column'lar
-    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
+    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
     res.json({ success: true, data: rows[0], message: 'Ürün güncellendi' });
   } catch (error) {
     console.error(' Error updating product:', error);

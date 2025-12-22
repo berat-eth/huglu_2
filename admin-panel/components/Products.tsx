@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatDDMMYYYY } from '@/lib/date'
-import { Plus, Edit, Trash2, Search, Filter, TrendingUp, Package, Eye, RefreshCw, Power, Shield, UploadCloud, Activity, ToggleLeft, ToggleRight, CheckSquare, Square, Upload, FileText, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, Filter, TrendingUp, Package, Eye, RefreshCw, Power, Shield, UploadCloud, Activity, ToggleLeft, ToggleRight, CheckSquare, Square, Upload, FileText, X, Star, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { productService } from '@/lib/services'
 import type { Product } from '@/lib/api'
@@ -36,17 +36,14 @@ export default function Products() {
   const [sizesMap, setSizesMap] = useState<Record<number, string[]>>({})
   const [sizesLoading, setSizesLoading] = useState<Record<number, boolean>>({})
   const [productSizes, setProductSizes] = useState<Record<number, Record<string, number>>>({})
-  const [showViewModal, setShowViewModal] = useState<{ open: boolean; product?: Product | null; details?: any; variations?: any[] }>({ open: false, product: null, details: null, variations: [] })
+  const [showViewModal, setShowViewModal] = useState<{ open: boolean; product?: Product | null; details?: any; variations?: any[]; sizeStocks?: Record<string, number> }>({ open: false, product: null, details: null, variations: [], sizeStocks: {} })
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
   const [bulkActionLoading, setBulkActionLoading] = useState(false)
   const [statusToggleLoading, setStatusToggleLoading] = useState<Record<number, boolean>>({})
   const [trendyolIntegration, setTrendyolIntegration] = useState<any>(null)
   const [transferringProducts, setTransferringProducts] = useState<Record<number, boolean>>({})
   const [transferMessages, setTransferMessages] = useState<Record<number, { type: 'success' | 'error'; message: string }>>({})
-  // Fatura yükleme için state'ler
-  const [showInvoicesModal, setShowInvoicesModal] = useState(false)
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [invoicesLoading, setInvoicesLoading] = useState(false)
+  const [settingMainImage, setSettingMainImage] = useState<Record<string, boolean>>({})
 
   const categories = ['Tümü', 'Kamp Malzemeleri', 'Outdoor Giyim', 'Ayakkabı', 'Aksesuar']
 
@@ -98,22 +95,6 @@ export default function Products() {
     loadTrendyolIntegration()
   }, [currentPage])
 
-  // Faturaları yükle
-  const handleShowInvoices = async () => {
-    try {
-      setInvoicesLoading(true)
-      const response = await api.get<ApiResponse<any[]>>('/admin/invoices')
-      if (response.success && response.data) {
-        setInvoices(response.data)
-        setShowInvoicesModal(true)
-      }
-    } catch (err: any) {
-      console.error('Faturalar yüklenemedi:', err)
-      alert('Faturalar yüklenirken hata oluştu')
-    } finally {
-      setInvoicesLoading(false)
-    }
-  }
 
   // Trendyol entegrasyonunu yükle
   const loadTrendyolIntegration = async () => {
@@ -517,6 +498,42 @@ export default function Products() {
     }
   }
 
+  // Ana görsel yap
+  const setAsMainImage = async (productId: number, imageUrl: string) => {
+    try {
+      const imageKey = `${productId}-${imageUrl}`
+      setSettingMainImage(prev => ({ ...prev, [imageKey]: true }))
+      
+      const response = await productService.updateProduct(productId, { image: imageUrl })
+      
+      if (response.success) {
+        // Ürün listesini güncelle
+        setProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, image: imageUrl } : p
+        ))
+        
+        // Modal'daki ürünü güncelle
+        if (showViewModal.product && showViewModal.product.id === productId) {
+          setShowViewModal(prev => ({
+            ...prev,
+            product: { ...prev.product!, image: imageUrl },
+            details: prev.details ? { ...prev.details, image: imageUrl } : prev.details
+          }))
+        }
+        
+        alert('Ana görsel başarıyla güncellendi!')
+      } else {
+        alert('Ana görsel güncellenirken hata oluştu')
+      }
+    } catch (err: any) {
+      console.error('Ana görsel güncelleme hatası:', err)
+      alert('Ana görsel güncellenirken hata oluştu: ' + (err.message || 'Bilinmeyen hata'))
+    } finally {
+      const imageKey = `${productId}-${imageUrl}`
+      setSettingMainImage(prev => ({ ...prev, [imageKey]: false }))
+    }
+  }
+
   // Toggle product status (active/inactive)
   const toggleProductStatus = async (productId: number, currentStatus: boolean) => {
     try {
@@ -695,14 +712,6 @@ export default function Products() {
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Yenile
-          </button>
-          <button
-            onClick={handleShowInvoices}
-            disabled={invoicesLoading}
-            className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2 rounded-xl flex items-center hover:shadow-lg transition-shadow disabled:opacity-60"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            {invoicesLoading ? 'Yükleniyor...' : 'Faturalar'}
           </button>
         </div>
       </div>
@@ -1163,9 +1172,44 @@ export default function Products() {
                                   productService.getProductById(product.id),
                                   productService.getProductVariations(product.id)
                                 ])
-                                setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: varsRes?.data?.variations || [] })
+                                
+                                // Beden stoklarını yükle
+                                const sizeStocks: Record<string, number> = {}
+                                if ((varsRes as any)?.data?.sizeStocks) {
+                                  Object.entries((varsRes as any).data.sizeStocks).forEach(([size, stock]: [string, any]) => {
+                                    if (size && stock !== undefined) {
+                                      sizeStocks[size] = parseInt(String(stock)) || 0
+                                    }
+                                  })
+                                }
+                                
+                                // Eğer productSizes'da yoksa ekle
+                                if (Object.keys(sizeStocks).length > 0 && !productSizes[product.id]) {
+                                  setProductSizes(prev => ({ ...prev, [product.id]: sizeStocks }))
+                                }
+                                
+                                // Bedenleri yükle
+                                const variations = (varsRes as any)?.data?.variations || []
+                                const bedenler: string[] = []
+                                variations.forEach((v: any) => {
+                                  if (v?.name?.toLowerCase().includes('beden') && Array.isArray(v.options)) {
+                                    v.options.forEach((o: any) => {
+                                      const val = String(o?.value || '').trim()
+                                      if (val && !bedenler.includes(val)) {
+                                        bedenler.push(val)
+                                      }
+                                    })
+                                  }
+                                })
+                                
+                                // Eğer sizesMap'te yoksa ekle
+                                if (bedenler.length > 0 && !sizesMap[product.id]) {
+                                  setSizesMap(prev => ({ ...prev, [product.id]: bedenler }))
+                                }
+                                
+                                setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: variations, sizeStocks: sizeStocks })
                               } catch {
-                                setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [] })
+                                setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [], sizeStocks: productSizes[product.id] || {} })
                               }
                             }}
                           >
@@ -1258,9 +1302,44 @@ export default function Products() {
                               productService.getProductById(product.id),
                               productService.getProductVariations(product.id)
                             ])
-                            setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: varsRes?.data?.variations || [] })
+                            
+                            // Beden stoklarını yükle
+                            const sizeStocks: Record<string, number> = {}
+                            if ((varsRes as any)?.data?.sizeStocks) {
+                              Object.entries((varsRes as any).data.sizeStocks).forEach(([size, stock]: [string, any]) => {
+                                if (size && stock !== undefined) {
+                                  sizeStocks[size] = parseInt(String(stock)) || 0
+                                }
+                              })
+                            }
+                            
+                            // Eğer productSizes'da yoksa ekle
+                            if (Object.keys(sizeStocks).length > 0 && !productSizes[product.id]) {
+                              setProductSizes(prev => ({ ...prev, [product.id]: sizeStocks }))
+                            }
+                            
+                            // Bedenleri yükle
+                            const variations = (varsRes as any)?.data?.variations || []
+                            const bedenler: string[] = []
+                            variations.forEach((v: any) => {
+                              if (v?.name?.toLowerCase().includes('beden') && Array.isArray(v.options)) {
+                                v.options.forEach((o: any) => {
+                                  const val = String(o?.value || '').trim()
+                                  if (val && !bedenler.includes(val)) {
+                                    bedenler.push(val)
+                                  }
+                                })
+                              }
+                            })
+                            
+                            // Eğer sizesMap'te yoksa ekle
+                            if (bedenler.length > 0 && !sizesMap[product.id]) {
+                              setSizesMap(prev => ({ ...prev, [product.id]: bedenler }))
+                            }
+                            
+                            setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: variations, sizeStocks: sizeStocks })
                           } catch {
-                            setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [] })
+                            setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [], sizeStocks: productSizes[product.id] || {} })
                           }
                         }} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg" title="Görüntüle">
                           <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
@@ -1333,7 +1412,7 @@ export default function Products() {
       {/* View modal - full product data */}
       <AnimatePresence>
         {showViewModal.open && showViewModal.product && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowViewModal({ open: false, product: null, details: null, variations: [] })}>
+                          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowViewModal({ open: false, product: null, details: null, variations: [], sizeStocks: {} })}>
             <motion.div 
               initial={{scale:.95,opacity:0}} 
               animate={{scale:1,opacity:1}} 
@@ -1350,14 +1429,14 @@ export default function Products() {
                     ) : (
                       <Package className="w-7 h-7 text-white" />
                     )}
-                  </div>
-                  <div>
+              </div>
+                <div>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{showViewModal.product.name}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">ID: #{showViewModal.product.id}</p>
                   </div>
                 </div>
                 <button 
-                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[] })} 
+                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[], sizeStocks: {} })} 
                   className="p-2 rounded-lg hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -1440,7 +1519,52 @@ export default function Products() {
                     {(sizesMap[showViewModal.product.id] || []).length > 0 ? (
                       <div className="space-y-2">
                         {(sizesMap[showViewModal.product.id] || []).map((size, i) => {
-                          const stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                          // Önce productSizes'tan kontrol et, sonra showViewModal.sizeStocks'tan, sonra details'ten
+                          let stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                          
+                          // Eğer productSizes'ta yoksa, modal state'inden kontrol et
+                          if (stock === 0 && showViewModal.sizeStocks && showViewModal.sizeStocks[size]) {
+                            stock = parseInt(String(showViewModal.sizeStocks[size])) || 0
+                          }
+                          
+                          // Hala 0 ise, details'ten kontrol et
+                          if (stock === 0 && showViewModal.details) {
+                            // sizeStocks varsa kullan
+                            if ((showViewModal.details as any).sizeStocks && (showViewModal.details as any).sizeStocks[size]) {
+                              stock = parseInt(String((showViewModal.details as any).sizeStocks[size])) || 0
+                            }
+                            // variationDetails'ten de kontrol et
+                            else if ((showViewModal.details as any).variationDetails) {
+                              try {
+                                const variationDetails = typeof (showViewModal.details as any).variationDetails === 'string' 
+                                  ? JSON.parse((showViewModal.details as any).variationDetails) 
+                                  : (showViewModal.details as any).variationDetails
+                                
+                                if (Array.isArray(variationDetails)) {
+                                  variationDetails.forEach((variation: any) => {
+                                    if (variation.attributes && variation.stok !== undefined) {
+                                      const attributes = variation.attributes
+                                      if (attributes && typeof attributes === 'object') {
+                                        const sizeKeys = Object.keys(attributes).filter(key => 
+                                          key.toLowerCase().includes('beden') || 
+                                          key.toLowerCase().includes('size')
+                                        )
+                                        
+                                        if (sizeKeys.length > 0) {
+                                          const sizeValue = String(attributes[sizeKeys[0]] || '').trim()
+                                          if (sizeValue === size) {
+                                            stock += parseInt(String(variation.stok)) || 0
+                                          }
+                                        }
+                                      }
+                                    }
+                                  })
+                                }
+                              } catch (e) {
+                                // Parse hatası, devam et
+                              }
+                            }
+                          }
                           const stockColor = stock > 10 ? 'text-green-600 dark:text-green-400' :
                                            stock > 0 ? 'text-orange-600 dark:text-orange-400' :
                                            'text-red-600 dark:text-red-400'
@@ -1470,16 +1594,39 @@ export default function Products() {
                           )
                         })}
                         {/* Toplam Stok */}
-                        {productSizes[showViewModal.product.id] && Object.keys(productSizes[showViewModal.product.id]).length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between px-2">
-                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Toplam Stok:</span>
-                              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                {Object.values(productSizes[showViewModal.product.id]).reduce((sum: number, stock: number) => sum + (Number(stock) || 0), 0)} adet
-                              </span>
+                        {(() => {
+                          // Tüm bedenlerin stoklarını topla
+                          let totalStock = 0
+                          const currentSizes = sizesMap[showViewModal.product.id] || []
+                          currentSizes.forEach((size) => {
+                            let stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                            
+                            // Eğer productSizes'ta yoksa, modal state'inden kontrol et
+                            if (stock === 0 && showViewModal.sizeStocks && showViewModal.sizeStocks[size]) {
+                              stock = parseInt(String(showViewModal.sizeStocks[size])) || 0
+                            }
+                            
+                            // Hala 0 ise, details'ten kontrol et
+                            if (stock === 0 && showViewModal.details) {
+                              if ((showViewModal.details as any).sizeStocks && (showViewModal.details as any).sizeStocks[size]) {
+                                stock = parseInt(String((showViewModal.details as any).sizeStocks[size])) || 0
+                              }
+                            }
+                            
+                            totalStock += stock
+                          })
+                          
+                          return totalStock > 0 ? (
+                            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center justify-between px-2">
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Toplam Stok:</span>
+                                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                  {totalStock} adet
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          ) : null
+                        })()}
                       </div>
                     ) : (
                       <div className="text-center py-8">
@@ -1505,11 +1652,11 @@ export default function Products() {
                           ))}
                           {showViewModal.variations.length > 5 && (
                             <p className="text-xs text-slate-400 dark:text-slate-500">+{showViewModal.variations.length - 5} varyasyon daha</p>
-                          )}
-                        </div>
-                      </div>
                     )}
                   </div>
+                </div>
+                    )}
+                </div>
 
                   {/* Açıklama */}
                   {showViewModal.product.description && (
@@ -1525,36 +1672,150 @@ export default function Products() {
                   )}
 
                   {/* Görseller */}
-                  {((showViewModal.product as any).images && Array.isArray((showViewModal.product as any).images) && (showViewModal.product as any).images.length > 0) || showViewModal.product.image ? (
-                    <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
-                      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
-                        <Eye className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
-                        Görseller
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {showViewModal.product.image && (
-                          <div className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
-                            <img 
-                              src={showViewModal.product.image} 
-                              alt={showViewModal.product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        {Array.isArray((showViewModal.product as any).images) && (showViewModal.product as any).images.map((img: string, idx: number) => (
-                          img && img !== showViewModal.product.image && (
-                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
-                              <img 
-                                src={img} 
-                                alt={`${showViewModal.product.name} - ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )
-                        ))}
+                  {(() => {
+                    // Tüm görselleri topla
+                    const allImages: string[] = []
+                    const seen = new Set<string>()
+                    
+                    const addImage = (url: string | null | undefined) => {
+                      if (url && typeof url === 'string' && url.trim() !== '' && !seen.has(url.trim())) {
+                        seen.add(url.trim())
+                        allImages.push(url.trim())
+                      }
+                    }
+                    
+                    const product = showViewModal.product
+                    const details = showViewModal.details || product
+                    
+                    // Ana görsel
+                    addImage(product?.image)
+                    addImage(details?.image)
+                    
+                    // images array
+                    if (details?.images) {
+                      try {
+                        let imagesArray = details.images
+                        if (typeof imagesArray === 'string') {
+                          imagesArray = JSON.parse(imagesArray)
+                        }
+                        if (Array.isArray(imagesArray)) {
+                          imagesArray.forEach((img: any) => {
+                            const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src)
+                            addImage(url)
+                          })
+                        }
+                      } catch (e) {
+                        // Parse hatası, devam et
+                      }
+                    }
+                    
+                    // image1-5
+                    addImage(details?.image1)
+                    addImage(details?.image2)
+                    addImage(details?.image3)
+                    addImage(details?.image4)
+                    addImage(details?.image5)
+                    
+                    // gallery
+                    if (details?.gallery) {
+                      try {
+                        let galleryArray = details.gallery
+                        if (typeof galleryArray === 'string') {
+                          galleryArray = JSON.parse(galleryArray)
+                        }
+                        if (Array.isArray(galleryArray)) {
+                          galleryArray.forEach((img: any) => {
+                            const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src)
+                            addImage(url)
+                          })
+                        } else if (typeof galleryArray === 'string') {
+                          addImage(galleryArray)
+                        }
+                      } catch (e) {
+                        // Parse hatası, devam et
+                      }
+                    }
+                    
+                    // thumbnail
+                    addImage(details?.thumbnail)
+                    
+                    return allImages.length > 0 ? (
+                      <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
+                          <Eye className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                          Görseller ({allImages.length})
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {allImages.map((img, idx) => {
+                            const isMainImage = showViewModal.product.image === img || (showViewModal.details && (showViewModal.details as any).image === img)
+                            const imageKey = `${showViewModal.product.id}-${img}`
+                            const isLoading = settingMainImage[imageKey]
+                            
+                            return (
+                              <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-600 group hover:shadow-lg transition-shadow">
+                                {/* Ana görsel badge */}
+                                {isMainImage && (
+                                  <div className="absolute top-2 left-2 z-10 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-current" />
+                                    Ana Görsel
+                                  </div>
+                                )}
+                                
+                                <img 
+                                  src={img} 
+                                  alt={`${showViewModal.product.name} - ${idx + 1}`}
+                                  className={`w-full h-full object-cover ${isMainImage ? 'ring-2 ring-blue-500' : ''}`}
+                                  onError={(e) => {
+                                    // Hatalı görseli gizle
+                                    (e.target as HTMLImageElement).style.display = 'none'
+                                  }}
+                                />
+                                
+                                {/* Hover overlay */}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex flex-col items-center justify-center opacity-0 group-hover:opacity-100">
+                                  <span className="text-white text-xs font-medium bg-black/70 px-2 py-1 rounded mb-2">
+                                    {idx + 1}/{allImages.length}
+                                  </span>
+                                  
+                                  {/* Ana Görsel Yap butonu */}
+                                  {!isMainImage && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setAsMainImage(showViewModal.product!.id, img)
+                                      }}
+                                      disabled={isLoading}
+                                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                                    >
+                                      {isLoading ? (
+                                        <>
+                                          <RefreshCw className="w-3 h-3 animate-spin" />
+                                          Güncelleniyor...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Star className="w-3 h-3" />
+                                          Ana Görsel Yap
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                  
+                                  {/* Zaten ana görsel ise check işareti */}
+                                  {isMainImage && (
+                                    <div className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-lg">
+                                      <Check className="w-3 h-3" />
+                                      Ana Görsel
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+                    ) : null
+                  })()}
                 </div>
               </div>
 
@@ -1568,7 +1829,7 @@ export default function Products() {
                   Düzenle
                 </button>
                 <button
-                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[] })} 
+                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[], sizeStocks: {} })} 
                   className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
                 >
                   Kapat
@@ -1579,103 +1840,6 @@ export default function Products() {
         )}
       </AnimatePresence>
 
-      {/* Faturalar Modal */}
-      <AnimatePresence>
-        {showInvoicesModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowInvoicesModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Faturalar</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Tüm faturaları görüntüleyin</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowInvoicesModal(false)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                {invoicesLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <RefreshCw className="w-8 h-8 text-slate-400 animate-spin" />
-                  </div>
-                ) : invoices.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400">Henüz fatura bulunmuyor</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {invoices.map((invoice) => (
-                      <motion.div
-                        key={invoice.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h4 className="font-semibold text-slate-800 dark:text-slate-100">
-                                Fatura #{invoice.id}
-                              </h4>
-                              {invoice.number && (
-                                <span className="text-sm text-slate-500 dark:text-slate-400">
-                                  No: {invoice.number}
-                                </span>
-                              )}
-                            </div>
-                            {invoice.date && (
-                              <p className="text-sm text-slate-600 dark:text-slate-400">
-                                Tarih: {formatDDMMYYYY(invoice.date)}
-                              </p>
-                            )}
-                            {invoice.amount && (
-                              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">
-                                Tutar: ₺{typeof invoice.amount === 'number' ? invoice.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : invoice.amount}
-                              </p>
-                            )}
-                          </div>
-                          {invoice.url && (
-                            <a
-                              href={invoice.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
-                            >
-                              Görüntüle
-                            </a>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
