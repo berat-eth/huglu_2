@@ -251,7 +251,8 @@ async function invalidateByTag(tag) {
   
   try {
     const tagKey = `tag:${tag}`;
-    const keys = await client.sMembers(tagKey);
+    // ioredis uses lowercase method names: smembers instead of sMembers
+    const keys = await client.smembers(tagKey);
     if (keys && keys.length > 0) {
       await delKeys(keys);
       await client.del(tagKey);
@@ -259,6 +260,7 @@ async function invalidateByTag(tag) {
     }
     return 0;
   } catch (error) {
+    // Silently fail - tag system may not be in use
     if (process.env.NODE_ENV !== 'production') {
       console.warn(`⚠️ Redis invalidateByTag failed for tag ${tag}:`, error.message);
     }
@@ -274,7 +276,8 @@ async function tagKey(key, tags) {
   try {
     const pipeline = client.multi();
     tags.forEach(tag => {
-      pipeline.sAdd(`tag:${tag}`, key);
+      // ioredis uses lowercase method names: sadd instead of sAdd
+      pipeline.sadd(`tag:${tag}`, key);
     });
     await pipeline.exec();
     return true;
