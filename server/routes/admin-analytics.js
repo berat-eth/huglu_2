@@ -27,25 +27,33 @@ function createAdminAnalyticsRoutes(poolWrapper) {
   function parseDateRange(req) {
     const { startDate, endDate, days } = req.query;
     
+    let start, end;
+    
     if (days) {
-      const end = new Date();
-      const start = new Date();
+      end = new Date();
+      start = new Date();
       start.setDate(start.getDate() - parseInt(days));
-      return { start, end };
+    } else if (startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    } else {
+      // Default: last 30 days
+      end = new Date();
+      start = new Date();
+      start.setDate(start.getDate() - 30);
     }
     
-    if (startDate && endDate) {
-      return {
-        start: new Date(startDate),
-        end: new Date(endDate)
-      };
-    }
-    
-    // Default: last 30 days
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
-    return { start, end };
+    // Format dates for MySQL
+    // DATE type: YYYY-MM-DD
+    // DATETIME type: YYYY-MM-DD HH:mm:ss
+    return {
+      start,
+      end,
+      startDateStr: start.toISOString().slice(0, 10), // YYYY-MM-DD for DATE
+      endDateStr: end.toISOString().slice(0, 10), // YYYY-MM-DD for DATE
+      startDateTimeStr: start.toISOString().slice(0, 19).replace('T', ' '), // YYYY-MM-DD HH:mm:ss for DATETIME
+      endDateTimeStr: end.toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:mm:ss for DATETIME
+    };
   }
 
   // ==================== REAL-TIME ANALYTICS ====================
@@ -144,18 +152,18 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const dateRange = parseDateRange(req);
 
-      const [aggregates] = await pool.execute(
+      const [aggregates] = await poolWrapper.execute(
         `SELECT 
-          SUM(totalRevenue) as totalRevenue,
-          SUM(purchase) as totalOrders,
-          AVG(totalRevenue / NULLIF(purchase, 0)) as avgOrderValue,
-          SUM(productViews) as productViews,
-          SUM(addToCart) as addToCart,
-          (SUM(addToCart) / NULLIF(SUM(productViews), 0) * 100) as cartConversionRate,
-          (SUM(purchase) / NULLIF(SUM(addToCart), 0) * 100) as checkoutConversionRate
+          COALESCE(SUM(totalRevenue), 0) as totalRevenue,
+          COALESCE(SUM(purchase), 0) as totalOrders,
+          COALESCE(AVG(CASE WHEN purchase > 0 THEN totalRevenue / purchase ELSE NULL END), 0) as avgOrderValue,
+          COALESCE(SUM(productViews), 0) as productViews,
+          COALESCE(SUM(addToCart), 0) as addToCart,
+          COALESCE((SUM(addToCart) / NULLIF(SUM(productViews), 0) * 100), 0) as cartConversionRate,
+          COALESCE((SUM(purchase) / NULLIF(SUM(addToCart), 0) * 100), 0) as checkoutConversionRate
          FROM analytics_aggregates
          WHERE tenantId = ? AND aggregateDate >= ? AND aggregateDate <= ?`,
-        [tenantId, dateRange.start, dateRange.end]
+        [tenantId, dateRange.startDateStr, dateRange.endDateStr]
       );
 
       res.json({
@@ -164,6 +172,15 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting ecommerce overview:', error);
+      console.error('Error details:', {
+        tenantId,
+        dateRange: {
+          start: dateRange.startDateStr,
+          end: dateRange.endDateStr
+        },
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting ecommerce overview',
@@ -181,25 +198,32 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const dateRange = parseDateRange(req);
 
-      const [revenue] = await pool.execute(
+      const [revenue] = await poolWrapper.execute(
         `SELECT 
           DATE(timestamp) as date,
-          SUM(amount) as revenue,
+          COALESCE(SUM(amount), 0) as revenue,
           COUNT(*) as orders,
-          AVG(amount) as avgOrderValue
+          COALESCE(AVG(amount), 0) as avgOrderValue
          FROM analytics_events
-         WHERE tenantId = ? AND eventType = 'purchase' AND timestamp >= ? AND timestamp <= ?
+         WHERE tenantId = ? AND eventType = 'purchase' AND timestamp >= ? AND timestamp <= ? AND amount IS NOT NULL
          GROUP BY DATE(timestamp)
          ORDER BY date ASC`,
-        [tenantId, dateRange.start, dateRange.end]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr]
       );
 
       res.json({
         success: true,
-        data: revenue
+        data: revenue || []
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting revenue:', error);
+      console.error('Error details:', {
+        tenantId,
+        start: dateRange.start,
+        end: dateRange.end,
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting revenue',
@@ -218,22 +242,22 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const dateRange = parseDateRange(req);
       const limit = parseInt(req.query.limit) || 20;
 
-      const [products] = await pool.execute(
+      const [products] = await poolWrapper.execute(
         `SELECT 
           e.productId,
-          p.name as productName,
+          COALESCE(p.name, CONCAT('Product ', e.productId)) as productName,
           COUNT(CASE WHEN e.eventType = 'product_view' THEN 1 END) as views,
           COUNT(CASE WHEN e.eventType = 'add_to_cart' THEN 1 END) as addToCart,
           COUNT(CASE WHEN e.eventType = 'purchase' THEN 1 END) as purchases,
-          SUM(CASE WHEN e.eventType = 'purchase' THEN e.amount ELSE 0 END) as revenue,
-          (COUNT(CASE WHEN e.eventType = 'purchase' THEN 1 END) / NULLIF(COUNT(CASE WHEN e.eventType = 'product_view' THEN 1 END), 0) * 100) as conversionRate
+          COALESCE(SUM(CASE WHEN e.eventType = 'purchase' AND e.amount IS NOT NULL THEN e.amount ELSE 0 END), 0) as revenue,
+          COALESCE((COUNT(CASE WHEN e.eventType = 'purchase' THEN 1 END) / NULLIF(COUNT(CASE WHEN e.eventType = 'product_view' THEN 1 END), 0) * 100), 0) as conversionRate
          FROM analytics_events e
          LEFT JOIN products p ON e.productId = p.id AND p.tenantId = e.tenantId
          WHERE e.tenantId = ? AND e.productId IS NOT NULL AND e.timestamp >= ? AND e.timestamp <= ?
          GROUP BY e.productId, p.name
          ORDER BY revenue DESC
          LIMIT ?`,
-        [tenantId, dateRange.start, dateRange.end, limit]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr, limit]
       );
 
       res.json({
@@ -242,6 +266,16 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting products:', error);
+      console.error('Error details:', {
+        tenantId,
+        dateRange: {
+          start: dateRange.startDateTimeStr,
+          end: dateRange.endDateTimeStr
+        },
+        limit,
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting products',
@@ -321,16 +355,16 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const dateRange = parseDateRange(req);
 
-      const [metrics] = await pool.execute(
+      const [metrics] = await poolWrapper.execute(
         `SELECT 
-          COUNT(DISTINCT userId, deviceId) as totalUsers,
+          COUNT(DISTINCT CONCAT(COALESCE(userId, ''), '-', deviceId)) as totalUsers,
           COUNT(DISTINCT CASE WHEN userId IS NOT NULL THEN userId END) as registeredUsers,
           COUNT(DISTINCT CASE WHEN userId IS NULL THEN deviceId END) as anonymousUsers,
           COUNT(*) as totalSessions,
-          AVG(duration) as avgSessionDuration
+          COALESCE(AVG(duration), 0) as avgSessionDuration
          FROM analytics_sessions
          WHERE tenantId = ? AND sessionStart >= ? AND sessionStart <= ?`,
-        [tenantId, dateRange.start, dateRange.end]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr]
       );
 
       res.json({
@@ -455,16 +489,16 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const dateRange = parseDateRange(req);
 
-      const [sessions] = await pool.execute(
+      const [sessions] = await poolWrapper.execute(
         `SELECT 
-          AVG(duration) as avgDuration,
-          AVG(pageViews) as avgPageViews,
-          AVG(eventsCount) as avgEvents,
+          COALESCE(AVG(duration), 0) as avgDuration,
+          COALESCE(AVG(pageViews), 0) as avgPageViews,
+          COALESCE(AVG(eventsCount), 0) as avgEvents,
           COUNT(*) as totalSessions,
-          COUNT(CASE WHEN conversion = true THEN 1 END) as convertedSessions
+          COUNT(CASE WHEN conversion = 1 OR conversion = TRUE THEN 1 END) as convertedSessions
          FROM analytics_sessions
          WHERE tenantId = ? AND sessionStart >= ? AND sessionStart <= ?`,
-        [tenantId, dateRange.start, dateRange.end]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr]
       );
 
       res.json({
@@ -473,6 +507,15 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting sessions:', error);
+      console.error('Error details:', {
+        tenantId,
+        dateRange: {
+          start: dateRange.startDateTimeStr,
+          end: dateRange.endDateTimeStr
+        },
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting sessions',
@@ -491,18 +534,22 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const dateRange = parseDateRange(req);
       const limit = parseInt(req.query.limit) || 20;
 
-      const [screens] = await pool.execute(
+      const [screens] = await poolWrapper.execute(
         `SELECT 
-          screenName,
+          COALESCE(screenName, 'Unknown') as screenName,
           COUNT(*) as views,
-          COUNT(DISTINCT userId, deviceId) as uniqueUsers,
-          AVG(JSON_EXTRACT(properties, '$.timeOnScreen')) as avgTimeOnScreen
+          COUNT(DISTINCT CONCAT(COALESCE(userId, ''), '-', deviceId)) as uniqueUsers,
+          COALESCE(AVG(CASE 
+            WHEN properties IS NOT NULL AND JSON_EXTRACT(properties, '$.timeOnScreen') IS NOT NULL 
+            THEN CAST(JSON_EXTRACT(properties, '$.timeOnScreen') AS UNSIGNED) 
+            ELSE NULL 
+          END), 0) as avgTimeOnScreen
          FROM analytics_events
          WHERE tenantId = ? AND eventType = 'screen_view' AND timestamp >= ? AND timestamp <= ?
          GROUP BY screenName
          ORDER BY views DESC
          LIMIT ?`,
-        [tenantId, dateRange.start, dateRange.end, limit]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr, limit]
       );
 
       res.json({
@@ -511,6 +558,16 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting screens:', error);
+      console.error('Error details:', {
+        tenantId,
+        dateRange: {
+          start: dateRange.startDateTimeStr,
+          end: dateRange.endDateTimeStr
+        },
+        limit,
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting screens',
@@ -528,23 +585,36 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const dateRange = parseDateRange(req);
 
-      const [navigation] = await pool.execute(
+      // Navigation analizi - Basitleştirilmiş sorgu
+      // Session içindeki ardışık screen view geçişlerini buluyoruz
+      const [navigation] = await poolWrapper.execute(
         `SELECT 
-          e1.screenName as fromScreen,
-          e2.screenName as toScreen,
+          COALESCE(e1.screenName, 'Unknown') as fromScreen,
+          COALESCE(e2.screenName, 'Unknown') as toScreen,
           COUNT(*) as transitions
          FROM analytics_events e1
-         INNER JOIN analytics_events e2 ON e1.sessionId = e2.sessionId
-         WHERE e1.tenantId = ? 
-         AND e1.eventType = 'screen_view' 
-         AND e2.eventType = 'screen_view'
-         AND e1.timestamp < e2.timestamp
-         AND TIMESTAMPDIFF(SECOND, e1.timestamp, e2.timestamp) < 300
-         AND e1.timestamp >= ? AND e1.timestamp <= ?
+         INNER JOIN analytics_events e2 
+           ON e1.sessionId = e2.sessionId
+           AND e1.eventType = 'screen_view'
+           AND e2.eventType = 'screen_view'
+           AND e1.timestamp < e2.timestamp
+           AND TIMESTAMPDIFF(SECOND, e1.timestamp, e2.timestamp) BETWEEN 1 AND 300
+           AND e1.screenName IS NOT NULL
+           AND e2.screenName IS NOT NULL
+           AND e1.screenName != e2.screenName
+         WHERE e1.tenantId = ?
+           AND e1.timestamp >= ? AND e1.timestamp <= ?
+           AND NOT EXISTS (
+             SELECT 1 FROM analytics_events e3
+             WHERE e3.sessionId = e1.sessionId
+               AND e3.eventType = 'screen_view'
+               AND e3.timestamp > e1.timestamp
+               AND e3.timestamp < e2.timestamp
+           )
          GROUP BY e1.screenName, e2.screenName
          ORDER BY transitions DESC
          LIMIT 50`,
-        [tenantId, dateRange.start, dateRange.end]
+        [tenantId, dateRange.startDateTimeStr, dateRange.endDateTimeStr]
       );
 
       res.json({
@@ -553,6 +623,15 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       });
     } catch (error) {
       console.error('❌ Admin Analytics: Error getting navigation:', error);
+      console.error('Error details:', {
+        tenantId,
+        dateRange: {
+          start: dateRange.startDateTimeStr,
+          end: dateRange.endDateTimeStr
+        },
+        error: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         success: false,
         message: 'Error getting navigation',
@@ -639,7 +718,7 @@ function createAdminAnalyticsRoutes(poolWrapper) {
       const tenantId = getTenantId(req);
       const reportId = parseInt(req.params.reportId);
 
-      const [reports] = await pool.execute(
+      const [reports] = await poolWrapper.execute(
         `SELECT * FROM analytics_reports WHERE id = ? AND tenantId = ?`,
         [reportId, tenantId]
       );

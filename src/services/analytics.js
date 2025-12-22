@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from './api';
+import api from './api';
 
 /**
  * Analytics SDK - Mobil uygulama için analitik tracking
