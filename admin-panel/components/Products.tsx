@@ -1516,11 +1516,12 @@ export default function Products() {
                       <Activity className="w-4 h-4 mr-2 text-purple-600 dark:text-purple-400" />
                       Bedenler & Stok Durumu
                     </h4>
-                    {(sizesMap[showViewModal.product.id] || []).length > 0 ? (
+                    {showViewModal.product && (sizesMap[showViewModal.product.id] || []).length > 0 ? (
                       <div className="space-y-2">
                         {(sizesMap[showViewModal.product.id] || []).map((size, i) => {
                           // Önce productSizes'tan kontrol et, sonra showViewModal.sizeStocks'tan, sonra details'ten
-                          let stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                          const productId = showViewModal.product!.id
+                          let stock = productSizes[productId]?.[size] ?? 0
                           
                           // Eğer productSizes'ta yoksa, modal state'inden kontrol et
                           if (stock === 0 && showViewModal.sizeStocks && showViewModal.sizeStocks[size]) {
@@ -1594,12 +1595,13 @@ export default function Products() {
                           )
                         })}
                         {/* Toplam Stok */}
-                        {(() => {
+                        {showViewModal.product && (() => {
                           // Tüm bedenlerin stoklarını topla
                           let totalStock = 0
-                          const currentSizes = sizesMap[showViewModal.product.id] || []
+                          const productId = showViewModal.product.id
+                          const currentSizes = sizesMap[productId] || []
                           currentSizes.forEach((size) => {
-                            let stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                            let stock = productSizes[productId]?.[size] ?? 0
                             
                             // Eğer productSizes'ta yoksa, modal state'inden kontrol et
                             if (stock === 0 && showViewModal.sizeStocks && showViewModal.sizeStocks[size]) {
@@ -1747,8 +1749,8 @@ export default function Products() {
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {allImages.map((img, idx) => {
-                            const isMainImage = showViewModal.product.image === img || (showViewModal.details && (showViewModal.details as any).image === img)
-                            const imageKey = `${showViewModal.product.id}-${img}`
+                            const isMainImage = product?.image === img || (details && (details as any).image === img)
+                            const imageKey = `${product?.id || 'unknown'}-${img}`
                             const isLoading = settingMainImage[imageKey]
                             
                             return (
@@ -1763,7 +1765,7 @@ export default function Products() {
                                 
                                 <img 
                                   src={img} 
-                                  alt={`${showViewModal.product.name} - ${idx + 1}`}
+                                  alt={`${product?.name || 'Ürün'} - ${idx + 1}`}
                                   className={`w-full h-full object-cover ${isMainImage ? 'ring-2 ring-blue-500' : ''}`}
                                   onError={(e) => {
                                     // Hatalı görseli gizle

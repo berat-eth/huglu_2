@@ -317,6 +317,7 @@ export interface Product {
   reviewCount?: number;
   stock?: number;
   sku?: string;
+  description?: string;
 }
 
 export interface Order {

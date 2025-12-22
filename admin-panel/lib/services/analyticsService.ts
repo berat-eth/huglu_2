@@ -1,4 +1,4 @@
-import { api } from '../api';
+import { api, type ApiResponse } from '../api';
 
 /**
  * Analytics Service - Admin panel için analitik API çağrıları
@@ -8,7 +8,7 @@ export const analyticsService = {
    * Gerçek zamanlı genel bakış
    */
   async getRealtimeOverview(minutes: number = 60) {
-    const response = await api.get(`/admin/analytics/realtime/overview?minutes=${minutes}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/realtime/overview?minutes=${minutes}`);
     return response.data;
   },
 
@@ -16,7 +16,7 @@ export const analyticsService = {
    * Canlı kullanıcılar
    */
   async getRealtimeUsers(limit: number = 100) {
-    const response = await api.get(`/admin/analytics/realtime/users?limit=${limit}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/realtime/users?limit=${limit}`);
     return response.data;
   },
 
@@ -24,7 +24,7 @@ export const analyticsService = {
    * Canlı eventler
    */
   async getRealtimeEvents(limit: number = 50) {
-    const response = await api.get(`/admin/analytics/realtime/events?limit=${limit}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/realtime/events?limit=${limit}`);
     return response.data;
   },
 
@@ -37,7 +37,7 @@ export const analyticsService = {
     if (endDate) params.append('endDate', endDate);
     if (days) params.append('days', days.toString());
     
-    const response = await api.get(`/admin/analytics/ecommerce/overview?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/ecommerce/overview?${params.toString()}`);
     return response.data;
   },
 
@@ -50,7 +50,7 @@ export const analyticsService = {
     if (endDate) params.append('endDate', endDate);
     if (days) params.append('days', days.toString());
     
-    const response = await api.get(`/admin/analytics/ecommerce/revenue?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/ecommerce/revenue?${params.toString()}`);
     return response.data;
   },
 
@@ -64,7 +64,7 @@ export const analyticsService = {
     if (days) params.append('days', days.toString());
     params.append('limit', limit.toString());
     
-    const response = await api.get(`/admin/analytics/ecommerce/products?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/ecommerce/products?${params.toString()}`);
     return response.data;
   },
 
@@ -72,7 +72,7 @@ export const analyticsService = {
    * Funnel listesi
    */
   async getFunnels() {
-    const response = await api.get('/admin/analytics/ecommerce/funnels');
+    const response = await api.get<ApiResponse<any>>('/admin/analytics/ecommerce/funnels');
     return response.data;
   },
 
@@ -85,7 +85,7 @@ export const analyticsService = {
     dateRangeStart?: string;
     dateRangeEnd?: string;
   }) {
-    const response = await api.post('/admin/analytics/ecommerce/funnels', funnelData);
+    const response = await api.post<ApiResponse<any>>('/admin/analytics/ecommerce/funnels', funnelData);
     return response.data;
   },
 
@@ -98,7 +98,7 @@ export const analyticsService = {
     if (endDate) params.append('endDate', endDate);
     if (days) params.append('days', days.toString());
     
-    const response = await api.get(`/admin/analytics/users/overview?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/users/overview?${params.toString()}`);
     return response.data;
   },
 
@@ -106,7 +106,7 @@ export const analyticsService = {
    * Kohort listesi
    */
   async getCohorts(limit: number = 50) {
-    const response = await api.get(`/admin/analytics/users/cohorts?limit=${limit}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/users/cohorts?limit=${limit}`);
     return response.data;
   },
 
@@ -118,7 +118,7 @@ export const analyticsService = {
     cohortType?: 'registration' | 'first_purchase' | 'custom';
     cohortDate: string;
   }) {
-    const response = await api.post('/admin/analytics/users/cohorts', cohortData);
+    const response = await api.post<ApiResponse<any>>('/admin/analytics/users/cohorts', cohortData);
     return response.data;
   },
 
@@ -130,7 +130,7 @@ export const analyticsService = {
     params.append('cohortDate', cohortDate);
     if (cohortType) params.append('cohortType', cohortType);
     
-    const response = await api.get(`/admin/analytics/users/retention?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/users/retention?${params.toString()}`);
     return response.data;
   },
 
@@ -143,7 +143,7 @@ export const analyticsService = {
     if (endDate) params.append('endDate', endDate);
     if (days) params.append('days', days.toString());
     
-    const response = await api.get(`/admin/analytics/behavior/sessions?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/behavior/sessions?${params.toString()}`);
     return response.data;
   },
 
@@ -157,7 +157,7 @@ export const analyticsService = {
     if (days) params.append('days', days.toString());
     params.append('limit', limit.toString());
     
-    const response = await api.get(`/admin/analytics/behavior/screens?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/behavior/screens?${params.toString()}`);
     return response.data;
   },
 
@@ -170,7 +170,7 @@ export const analyticsService = {
     if (endDate) params.append('endDate', endDate);
     if (days) params.append('days', days.toString());
     
-    const response = await api.get(`/admin/analytics/behavior/navigation?${params.toString()}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/behavior/navigation?${params.toString()}`);
     return response.data;
   },
 
@@ -178,7 +178,7 @@ export const analyticsService = {
    * Rapor listesi
    */
   async getReports(limit: number = 50, offset: number = 0) {
-    const response = await api.get(`/admin/analytics/reports?limit=${limit}&offset=${offset}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/reports?limit=${limit}&offset=${offset}`);
     return response.data;
   },
 
@@ -195,7 +195,7 @@ export const analyticsService = {
       end: string;
     };
   }) {
-    const response = await api.post('/admin/analytics/reports/generate', reportData);
+    const response = await api.post<ApiResponse<any>>('/admin/analytics/reports/generate', reportData);
     return response.data;
   },
 
@@ -203,7 +203,7 @@ export const analyticsService = {
    * Rapor detayı
    */
   async getReport(reportId: number) {
-    const response = await api.get(`/admin/analytics/reports/${reportId}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/reports/${reportId}`);
     return response.data;
   },
 
@@ -211,7 +211,7 @@ export const analyticsService = {
    * Rapor export
    */
   async exportReport(reportId: number, format: 'pdf' | 'excel' = 'pdf') {
-    const response = await api.get(`/admin/analytics/reports/${reportId}/export?format=${format}`);
+    const response = await api.get<ApiResponse<any>>(`/admin/analytics/reports/${reportId}/export?format=${format}`);
     return response.data;
   }
 };
