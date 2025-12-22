@@ -1,98 +1,117 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
-
-const MOCK_CHATS = [
-  {
-    id: 1,
-    title: 'Climbing Gear Inquiry',
-    lastMessage: 'Is this carabiner suitable for heavy loading?',
-    timestamp: '12:30 PM',
-    icon: 'fitness-outline',
-    iconBg: 'rgba(17, 212, 33, 0.1)',
-    iconColor: COLORS.primary,
-    isActive: true,
-    unreadCount: 2,
-  },
-  {
-    id: 2,
-    title: 'Order #4921 - Sleeping Bag',
-    lastMessage: 'Hi, thanks for reaching out! The temperature...',
-    timestamp: 'Oct 12',
-    icon: 'cube-outline',
-    iconBg: 'rgba(255, 149, 0, 0.1)',
-    iconColor: '#FF9500',
-    isActive: false,
-    unreadCount: 0,
-  },
-  {
-    id: 3,
-    title: 'Return Policy Question',
-    lastMessage: "Can I return the boots if I've worn them...",
-    timestamp: 'Sep 28',
-    icon: 'return-down-back-outline',
-    iconBg: 'rgba(0, 122, 255, 0.1)',
-    iconColor: '#007AFF',
-    isActive: false,
-    isResolved: true,
-  },
-  {
-    id: 4,
-    title: 'Tent Setup Guide',
-    lastMessage: 'Here is the PDF manual for the 4-person...',
-    timestamp: 'Aug 15',
-    icon: 'home-outline',
-    iconBg: COLORS.gray100,
-    iconColor: COLORS.gray600,
-    isActive: false,
-    isResolved: true,
-  },
-  {
-    id: 5,
-    title: 'Membership Renewal',
-    lastMessage: 'Your points have been successfully added...',
-    timestamp: 'Jul 02',
-    icon: 'person-circle-outline',
-    iconBg: 'rgba(175, 82, 222, 0.1)',
-    iconColor: '#AF52DE',
-    isActive: false,
-    isResolved: true,
-  },
-];
+import { liveSupportAPI } from '../services/api';
 
 export default function ChatHistoryScreen({ navigation }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    loadChatHistory();
+    loadUserId();
   }, []);
 
+  useEffect(() => {
+    if (userId) {
+      loadChatHistory();
+    }
+  }, [userId]);
+
+  const loadUserId = async () => {
+    try {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      if (storedUserId) {
+        setUserId(parseInt(storedUserId));
+      } else {
+        // Varsayılan olarak 1 kullan (misafir kullanıcı için)
+        setUserId(1);
+      }
+    } catch (error) {
+      console.error('User ID yükleme hatası:', error);
+      setUserId(1);
+    }
+  };
+
   const loadChatHistory = async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
-      // Gerçek API çağrısı yerine mock data kullanıyoruz
-      // const response = await chatAPI.getHistory();
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simüle edilmiş yükleme
-      setChats(MOCK_CHATS);
+      const response = await liveSupportAPI.getConversations(userId);
+      
+      if (response && response.success && response.data) {
+        // Backend'den gelen verileri formatla
+        const formattedChats = response.data.map((conv, index) => {
+          // İkon ve renk belirleme
+          let icon = 'chatbubble-outline';
+          let iconBg = 'rgba(17, 212, 33, 0.1)';
+          let iconColor = COLORS.primary;
+
+          if (conv.productId) {
+            icon = 'cube-outline';
+            iconBg = 'rgba(255, 149, 0, 0.1)';
+            iconColor = '#FF9500';
+          } else if (conv.isResolved) {
+            icon = 'checkmark-circle-outline';
+            iconBg = COLORS.gray100;
+            iconColor = COLORS.gray600;
+          } else if (conv.isActive) {
+            icon = 'chatbubble-ellipses-outline';
+            iconBg = 'rgba(17, 212, 33, 0.1)';
+            iconColor = COLORS.primary;
+          }
+
+          return {
+            id: conv.conversationId || `conv_${index}`,
+            conversationId: conv.conversationId,
+            title: conv.title || 'Destek Talebi',
+            lastMessage: conv.lastMessage || 'Mesaj yok',
+            timestamp: conv.timestamp || 'Bilinmiyor',
+            fullTimestamp: conv.fullTimestamp,
+            icon: icon,
+            iconBg: iconBg,
+            iconColor: iconColor,
+            isActive: conv.isActive || false,
+            isResolved: conv.isResolved || false,
+            unreadCount: conv.unreadCount || 0,
+            messageCount: conv.messageCount || 0,
+            productId: conv.productId,
+            productName: conv.productName,
+            productPrice: conv.productPrice,
+            productImage: conv.productImage,
+          };
+        });
+
+        setChats(formattedChats);
+      } else {
+        setChats([]);
+      }
     } catch (error) {
-      console.error('Chat history yükleme hatası:', error);
-      setChats(MOCK_CHATS); // Fallback to mock data
+      console.error('Destek talepleri yükleme hatası:', error);
+      Alert.alert('Hata', 'Destek talepleri yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setChats([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleChatPress = (chat) => {
-    navigation.navigate('LiveChat', { chatId: chat.id, chatTitle: chat.title });
+    // Konuşma tarihini al ve LiveChatScreen'e gönder
+    const conversationDate = chat.fullTimestamp ? new Date(chat.fullTimestamp).toISOString().split('T')[0] : null;
+    navigation.navigate('LiveChat', { 
+      conversationDate: conversationDate,
+      conversationId: chat.conversationId,
+      chatTitle: chat.title 
+    });
   };
 
   const handleNewChat = () => {
-    navigation.navigate('LiveChat', { isNew: true });
+    navigation.navigate('LiveChatEntry');
   };
 
   const filteredChats = chats.filter(chat =>
@@ -134,6 +153,19 @@ export default function ChatHistoryScreen({ navigation }) {
         <Text style={styles.chatMessage} numberOfLines={1}>
           {item.lastMessage}
         </Text>
+        {item.productName && (
+          <View style={styles.productInfo}>
+            <Ionicons name="cube-outline" size={12} color={COLORS.gray500} />
+            <Text style={styles.productText} numberOfLines={1}>
+              {item.productName}
+            </Text>
+          </View>
+        )}
+        {item.messageCount > 0 && (
+          <Text style={styles.messageCountText}>
+            {item.messageCount} mesaj
+          </Text>
+        )}
       </View>
 
       {item.unreadCount > 0 && (
@@ -155,7 +187,7 @@ export default function ChatHistoryScreen({ navigation }) {
       <Text style={styles.sectionTitle}>{title}</Text>
       {showClear && (
         <TouchableOpacity>
-          <Text style={styles.clearButton}>Clear all</Text>
+          <Text style={styles.clearButton}>Temizle</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -168,12 +200,12 @@ export default function ChatHistoryScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Support History</Text>
+          <Text style={styles.headerTitle}>Geçmiş Destek Taleplerim</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Yükleniyor...</Text>
         </View>
       </SafeAreaView>
     );
@@ -186,7 +218,7 @@ export default function ChatHistoryScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Support History</Text>
+        <Text style={styles.headerTitle}>Geçmiş Destek Taleplerim</Text>
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
@@ -198,7 +230,7 @@ export default function ChatHistoryScreen({ navigation }) {
           <Ionicons name="search-outline" size={20} color={COLORS.gray400} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search conversations..."
+            placeholder="Konuşmalarda ara..."
             placeholderTextColor={COLORS.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -216,7 +248,7 @@ export default function ChatHistoryScreen({ navigation }) {
           <>
             {recentChats.length > 0 && (
               <>
-                {renderSectionHeader('RECENT', true)}
+                {renderSectionHeader('AKTİF TALEPLER', true)}
                 {recentChats.map(chat => (
                   <View key={chat.id}>
                     {renderChatItem({ item: chat })}
@@ -226,7 +258,7 @@ export default function ChatHistoryScreen({ navigation }) {
             )}
             {previousChats.length > 0 && (
               <>
-                {renderSectionHeader('PREVIOUS')}
+                {renderSectionHeader('GEÇMİŞ TALEPLER')}
                 {previousChats.map(chat => (
                   <View key={chat.id}>
                     {renderChatItem({ item: chat })}
@@ -241,10 +273,16 @@ export default function ChatHistoryScreen({ navigation }) {
             <View style={styles.emptyIcon}>
               <Ionicons name="chatbubbles-outline" size={64} color={COLORS.gray300} />
             </View>
-            <Text style={styles.emptyTitle}>No conversation history yet</Text>
+            <Text style={styles.emptyTitle}>Henüz destek talebi yok</Text>
             <Text style={styles.emptySubtitle}>
-              Start a conversation with our support team
+              Destek ekibimizle iletişime geçmek için yeni bir talep oluşturun
             </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={handleNewChat}
+            >
+              <Text style={styles.emptyButtonText}>Yeni Talep Oluştur</Text>
+            </TouchableOpacity>
           </View>
         }
       />
@@ -256,7 +294,7 @@ export default function ChatHistoryScreen({ navigation }) {
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={24} color={COLORS.white} />
-        <Text style={styles.fabText}>New Chat</Text>
+        <Text style={styles.fabText}>Yeni Talep</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -283,6 +321,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
   },
   backButton: {
     width: 40,
@@ -306,12 +347,16 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingBottom: 8,
+    paddingTop: 8,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 48,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.backgroundLight,
     borderRadius: 12,
     paddingHorizontal: 16,
     gap: 12,
@@ -326,6 +371,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 100,
+    paddingTop: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -416,6 +462,22 @@ const styles = StyleSheet.create({
     color: COLORS.gray600,
     lineHeight: 20,
   },
+  productInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  productText: {
+    fontSize: 12,
+    color: COLORS.gray500,
+    flex: 1,
+  },
+  messageCountText: {
+    fontSize: 11,
+    color: COLORS.gray400,
+    marginTop: 2,
+  },
   unreadBadge: {
     minWidth: 24,
     height: 24,
@@ -464,6 +526,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.gray500,
     textAlign: 'center',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   fab: {
     position: 'absolute',

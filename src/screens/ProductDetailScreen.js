@@ -14,6 +14,8 @@ import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 import { useAlert } from '../hooks/useAlert';
+import { useScreenTracking, useAnalytics, usePerformanceTracking } from '../hooks/useAnalytics';
+import analyticsService from '../services/analytics';
 
 const { width } = Dimensions.get('window');
 
@@ -47,7 +49,17 @@ const maskUserName = (name) => {
 
 export default function ProductDetailScreen({ navigation, route }) {
   const alert = useAlert();
+  const analytics = useAnalytics();
   const { product: initialProduct, productId: routeProductId } = route.params || {};
+  
+  // Screen tracking
+  useScreenTracking('ProductDetailScreen', {
+    productId: routeProductId || initialProduct?.id,
+    category: 'product'
+  });
+  
+  // Performance tracking
+  usePerformanceTracking('product_detail_load');
   const [product, setProduct] = useState(initialProduct);
   const [selectedSize, setSelectedSize] = useState(0);
   const [isFavorite, setIsFavorite] = useState(initialProduct?.isFavorite || false);
@@ -141,6 +153,14 @@ export default function ProductDetailScreen({ navigation, route }) {
             
             if (data) {
               setProduct(data);
+              
+              // Product view tracking
+              analytics.trackProductView(productId, {
+                name: data.name,
+                categoryId: data.categoryId,
+                price: data.price,
+                category: data.category
+              });
               
               // Kullanıcının favorilerini kontrol et
               try {
@@ -998,6 +1018,10 @@ export default function ProductDetailScreen({ navigation, route }) {
       const response = await cartAPI.add(userId, pid, quantity, selectedVariations);
 
       if (response.data?.success) {
+        // Add to cart tracking
+        const productPrice = product.price || 0;
+        analytics.trackAddToCart(pid, quantity, productPrice);
+        
         // Badge'i güncelle
         const { updateCartBadge } = require('../utils/cartBadge');
         await updateCartBadge(userId);
@@ -1017,6 +1041,13 @@ export default function ProductDetailScreen({ navigation, route }) {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
                           'Sepete eklenirken bir hata oluştu';
+      
+      // Error tracking
+      analytics.trackError(error, {
+        action: 'add_to_cart',
+        productId: pid
+      });
+      
       alert.show('Hata', errorMessage);
     } finally {
       setAddingCart(false);

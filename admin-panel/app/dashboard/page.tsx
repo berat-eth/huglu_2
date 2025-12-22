@@ -59,13 +59,13 @@ import GoogleMapsScraper from '@/components/GoogleMapsScraper'
 import SEO from '@/components/SEO'
 import Popups from '@/components/Popups'
 import Analytics from '@/components/Analytics'
-import MLInsights from '@/components/MLInsights'
 import Integrations from '@/components/Integrations'
 import TrendyolOrders from '@/components/TrendyolOrders'
 import TrendyolAuth from '@/components/TrendyolAuth'
 import TrendyolProducts from '@/components/TrendyolProducts'
 import HepsiburadaOrders from '@/components/HepsiburadaOrders'
 import TicimaxOrders from '@/components/TicimaxOrders'
+import PlatformBrain from '@/components/PlatformBrain'
 
 
 export default function DashboardPage() {
@@ -236,6 +236,7 @@ export default function DashboardPage() {
           </AnimatePresence>
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'ai-insights' && <AIInsights />}
+          {activeTab === 'platform-brain' && <PlatformBrain />}
           {activeTab === 'customers' && <Customers />}
           {activeTab === 'crm' && <CRM />}
           {activeTab === 'orders' && <Orders />}
@@ -254,7 +255,6 @@ export default function DashboardPage() {
           {activeTab === 'segments' && <Segments />}
 
           {activeTab === 'analytics' && <Analytics />}
-          {activeTab === 'ml-insights' && <MLInsights />}
           {activeTab === 'live-data' && <LiveData />}
           {activeTab === 'live-users' && <LiveUsers />}
           {activeTab === 'server-stats' && <ServerStats />}

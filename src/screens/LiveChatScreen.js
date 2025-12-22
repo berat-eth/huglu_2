@@ -1,31 +1,201 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { liveSupportAPI } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const MESSAGES = [
-  { id: 1, text: 'Merhaba! Size nasıl yardımcı olabilirim?', isUser: false, time: '14:30' },
-  { id: 2, text: 'Merhaba, siparişim hakkında bilgi almak istiyorum', isUser: true, time: '14:31' },
-  { id: 3, text: 'Tabii ki! Sipariş numaranızı paylaşabilir misiniz?', isUser: false, time: '14:31' },
-  { id: 4, text: '#48291', isUser: true, time: '14:32' },
-  { id: 5, text: 'Siparişiniz kargoya verildi. Tahmini teslimat tarihi 18 Aralık.', isUser: false, time: '14:32' },
-];
-
-export default function LiveChatScreen({ navigation }) {
+export default function LiveChatScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState(MESSAGES);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const scrollViewRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-  const sendMessage = () => {
-    if (message.trim()) {
-      const newMessage = {
-        id: messages.length + 1,
-        text: message,
-        isUser: true,
-        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages([...messages, newMessage]);
-      setMessage('');
+  // Kullanıcı ID'sini al
+  useEffect(() => {
+    loadUserId();
+  }, []);
+
+  // Mesaj geçmişini yükle
+  useEffect(() => {
+    if (userId) {
+      loadMessages();
+      // İlk mesaj varsa gönder
+      const initialMessage = route?.params?.initialMessage;
+      if (initialMessage && initialMessage.trim()) {
+        setTimeout(() => {
+          sendInitialMessage(initialMessage);
+        }, 1000);
+      }
+      // Her 5 saniyede bir yeni mesajları kontrol et (sadece aktif konuşmalar için)
+      const conversationDate = route?.params?.conversationDate;
+      if (!conversationDate) {
+        // Sadece aktif konuşmalar için otomatik yenileme
+        const interval = setInterval(() => {
+          loadMessages();
+        }, 5000);
+        return () => clearInterval(interval);
+      }
+    }
+  }, [userId, route?.params?.conversationDate]);
+
+  const loadUserId = async () => {
+    try {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      if (storedUserId) {
+        setUserId(parseInt(storedUserId));
+      } else {
+        // Eğer userId yoksa, route'dan al veya varsayılan olarak 1 kullan
+        const routeUserId = route?.params?.userId;
+        if (routeUserId) {
+          setUserId(routeUserId);
+        } else {
+          // Misafir kullanıcı için
+          setUserId(1);
+        }
+      }
+    } catch (error) {
+      console.error('User ID yükleme hatası:', error);
+      setUserId(1); // Varsayılan olarak misafir kullanıcı
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!userId) return;
+
+    try {
+      setLoading(true);
+      
+      // Eğer conversationDate varsa, o tarihteki mesajları filtrele
+      const conversationDate = route?.params?.conversationDate;
+      const response = await liveSupportAPI.getHistory(userId);
+      
+      if (response && response.success && response.data) {
+        // Backend'den gelen mesajları formatla
+        let filteredMessages = response.data;
+        
+        // Eğer belirli bir tarih seçildiyse, o tarihteki mesajları filtrele
+        if (conversationDate) {
+          const targetDate = new Date(conversationDate).toISOString().split('T')[0];
+          filteredMessages = response.data.filter(msg => {
+            if (!msg.timestamp) return false;
+            const msgDate = new Date(msg.timestamp).toISOString().split('T')[0];
+            return msgDate === targetDate;
+          });
+        }
+        
+        const formattedMessages = filteredMessages.map((msg, index) => {
+          const isUser = msg.intent === 'live_support';
+          const isAdmin = msg.intent === 'admin_message';
+          
+          return {
+            id: msg.id || index,
+            text: msg.message || '',
+            isUser: isUser,
+            isAdmin: isAdmin,
+            time: msg.timestamp 
+              ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+              : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
+          };
+        });
+
+        // Timestamp'e göre sırala
+        formattedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        setMessages(formattedMessages);
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Mesaj geçmişi yükleme hatası:', error);
+      // İlk yüklemede hata varsa hoş geldin mesajı göster
+      if (messages.length === 0) {
+        setMessages([{
+          id: 1,
+          text: 'Merhaba! Size nasıl yardımcı olabilirim?',
+          isUser: false,
+          isAdmin: false,
+          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+        }]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendInitialMessage = async (messageText) => {
+    if (!messageText.trim() || !userId || sending) return;
+
+    setSending(true);
+
+    try {
+      const response = await liveSupportAPI.sendMessage(userId, messageText);
+      
+      if (response && response.success) {
+        // Mesaj başarıyla gönderildi, geçmişi yenile
+        setTimeout(() => {
+          loadMessages();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('İlk mesaj gönderme hatası:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!message.trim() || !userId || sending) return;
+
+    const messageText = message.trim();
+    setMessage('');
+    setSending(true);
+
+    // Optimistic update - mesajı hemen göster
+    const tempMessage = {
+      id: Date.now(),
+      text: messageText,
+      isUser: true,
+      isAdmin: false,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
+    try {
+      const response = await liveSupportAPI.sendMessage(userId, messageText);
+      
+      if (response && response.success) {
+        // Mesaj başarıyla gönderildi, geçmişi yenile
+        setTimeout(() => {
+          loadMessages();
+        }, 500);
+      } else {
+        // Hata durumunda mesajı geri al
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+      }
+    } catch (error) {
+      console.error('Mesaj gönderme hatası:', error);
+      // Hata durumunda mesajı geri al
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen internet bağlantınızı kontrol edin.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -62,72 +232,92 @@ export default function LiveChatScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={100}
       >
-        <ScrollView 
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Date Separator */}
-          <View style={styles.dateSeparator}>
-            <View style={styles.dateLine} />
-            <Text style={styles.dateText}>Bugün</Text>
-            <View style={styles.dateLine} />
+        {loading && messages.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Mesajlar yükleniyor...</Text>
           </View>
+        ) : (
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }}
+          >
+            {/* Date Separator */}
+            {messages.length > 0 && (
+              <View style={styles.dateSeparator}>
+                <View style={styles.dateLine} />
+                <Text style={styles.dateText}>Bugün</Text>
+                <View style={styles.dateLine} />
+              </View>
+            )}
 
-          {/* Messages */}
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.messageRow,
-                msg.isUser ? styles.messageRowUser : styles.messageRowAgent,
-              ]}
-            >
-              {!msg.isUser && (
-                <View style={styles.messageAvatar}>
-                  <Ionicons name="person" size={16} color={COLORS.primary} />
-                </View>
-              )}
+            {/* Messages */}
+            {messages.map((msg) => (
               <View
+                key={msg.id}
                 style={[
-                  styles.messageBubble,
-                  msg.isUser ? styles.messageBubbleUser : styles.messageBubbleAgent,
+                  styles.messageRow,
+                  msg.isUser ? styles.messageRowUser : styles.messageRowAgent,
                 ]}
               >
-                <Text
+                {!msg.isUser && (
+                  <View style={styles.messageAvatar}>
+                    <Ionicons 
+                      name={msg.isAdmin ? "person" : "headset"} 
+                      size={16} 
+                      color={msg.isAdmin ? COLORS.primary : COLORS.success} 
+                    />
+                  </View>
+                )}
+                <View
                   style={[
-                    styles.messageText,
-                    msg.isUser ? styles.messageTextUser : styles.messageTextAgent,
+                    styles.messageBubble,
+                    msg.isUser ? styles.messageBubbleUser : styles.messageBubbleAgent,
+                    msg.isAdmin && styles.messageBubbleAdmin,
                   ]}
                 >
-                  {msg.text}
-                </Text>
-                <Text
-                  style={[
-                    styles.messageTime,
-                    msg.isUser ? styles.messageTimeUser : styles.messageTimeAgent,
-                  ]}
-                >
-                  {msg.time}
-                </Text>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      msg.isUser ? styles.messageTextUser : styles.messageTextAgent,
+                    ]}
+                  >
+                    {msg.text}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.messageTime,
+                      msg.isUser ? styles.messageTimeUser : styles.messageTimeAgent,
+                    ]}
+                  >
+                    {msg.time}
+                  </Text>
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
 
-          {/* Typing Indicator */}
-          <View style={styles.typingIndicator}>
-            <View style={styles.messageAvatar}>
-              <Ionicons name="person" size={16} color={COLORS.primary} />
-            </View>
-            <View style={styles.typingBubble}>
-              <View style={styles.typingDots}>
-                <View style={styles.typingDot} />
-                <View style={styles.typingDot} />
-                <View style={styles.typingDot} />
+            {/* Typing Indicator - Admin yazıyor göstergesi */}
+            {sending && (
+              <View style={styles.typingIndicator}>
+                <View style={styles.messageAvatar}>
+                  <Ionicons name="headset" size={16} color={COLORS.primary} />
+                </View>
+                <View style={styles.typingBubble}>
+                  <View style={styles.typingDots}>
+                    <View style={styles.typingDot} />
+                    <View style={styles.typingDot} />
+                    <View style={styles.typingDot} />
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
-        </ScrollView>
+            )}
+          </ScrollView>
+        )}
 
         {/* Input Bar */}
         <View style={styles.inputContainer}>
@@ -141,16 +331,22 @@ export default function LiveChatScreen({ navigation }) {
             value={message}
             onChangeText={setMessage}
             multiline
+            editable={!sending && !loading}
           />
           <TouchableOpacity 
             style={[styles.sendButton, message.trim() && styles.sendButtonActive]}
             onPress={sendMessage}
+            disabled={!message.trim() || sending || loading}
           >
-            <Ionicons 
-              name="send" 
-              size={20} 
-              color={message.trim() ? COLORS.white : COLORS.gray400} 
-            />
+            {sending ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Ionicons 
+                name="send" 
+                size={20} 
+                color={message.trim() ? COLORS.white : COLORS.gray400} 
+              />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -225,6 +421,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
   messagesContainer: {
     flex: 1,
   },
@@ -281,6 +487,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: COLORS.gray100,
+  },
+  messageBubbleAdmin: {
+    backgroundColor: '#E3F2FD',
+    borderColor: COLORS.primary,
+    borderWidth: 1,
   },
   messageText: {
     fontSize: 15,

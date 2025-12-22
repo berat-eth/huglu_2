@@ -3027,143 +3027,6 @@ async function createDatabaseSchema(pool) {
       `);
       console.log('✅ analytics_aggregates table ready');
 
-      // ML Predictions table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_predictions (
-          id BIGINT AUTO_INCREMENT PRIMARY KEY,
-          userId INT NULL,
-          tenantId INT NOT NULL DEFAULT 1,
-          predictionType ENUM('purchase', 'churn', 'session_duration', 'engagement') NOT NULL,
-          probability DECIMAL(5,4) NOT NULL,
-          metadata JSON,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_userId (userId),
-          INDEX idx_tenantId (tenantId),
-          INDEX idx_predictionType (predictionType),
-          INDEX idx_createdAt (createdAt),
-          INDEX idx_user_tenant (userId, tenantId),
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
-          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_predictions table ready');
-
-      // ML Recommendations table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_recommendations (
-          id BIGINT AUTO_INCREMENT PRIMARY KEY,
-          userId INT NOT NULL,
-          tenantId INT NOT NULL DEFAULT 1,
-          productIds TEXT NOT NULL,
-          scores TEXT NOT NULL,
-          metadata JSON,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_userId (userId),
-          INDEX idx_tenantId (tenantId),
-          INDEX idx_createdAt (createdAt),
-          UNIQUE KEY unique_user_tenant (userId, tenantId),
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_recommendations table ready');
-
-      // ML Anomalies table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_anomalies (
-          id BIGINT AUTO_INCREMENT PRIMARY KEY,
-          eventId BIGINT NULL,
-          userId INT NULL,
-          tenantId INT NOT NULL DEFAULT 1,
-          anomalyScore DECIMAL(5,4) NOT NULL,
-          anomalyType ENUM('bot', 'fraud', 'unusual_behavior', 'performance_issue') NOT NULL,
-          metadata JSON,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_eventId (eventId),
-          INDEX idx_userId (userId),
-          INDEX idx_tenantId (tenantId),
-          INDEX idx_anomalyType (anomalyType),
-          INDEX idx_anomalyScore (anomalyScore),
-          INDEX idx_createdAt (createdAt),
-          FOREIGN KEY (eventId) REFERENCES user_behavior_events(id) ON DELETE SET NULL,
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
-          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_anomalies table ready');
-
-      // ML Segments table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_segments (
-          id BIGINT AUTO_INCREMENT PRIMARY KEY,
-          userId INT NOT NULL,
-          tenantId INT NOT NULL DEFAULT 1,
-          segmentId INT NOT NULL,
-          segmentName VARCHAR(255) NOT NULL,
-          confidence DECIMAL(5,4) NOT NULL,
-          metadata JSON,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_userId (userId),
-          INDEX idx_tenantId (tenantId),
-          INDEX idx_segmentId (segmentId),
-          INDEX idx_segmentName (segmentName),
-          INDEX idx_updatedAt (updatedAt),
-          UNIQUE KEY unique_user_tenant (userId, tenantId),
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_segments table ready');
-
-      // ML Models table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_models (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          modelName VARCHAR(255) NOT NULL,
-          modelType ENUM('purchase_prediction', 'recommendation', 'anomaly_detection', 'segmentation') NOT NULL,
-          version VARCHAR(50) NOT NULL,
-          status ENUM('training', 'active', 'inactive', 'archived') DEFAULT 'training',
-          filePath VARCHAR(500),
-          accuracy DECIMAL(5,4),
-          \`precision\` DECIMAL(5,4),
-          recall DECIMAL(5,4),
-          f1Score DECIMAL(5,4),
-          trainingDataSize INT,
-          trainingDuration INT,
-          hyperparameters JSON,
-          metadata JSON,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          deployedAt TIMESTAMP NULL,
-          INDEX idx_modelType (modelType),
-          INDEX idx_status (status),
-          INDEX idx_version (version),
-          UNIQUE KEY unique_model_version (modelName, version)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_models table ready');
-
-      // ML Training Logs table
-      await pool.execute(`
-        CREATE TABLE IF NOT EXISTS ml_training_logs (
-          id BIGINT AUTO_INCREMENT PRIMARY KEY,
-          modelId INT NOT NULL,
-          epoch INT NOT NULL,
-          loss DECIMAL(10,6),
-          accuracy DECIMAL(5,4),
-          validationLoss DECIMAL(10,6),
-          validationAccuracy DECIMAL(5,4),
-          learningRate DECIMAL(10,8),
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_modelId (modelId),
-          INDEX idx_epoch (epoch),
-          INDEX idx_timestamp (timestamp),
-          FOREIGN KEY (modelId) REFERENCES ml_models(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-      console.log('✅ ml_training_logs table ready');
 
       // Chat Sessions table
       await pool.execute(`
@@ -3303,6 +3166,84 @@ async function createDatabaseSchema(pool) {
       } catch (error) {
         console.log('⚠️ Could not add importance_level column (may already exist):', error.message);
       }
+
+      // Platform Brain - Feature Flags table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS platform_brain_feature_flags (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL DEFAULT 1,
+          featureKey VARCHAR(100) NOT NULL,
+          featureName VARCHAR(255) NOT NULL,
+          description TEXT,
+          isEnabled TINYINT(1) DEFAULT 0,
+          isActive TINYINT(1) DEFAULT 1,
+          config JSON,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_tenant_feature (tenantId, featureKey),
+          INDEX idx_tenant_active (tenantId, isActive),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ platform_brain_feature_flags table ready');
+
+      // Platform Brain - Rules table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS platform_brain_rules (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL DEFAULT 1,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          conditions JSON NOT NULL,
+          actions JSON NOT NULL,
+          priority INT DEFAULT 0,
+          isActive TINYINT(1) DEFAULT 1,
+          executionMode ENUM('log_only', 'suggest_only', 'execute') DEFAULT 'log_only',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant_active (tenantId, isActive),
+          INDEX idx_priority (priority DESC),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ platform_brain_rules table ready');
+
+      // Platform Brain - Decision Logs table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS platform_brain_decisions (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL DEFAULT 1,
+          userId INT NULL,
+          ruleId INT NOT NULL,
+          ruleName VARCHAR(255) NOT NULL,
+          eventType VARCHAR(100),
+          eventData JSON,
+          decisionData JSON NOT NULL,
+          executionMode ENUM('log_only', 'suggest_only', 'execute') DEFAULT 'log_only',
+          executed TINYINT(1) DEFAULT 0,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_tenant_user (tenantId, userId),
+          INDEX idx_rule (ruleId),
+          INDEX idx_created (createdAt DESC),
+          INDEX idx_executed (executed),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
+          FOREIGN KEY (ruleId) REFERENCES platform_brain_rules(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ platform_brain_decisions table ready');
+
+      // Insert default feature flags if they don't exist
+      await pool.execute(`
+        INSERT IGNORE INTO platform_brain_feature_flags
+        (tenantId, featureKey, featureName, description, isEnabled, config)
+        VALUES
+        (1, 'platform_brain_enabled', 'Platform Brain Enabled', 'Master switch for Platform Brain', 0, '{}'),
+        (1, 'event_adapter_enabled', 'Event Adapter Enabled', 'Enable event tracking and adaptation', 0, '{}'),
+        (1, 'user_state_enabled', 'User State Engine Enabled', 'Enable user state computation', 0, '{}'),
+        (1, 'decision_engine_enabled', 'Decision Engine Enabled', 'Enable rule evaluation', 0, '{"executionMode": "log_only"}'),
+        (1, 'action_dispatcher_enabled', 'Action Dispatcher Enabled', 'Enable action execution', 0, '{}')
+      `);
 
       // Re-enable foreign key checks
       await pool.execute('SET FOREIGN_KEY_CHECKS = 1');

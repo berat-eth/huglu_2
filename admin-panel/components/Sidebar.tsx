@@ -65,6 +65,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'ai-insights', label: 'AI İçgörüleri', icon: Brain },
+        { id: 'platform-brain', label: 'Huğlu AI', icon: Brain },
       ]
     },
     {
@@ -122,7 +123,6 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
     {
       title: 'Yapay Zeka',
       items: [
-        { id: 'ml-insights', label: 'ML Insights', icon: Brain },
         { id: 'project-ajax', label: 'Project Ajax', icon: Sparkles },
         { id: 'recommendations', label: 'Ürün Önerileri', icon: Sparkles },
       ]
@@ -168,7 +168,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
         { id: 'seo', label: 'SEO Panel', icon: Search },
         { id: 'admin-logs', label: 'Yönetici Logları', icon: FileText },
         { id: 'snort-logs', label: 'Snort IDS Logları', icon: AlertTriangle },
-        { id: 'chatbot', label: 'Chatbot', icon: MessageSquare },
+        { id: 'chatbot', label: 'Canlı Destek', icon: MessageSquare },
       ]
     },
     {

@@ -53,10 +53,19 @@ api.interceptors.request.use(
 // Response interceptor - Hata yönetimi
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', response.config.url, response.status, {
-      dataSize: JSON.stringify(response.data).length,
-      success: response.data?.success
-    });
+    // Analytics endpoint'leri için daha az log
+    const isAnalyticsEndpoint = response.config.url?.includes('/events/');
+    if (!isAnalyticsEndpoint) {
+      console.log('✅ API Response:', response.config.url, response.status, {
+        dataSize: JSON.stringify(response.data).length,
+        success: response.data?.success
+      });
+    } else {
+      // Analytics için sadece başarı/hata logla
+      if (response.data?.success) {
+        console.log('✅ Analytics API:', response.config.url, 'Başarılı');
+      }
+    }
     return response;
   },
   async (error) => {
@@ -393,6 +402,18 @@ export const chatbotAPI = {
   getHistory: (userId, sessionId) => 
     api.get('/chatbot/history', { params: { userId, sessionId } }),
   createSession: (userId) => api.post('/chatbot/session', { userId }),
+};
+
+// ==================== CANLI DESTEK API ====================
+export const liveSupportAPI = {
+  sendMessage: (userId, message) => 
+    api.post('/chatbot/live-support/message', { userId, message }),
+  getHistory: (userId) => 
+    api.get(`/chatbot/live-support/history/${userId}`),
+  getAdminMessages: (userId) => 
+    api.get(`/chatbot/admin-messages/${userId}`),
+  getConversations: (userId) => 
+    api.get(`/chatbot/live-support/conversations/${userId}`),
 };
 
 // ==================== EVENTS API (Hafif Veri Toplama) ====================

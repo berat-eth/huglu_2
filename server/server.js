@@ -2223,6 +2223,15 @@ try {
 }
 
 
+// Platform Brain Routes
+try {
+  const platformBrainRoutes = require('./routes/platform-brain');
+  app.use('/api/platform-brain', platformBrainRoutes);
+  console.log('✅ Platform Brain routes mounted at /api/platform-brain');
+} catch (e) {
+  console.warn('⚠️ Platform Brain routes could not be mounted:', e.message);
+}
+
 // Events Routes - Hafif veri toplama sistemi
 try {
   const eventsRoutes = require('./routes/events');
@@ -2232,14 +2241,6 @@ try {
   console.warn('⚠️ Events routes could not be mounted:', e.message);
 }
 
-// ML Routes
-try {
-  const mlRoutes = require('./routes/ml');
-  app.use('/api/admin/ml', mlRoutes);
-  console.log(' ML routes mounted at /api/admin/ml');
-} catch (e) {
-  console.warn(' ML routes could not be mounted:', e.message);
-}
 
 // Helper: generate unique 8-digit user_id
 async function generateUnique8DigitUserId() {
@@ -7840,27 +7841,174 @@ app.get('/api/admin/visitor-ips', authenticateAdmin, async (req, res) => {
 
 app.get('/api/admin/live-views', authenticateAdmin, async (req, res) => {
   try {
-    const filePath = path.join(__dirname, 'data', 'user-activities.json');
-    if (!fs.existsSync(filePath)) {
-      return res.json({ success: true, data: [] });
+    const tenantId = req.tenant?.id || 1;
+    const timeRange = req.query.timeRange || '1h'; // 1h, 6h, 24h, 7d
+    const now = new Date();
+    let startTime;
+    
+    // Time range'e göre başlangıç zamanını belirle
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '6h':
+        startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 60 * 60 * 1000); // Default 1 saat
     }
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const json = JSON.parse(raw);
-    // Filter only product view events and map to desired fields
-    const views = (json.activities || json || []).filter(a =>
-      a.activityType === 'product_viewed' || a.activityType === 'product_detail_viewed' || a.activityType === 'page_view_product'
-    ).map(a => ({
-      userId: a.userId || a.user_id || null,
-      productId: a.productId || a.product_id || null,
-      productName: a.productName || a.product_name || '-',
-      viewedAt: a.activityTimestamp || a.viewTimestamp || a.timestamp || null,
-      dwellSeconds: a.viewDuration || a.dwellSeconds || a.duration || 0,
-      addedToCart: !!a.addedToCart,
-      purchased: !!a.purchased
+
+    // Analitik tablosundan product view event'lerini al
+    const [productViews] = await poolWrapper.execute(`
+      SELECT 
+        ue.id,
+        ue.userId,
+        ue.sessionId,
+        ue.eventType,
+        ue.screenName,
+        ue.properties,
+        ue.timestamp,
+        u.name as userName,
+        u.email as userEmail,
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productId')) as productId,
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productName')) as productName,
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.price')) as price,
+        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.categoryId')) as categoryId
+      FROM user_events ue
+      LEFT JOIN users u ON ue.userId = u.id AND u.tenantId = ue.tenantId
+      WHERE ue.tenantId = ?
+        AND ue.eventType = 'product_view'
+        AND ue.timestamp >= ?
+      ORDER BY ue.timestamp DESC
+      LIMIT 500
+    `, [tenantId, startTime]);
+
+    // Her ürün görüntüleme için sepete eklenme ve satın alma durumunu kontrol et
+    const viewsWithActions = await Promise.all(productViews.map(async (view) => {
+      const productId = view.productId;
+      const sessionId = view.sessionId;
+      const userId = view.userId;
+      
+      // Bu ürün için sepete eklenme kontrolü
+      const [cartAdds] = await poolWrapper.execute(`
+        SELECT COUNT(*) as count
+        FROM user_events
+        WHERE tenantId = ?
+          AND sessionId = ?
+          AND eventType = 'add_to_cart'
+          AND JSON_UNQUOTE(JSON_EXTRACT(properties, '$.productId')) = ?
+          AND timestamp >= ?
+      `, [tenantId, sessionId, productId, view.timestamp]);
+
+      // Bu ürün için satın alma kontrolü
+      const [purchases] = await poolWrapper.execute(`
+        SELECT COUNT(*) as count
+        FROM user_events
+        WHERE tenantId = ?
+          AND sessionId = ?
+          AND eventType = 'purchase'
+          AND JSON_EXTRACT(properties, '$.orderId') IS NOT NULL
+          AND timestamp >= ?
+      `, [tenantId, sessionId, view.timestamp]);
+
+      // Ürün görüntüleme süresini hesapla (sonraki screen_view veya screen_exit'e kadar)
+      const [nextEvent] = await poolWrapper.execute(`
+        SELECT timestamp, eventType
+        FROM user_events
+        WHERE tenantId = ?
+          AND sessionId = ?
+          AND timestamp > ?
+          AND (eventType = 'screen_view' OR eventType = 'screen_exit')
+        ORDER BY timestamp ASC
+        LIMIT 1
+      `, [tenantId, sessionId, view.timestamp]);
+
+      let dwellSeconds = 0;
+      if (nextEvent.length > 0) {
+        const viewTime = new Date(view.timestamp);
+        const nextTime = new Date(nextEvent[0].timestamp);
+        dwellSeconds = Math.floor((nextTime - viewTime) / 1000);
+        // Maksimum 300 saniye (5 dakika) olarak sınırla
+        dwellSeconds = Math.min(dwellSeconds, 300);
+      } else {
+        // Son event ise, şu anki zamana kadar
+        const viewTime = new Date(view.timestamp);
+        dwellSeconds = Math.floor((now - viewTime) / 1000);
+        dwellSeconds = Math.min(dwellSeconds, 300);
+      }
+
+      // Ürün görselini al
+      let productImage = null;
+      if (productId) {
+        try {
+          const [product] = await poolWrapper.execute(
+            'SELECT image, image1, image2 FROM products WHERE id = ? AND tenantId = ? LIMIT 1',
+            [productId, tenantId]
+          );
+          if (product.length > 0) {
+            productImage = product[0].image || product[0].image1 || product[0].image2;
+          }
+        } catch (e) {
+          // Ürün bulunamazsa devam et
+        }
+      }
+
+      return {
+        userId: userId,
+        productId: productId ? parseInt(productId) : null,
+        productName: view.productName || 'Bilinmeyen Ürün',
+        productImage: productImage,
+        viewedAt: view.timestamp,
+        dwellSeconds: dwellSeconds,
+        addedToCart: (cartAdds[0]?.count || 0) > 0,
+        purchased: (purchases[0]?.count || 0) > 0,
+        sessionId: sessionId,
+        userName: view.userName,
+        userEmail: view.userEmail
+      };
     }));
-    res.json({ success: true, data: views });
+
+    // Eski JSON dosyasından da veri al (backward compatibility)
+    try {
+      const filePath = path.join(__dirname, 'data', 'user-activities.json');
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const json = JSON.parse(raw);
+        const oldViews = (json.activities || json || []).filter(a =>
+          a.activityType === 'product_viewed' || a.activityType === 'product_detail_viewed' || a.activityType === 'page_view_product'
+        ).map(a => ({
+          userId: a.userId || a.user_id || null,
+          productId: a.productId || a.product_id || null,
+          productName: a.productName || a.product_name || '-',
+          viewedAt: a.activityTimestamp || a.viewTimestamp || a.timestamp || null,
+          dwellSeconds: a.viewDuration || a.dwellSeconds || a.duration || 0,
+          addedToCart: !!a.addedToCart,
+          purchased: !!a.purchased,
+          productImage: null
+        }));
+
+        // Yeni verilerle birleştir (duplicate'leri önle)
+        const existingKeys = new Set(viewsWithActions.map(v => `${v.productId}_${v.userId}_${v.viewedAt}`));
+        const uniqueOldViews = oldViews.filter(v => {
+          const key = `${v.productId}_${v.userId}_${v.viewedAt}`;
+          return !existingKeys.has(key);
+        });
+
+        viewsWithActions.push(...uniqueOldViews);
+      }
+    } catch (fileError) {
+      console.warn('⚠️ Could not read user-activities.json:', fileError.message);
+    }
+
+    res.json({ success: true, data: viewsWithActions });
   } catch (error) {
-    console.error(' Error reading live views:', error);
+    console.error('❌ Error reading live views:', error);
     res.status(500).json({ success: false, message: 'Error reading live views' });
   }
 });
@@ -17082,6 +17230,22 @@ app.post('/api/orders', tenantCache, async (req, res) => {
       connection.release();
 
       console.log(`✅ Order created successfully: ${orderId} with ${items.length} items, ${totalExp} EXP added`);
+      
+      // Platform Brain: Track order creation (non-blocking)
+      try {
+        const { trackOrderCreate } = require('./middleware/platform-brain-integration');
+        trackOrderCreate(req, orderId, {
+          totalAmount,
+          itemCount: items.length,
+          paymentMethod
+        });
+      } catch (pbError) {
+        // Silently fail - Platform Brain should never break existing functionality
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ Platform Brain: Order creation tracking failed (non-critical):', pbError.message);
+        }
+      }
+      
       res.json({ success: true, data: { orderId, expGained: totalExp } });
 
     } catch (error) {
@@ -18485,6 +18649,18 @@ app.get('/api/products/:id', async (req, res) => {
       res.setHeader('Content-Encoding', 'identity');
       
       console.log(`✅ [GET /api/products/${id}] Product returned successfully: ${cleanedProduct.name}`);
+      
+      // Platform Brain: Track product view (non-blocking)
+      try {
+        const { trackProductView } = require('./middleware/platform-brain-integration');
+        trackProductView(req, numericId, cleanedProduct);
+      } catch (pbError) {
+        // Silently fail - Platform Brain should never break existing functionality
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ Platform Brain: Product view tracking failed (non-critical):', pbError.message);
+        }
+      }
+      
       res.json({ success: true, data: cleanedProduct });
     } else {
       // Debug: Ürünün var olup olmadığını ve hangi tenantId'ye ait olduğunu kontrol et
@@ -20270,6 +20446,20 @@ async function startServer() {
         } catch (expError) {
           console.error('Error adding cart EXP:', expError);
           // Don't fail the request if EXP addition fails
+        }
+      }
+
+      // Platform Brain: Track cart add (non-blocking)
+      try {
+        const { trackCartAdd } = require('./middleware/platform-brain-integration');
+        const [productRows] = await poolWrapper.execute('SELECT price FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
+        if (productRows.length > 0) {
+          trackCartAdd(req, productId, quantity, parseFloat(productRows[0].price) || 0);
+        }
+      } catch (pbError) {
+        // Silently fail - Platform Brain should never break existing functionality
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ Platform Brain: Cart add tracking failed (non-critical):', pbError.message);
         }
       }
 
@@ -22923,6 +23113,127 @@ async function startServer() {
     } catch (error) {
       console.error(' Canlı destek mesaj geçmişi getirme hatası:', error);
       res.status(500).json({ success: false, message: 'Mesaj geçmişi getirilemedi' });
+    }
+  });
+
+  // Canlı destek - Kullanıcının tüm destek taleplerini getir (gruplanmış)
+  app.get('/api/chatbot/live-support/conversations/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (!userId || userId <= 0) {
+        return res.status(400).json({ success: false, message: 'Geçersiz userId' });
+      }
+
+      // Tenant kontrolü (kullanıcının tenant'ı)
+      const [userRow] = await poolWrapper.execute(
+        'SELECT tenantId FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
+
+      const tenantId = userRow.length > 0 ? userRow[0].tenantId : 1;
+
+      // Tüm canlı destek mesajlarını getir ve tarih bazlı grupla
+      const [allMessages] = await poolWrapper.execute(
+        `SELECT 
+          id, 
+          message, 
+          intent, 
+          timestamp,
+          productId,
+          productName,
+          productPrice,
+          productImage
+         FROM chatbot_analytics 
+         WHERE userId = ? AND tenantId = ? AND (intent = 'live_support' OR intent = 'admin_message')
+         ORDER BY timestamp DESC
+         LIMIT 500`,
+        [userId, tenantId]
+      );
+
+      // Mesajları tarih bazlı grupla
+      const conversationsMap = new Map();
+      
+      allMessages.forEach(msg => {
+        const msgDate = new Date(msg.timestamp);
+        const dateKey = msgDate.toISOString().split('T')[0]; // YYYY-MM-DD formatı
+        
+        if (!conversationsMap.has(dateKey)) {
+          conversationsMap.set(dateKey, {
+            dateKey: dateKey,
+            messages: [],
+            firstMessageTime: msgDate,
+            lastMessageTime: msgDate,
+            productId: msg.productId,
+            productName: msg.productName,
+            productPrice: msg.productPrice,
+            productImage: msg.productImage,
+          });
+        }
+        
+        const conv = conversationsMap.get(dateKey);
+        conv.messages.push(msg);
+        
+        if (msgDate < conv.firstMessageTime) {
+          conv.firstMessageTime = msgDate;
+        }
+        if (msgDate > conv.lastMessageTime) {
+          conv.lastMessageTime = msgDate;
+        }
+      });
+
+      // Her konuşmayı formatla
+      const conversations = Array.from(conversationsMap.values()).map((conv, index) => {
+        const firstUserMessage = conv.messages.find(m => m.intent === 'live_support');
+        const lastMessage = conv.messages[conv.messages.length - 1];
+        const hasAdminResponse = conv.messages.some(m => m.intent === 'admin_message');
+        const isResolved = hasAdminResponse && lastMessage.intent === 'admin_message';
+
+        // Tarih formatla
+        const date = new Date(conv.lastMessageTime);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        let timestampText;
+        if (diffDays === 0) {
+          timestampText = date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        } else if (diffDays === 1) {
+          timestampText = 'Dün';
+        } else if (diffDays < 7) {
+          timestampText = date.toLocaleDateString('tr-TR', { weekday: 'short' });
+        } else {
+          timestampText = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+        }
+
+        return {
+          id: conv.messages[0]?.id || index,
+          conversationId: `conv_${userId}_${conv.dateKey}`,
+          title: firstUserMessage?.message?.substring(0, 50) || 'Destek Talebi',
+          lastMessage: lastMessage?.message?.substring(0, 100) || '',
+          timestamp: timestampText,
+          fullTimestamp: conv.lastMessageTime.toISOString(),
+          messageCount: conv.messages.length,
+          isActive: !isResolved && diffDays < 1,
+          isResolved: isResolved,
+          productId: conv.productId,
+          productName: conv.productName,
+          productPrice: conv.productPrice,
+          productImage: conv.productImage,
+          hasAdminResponse: hasAdminResponse,
+          unreadCount: 0
+        };
+      });
+
+      // En yeni tarihe göre sırala
+      conversations.sort((a, b) => new Date(b.fullTimestamp) - new Date(a.fullTimestamp));
+
+      res.json({
+        success: true,
+        data: conversations
+      });
+    } catch (error) {
+      console.error(' Destek talepleri getirme hatası:', error);
+      res.status(500).json({ success: false, message: 'Destek talepleri getirilemedi' });
     }
   });
 

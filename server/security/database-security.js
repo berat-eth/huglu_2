@@ -447,7 +447,7 @@ class DatabaseSecurity {
       'crm_leads', 'crm_contacts', 'crm_pipeline_stages', 'crm_deals', 'crm_activities',
       'stories', 'sliders', 'popups',
       'anonymous_devices', 'user_behavior_events', 'user_sessions', 'device_analytics_aggregates',
-      'ml_predictions', 'ml_recommendations', 'ml_anomalies', 'gmaps_jobs', 'gmaps_leads',
+      'gmaps_jobs', 'gmaps_leads',
       'chat_sessions', 'chat_messages'
     ];
   }

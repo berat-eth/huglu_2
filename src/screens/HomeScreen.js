@@ -14,9 +14,18 @@ import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
 import { updateCartBadge } from '../utils/cartBadge';
 import { useAlert } from '../hooks/useAlert';
+import { useScreenTracking, useAnalytics } from '../hooks/useAnalytics';
+import analyticsService from '../services/analytics';
 
 export default function HomeScreen({ navigation }) {
   const alert = useAlert();
+  const analytics = useAnalytics();
+  
+  // Screen tracking
+  useScreenTracking('HomeScreen', {
+    category: 'main',
+    section: 'home'
+  });
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -37,6 +46,18 @@ export default function HomeScreen({ navigation }) {
   const [userFavorites, setUserFavorites] = useState([]);
 
   useEffect(() => {
+    // Analytics servisini başlat
+    const initAnalytics = async () => {
+      try {
+        await analyticsService.initialize();
+        console.log('✅ HomeScreen: Analytics servisi başlatıldı');
+      } catch (error) {
+        console.error('❌ HomeScreen: Analytics başlatma hatası:', error);
+      }
+    };
+    
+    initAnalytics();
+    
     // İlk yüklemede veri yükle (splash'te preload edilmiş olabilir ama yine de kontrol et)
     const initialize = async () => {
       await loadUserInfo();
