@@ -9,6 +9,13 @@ set -e
 echo "🚀 Huğlu Outdoor APK Build Başlatılıyor..."
 echo "================================================"
 
+# FTP Konfigürasyonu
+FTP_HOST="46.202.158.159"
+FTP_USER="u987029066.hugluser"
+FTP_PASS="38cdfD8217.."
+REMOTE_DIR="/files/public_html/app"
+FINAL_APK_NAME="1.apk"
+
 # Renk kodları
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -107,6 +114,46 @@ check_requirements() {
         exit 1
     fi
     echo -e "${GREEN}✓ Android SDK: $ANDROID_HOME${NC}"
+    
+    # FTP araçlarını kontrol et ve gerekirse kur
+    if command -v lftp &> /dev/null; then
+        echo -e "${GREEN}✓ lftp bulundu (FTP için kullanılacak)${NC}"
+    elif command -v ftp &> /dev/null; then
+        echo -e "${GREEN}✓ ftp bulundu (FTP için kullanılacak)${NC}"
+        echo -e "${YELLOW}⚠️  lftp önerilir, daha güvenli ve özellik açısından zengindir.${NC}"
+        echo -e "${YELLOW}📦 lftp kuruluyor...${NC}"
+        
+        # Root kontrolü
+        if [ "$EUID" -eq 0 ]; then
+            apt-get update -qq > /dev/null 2>&1
+            apt-get install -y lftp > /dev/null 2>&1 && {
+                echo -e "${GREEN}✓ lftp başarıyla kuruldu${NC}"
+            } || {
+                echo -e "${YELLOW}⚠️  lftp kurulumu başarısız, ftp kullanılacak${NC}"
+            }
+        else
+            echo -e "${YELLOW}⚠️  Root yetkisi gerekli. lftp kurulumu için script'i sudo ile çalıştırın.${NC}"
+            echo -e "${YELLOW}   Şimdilik ftp kullanılacak.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}📦 FTP araçları bulunamadı. lftp kuruluyor...${NC}"
+        
+        # Root kontrolü
+        if [ "$EUID" -eq 0 ]; then
+            apt-get update -qq > /dev/null 2>&1
+            apt-get install -y lftp > /dev/null 2>&1 && {
+                echo -e "${GREEN}✓ lftp başarıyla kuruldu${NC}"
+            } || {
+                echo -e "${RED}❌ lftp kurulumu başarısız oldu!${NC}"
+                echo -e "${YELLOW}Manuel kurulum: sudo apt install -y lftp${NC}"
+                exit 1
+            }
+        else
+            echo -e "${YELLOW}⚠️  Root yetkisi gerekli. lftp kurulumu için script'i sudo ile çalıştırın.${NC}"
+            echo -e "${YELLOW}Manuel kurulum: sudo apt install -y lftp${NC}"
+            exit 1
+        fi
+    fi
 }
 
 # Bağımlılıkları yükle
@@ -219,8 +266,8 @@ build_apk() {
     echo -e "${GREEN}✓ APK başarıyla oluşturuldu${NC}"
 }
 
-# APK konumunu göster
-show_apk_location() {
+# APK'yı yeniden adlandır ve hazırla
+prepare_apk() {
     APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
     if [ -f "$APK_PATH" ]; then
         echo -e "${GREEN}================================================${NC}"
@@ -232,12 +279,71 @@ show_apk_location() {
         SIZE=$(du -h "$APK_PATH" | cut -f1)
         echo -e "📊 APK Boyutu: ${YELLOW}$SIZE${NC}"
         
-        # APK'yı kopyala
-        cp "$APK_PATH" "huglu-outdoor-$(date +%Y%m%d-%H%M%S).apk"
-        echo -e "${GREEN}✓ APK root dizinine kopyalandı${NC}"
+        # APK'yı 1.apk olarak kopyala
+        cp "$APK_PATH" "$FINAL_APK_NAME"
+        echo -e "${GREEN}✓ APK '$FINAL_APK_NAME' olarak hazırlandı${NC}"
+        
+        # APK yolunu global değişkene kaydet
+        export FINAL_APK_PATH="$FINAL_APK_NAME"
     else
         echo -e "${RED}❌ APK bulunamadı!${NC}"
         exit 1
+    fi
+}
+
+# FTP'ye APK yükle
+upload_to_ftp() {
+    if [ -z "$FINAL_APK_PATH" ] || [ ! -f "$FINAL_APK_PATH" ]; then
+        echo -e "${RED}❌ APK dosyası bulunamadı!${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}📤 FTP'ye yükleme başlatılıyor...${NC}"
+    echo -e "${BLUE}Sunucu: ${FTP_HOST}${NC}"
+    echo -e "${BLUE}Dizin: ${REMOTE_DIR}${NC}"
+    
+    # lftp kullan (varsa)
+    if command -v lftp &> /dev/null; then
+        echo -e "${YELLOW}lftp ile yükleniyor...${NC}"
+        lftp -c "
+        set ftp:ssl-allow no
+        set ftp:passive-mode yes
+        set ftp:list-options -a
+        open -u ${FTP_USER},${FTP_PASS} ${FTP_HOST}
+        cd ${REMOTE_DIR}
+        put ${FINAL_APK_PATH}
+        bye
+        " && {
+            echo -e "${GREEN}✓ APK başarıyla FTP'ye yüklendi${NC}"
+            echo -e "${GREEN}✓ Yüklenen dosya: ${REMOTE_DIR}/${FINAL_APK_NAME}${NC}"
+            return 0
+        } || {
+            echo -e "${RED}❌ FTP yükleme başarısız oldu!${NC}"
+            return 1
+        }
+    # ftp kullan (lftp yoksa)
+    elif command -v ftp &> /dev/null; then
+        echo -e "${YELLOW}ftp ile yükleniyor...${NC}"
+        ftp -n ${FTP_HOST} << EOF
+        user ${FTP_USER} ${FTP_PASS}
+        binary
+        cd ${REMOTE_DIR}
+        put ${FINAL_APK_PATH} ${FINAL_APK_NAME}
+        quit
+EOF
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ APK başarıyla FTP'ye yüklendi${NC}"
+            echo -e "${GREEN}✓ Yüklenen dosya: ${REMOTE_DIR}/${FINAL_APK_NAME}${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ FTP yükleme başarısız oldu!${NC}"
+            return 1
+        fi
+    else
+        echo -e "${RED}❌ FTP araçları bulunamadı!${NC}"
+        echo -e "${YELLOW}APK hazır ama FTP'ye yüklenemedi.${NC}"
+        echo -e "${YELLOW}Manuel yükleme için: ${FINAL_APK_PATH}${NC}"
+        return 1
     fi
 }
 
@@ -248,11 +354,14 @@ main() {
     install_dependencies
     run_prebuild
     build_apk
-    show_apk_location
+    prepare_apk
+    upload_to_ftp
     
     echo -e "${GREEN}================================================${NC}"
-    echo -e "${GREEN}🎉 Build işlemi tamamlandı!${NC}"
+    echo -e "${GREEN}🎉 Build ve yükleme işlemi tamamlandı!${NC}"
     echo -e "${GREEN}================================================${NC}"
+    echo -e "${BLUE}📱 APK Dosyası: ${FINAL_APK_NAME}${NC}"
+    echo -e "${BLUE}🌐 FTP Konumu: ${FTP_HOST}${REMOTE_DIR}/${FINAL_APK_NAME}${NC}"
 }
 
 # Script'i çalıştır
