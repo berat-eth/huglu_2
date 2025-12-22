@@ -579,19 +579,23 @@ export default function HomeScreen({ navigation }) {
       const response = await productsAPI.getCategories();
       console.log('📦 Categories response:', response.status, response.data);
       
-      if (response.data.success) {
-        // Backend response yapısı kontrol et
-        const categoriesData = response.data.data?.categories || response.data.data || [];
+      if (response.data && response.data.success) {
+        // Backend direkt string array döndürüyor: { success: true, data: ['Kategori1', 'Kategori2', ...] }
+        const categoriesData = response.data.data || [];
         console.log('📊 Categories data:', categoriesData);
         
         // Backend'den gelen kategorileri 'Tümü' ile birleştir
-        const categoryNames = categoriesData.map(cat => {
-          if (typeof cat === 'string') return cat;
-          return cat.name || cat.categoryName || cat.category || 'Unknown';
-        });
+        const categoryNames = categoriesData
+          .filter(cat => cat && typeof cat === 'string' && cat.trim() !== '')
+          .map(cat => cat.trim());
         
-        setCategories(['Tümü', ...categoryNames]);
-        console.log('✅ Kategoriler yüklendi:', categoryNames.length, 'kategori');
+        if (categoryNames.length > 0) {
+          setCategories(['Tümü', ...categoryNames]);
+          console.log('✅ Kategoriler yüklendi:', categoryNames.length, 'kategori');
+        } else {
+          console.warn('⚠️ Kategoriler boş, varsayılan kategoriler kullanılıyor');
+          setCategories(['Tümü', 'Havlu', 'Bornoz', 'Nevresim', 'Pike', 'Battaniye']);
+        }
       } else {
         console.warn('⚠️ Categories response not successful:', response.data);
         // Hata durumunda varsayılan kategorileri kullan
@@ -807,7 +811,11 @@ export default function HomeScreen({ navigation }) {
                         styles.categoryChip,
                         selectedCategory === category && styles.categoryChipActive,
                       ]}
-                      onPress={() => setSelectedCategory(category)}
+                      onPress={() => {
+                        setSelectedCategory(category);
+                        // "Tümü" seçildiğinde Shop ekranına yönlendir (filtre olmadan)
+                        navigation.navigate('Shop');
+                      }}
                       activeOpacity={0.9}
                     >
                       <Ionicons
@@ -837,7 +845,15 @@ export default function HomeScreen({ navigation }) {
                       styles.categoryChip,
                       selectedCategory === category && styles.categoryChipActive,
                     ]}
-                    onPress={() => setSelectedCategory(category)}
+                    onPress={() => {
+                      setSelectedCategory(category);
+                      // Kategori seçildiğinde Shop ekranına yönlendir ve kategori filtresi uygula
+                      if (category !== 'Tümü') {
+                        navigation.navigate('Shop', { category });
+                      } else {
+                        navigation.navigate('Shop');
+                      }
+                    }}
                     activeOpacity={0.9}
                   >
                     {useImage ? (

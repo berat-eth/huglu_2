@@ -124,6 +124,19 @@ export const productsAPI = {
   getCategories: () => api.get('/categories'),
   search: (query, filters) => api.get('/products/search', { params: { query, ...filters } }),
   searchByBarcode: (barcode) => api.get('/products/barcode', { params: { barcode } }),
+  searchByImage: (imageUri) => {
+    const formData = new FormData();
+    formData.append('image', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'search-image.jpg',
+    });
+    return api.post('/products/search/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   getByCategory: (category, params) => api.get('/products', { params: { category, ...params } }),
   getFeatured: (limit = 10) => api.get('/products/featured', { params: { limit } }),
   getRecommendations: (productId, limit = 6) => api.get(`/products/${productId}/recommendations`, { params: { limit } }),

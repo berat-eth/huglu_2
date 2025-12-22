@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ScrollVi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarCodeScanner } from 'expo-barcode-scanner';
+import * as ImagePicker from 'expo-image-picker';
 import ProductCard from '../components/ProductCard';
 import { COLORS } from '../constants/colors';
 import { productsAPI } from '../services/api';
@@ -43,6 +44,9 @@ export default function SearchScreen({ navigation }) {
   const [scanned, setScanned] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isListening, setIsListening] = useState(false);
+  const [isImageSearching, setIsImageSearching] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [showImagePickerModal, setShowImagePickerModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -271,6 +275,139 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
+  const handleImageSearch = () => {
+    setShowImagePickerModal(true);
+  };
+
+  const selectImageFromGallery = async () => {
+    try {
+      setShowImagePickerModal(false);
+      // İzin kontrolü
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'İzin Gerekli',
+          'Galeriye erişmek için izin gereklidir. Lütfen ayarlardan izin verin.',
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        performImageSearch(imageUri);
+      }
+    } catch (error) {
+      console.error('❌ Galeri seçme hatası:', error);
+      Alert.alert('Hata', 'Görsel seçilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      setShowImagePickerModal(false);
+      // İzin kontrolü
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'İzin Gerekli',
+          'Kameraya erişmek için izin gereklidir. Lütfen ayarlardan izin verin.',
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        performImageSearch(imageUri);
+      }
+    } catch (error) {
+      console.error('❌ Kamera hatası:', error);
+      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  const performImageSearch = async (imageUri) => {
+    if (!imageUri) {
+      Alert.alert('Hata', 'Görsel URI bulunamadı.');
+      return;
+    }
+
+    try {
+      setIsImageSearching(true);
+      setSelectedImage(imageUri);
+      setSearchQuery('');
+      setIsSearching(true);
+      
+      console.log('🖼️ Görselden arama yapılıyor...', imageUri);
+      
+      // Analytics: Image search tracking
+      try {
+        await analytics.trackEvent('image_search', { source: 'search_screen' });
+      } catch (analyticsError) {
+        console.log('Analytics image search error:', analyticsError);
+      }
+      
+      const response = await productsAPI.searchByImage(imageUri);
+      
+      console.log('📦 Görsel arama yanıtı:', response.data);
+      
+      if (response && response.data?.success) {
+        let products = response.data.data?.products || 
+                      response.data.products || 
+                      response.data.data || 
+                      [];
+        
+        if (!Array.isArray(products)) {
+          products = products ? [products] : [];
+        }
+        
+        setSearchResults(products);
+        
+        if (products.length === 0) {
+          Alert.alert(
+            'Sonuç Bulunamadı',
+            'Görsele benzer ürün bulunamadı. Farklı bir görsel deneyin veya metin araması yapın.',
+            [{ text: 'Tamam' }]
+          );
+        }
+      } else {
+        Alert.alert('Hata', response?.data?.message || 'Görsel araması başarısız oldu.');
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('❌ Görsel arama hatası:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      Alert.alert(
+        'Hata',
+        error.message || 'Görsel araması yapılırken bir hata oluştu. Lütfen tekrar deneyin.',
+        [{ text: 'Tamam' }]
+      );
+      setSearchResults([]);
+    } finally {
+      setIsImageSearching(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Search Header */}
@@ -320,7 +457,84 @@ export default function SearchScreen({ navigation }) {
         >
           <Ionicons name="barcode-outline" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.barcodeButton, styles.imageSearchButton]} 
+          onPress={handleImageSearch}
+          activeOpacity={0.7}
+          disabled={isImageSearching}
+        >
+          {isImageSearching ? (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          ) : (
+            <Ionicons name="image-outline" size={24} color={COLORS.primary} />
+          )}
+        </TouchableOpacity>
       </View>
+      
+      {/* Selected Image Preview */}
+      {selectedImage && (
+        <View style={styles.imagePreviewContainer}>
+          <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+          <TouchableOpacity
+            style={styles.removeImageButton}
+            onPress={() => {
+              setSelectedImage(null);
+              setSearchResults([]);
+              setIsSearching(false);
+            }}
+          >
+            <Ionicons name="close-circle" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <Text style={styles.imagePreviewText}>Görselden arama yapılıyor...</Text>
+        </View>
+      )}
+
+      {/* Minimalist Image Picker Modal */}
+      <Modal
+        visible={showImagePickerModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowImagePickerModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.imagePickerModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowImagePickerModal(false)}
+        >
+          <View style={styles.imagePickerModal} onStartShouldSetResponder={() => true}>
+            <TouchableOpacity
+              onPress={() => setShowImagePickerModal(false)}
+              style={styles.imagePickerCloseButton}
+            >
+              <Ionicons name="close" size={20} color={COLORS.gray500} />
+            </TouchableOpacity>
+
+            <View style={styles.imagePickerOptions}>
+              <TouchableOpacity
+                style={styles.imagePickerOption}
+                onPress={selectImageFromGallery}
+                activeOpacity={0.7}
+              >
+                <View style={styles.imagePickerIconContainer}>
+                  <Ionicons name="images-outline" size={28} color={COLORS.primary} />
+                </View>
+                <Text style={styles.imagePickerOptionTitle}>Galeri</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.imagePickerOption}
+                onPress={takePhoto}
+                activeOpacity={0.7}
+              >
+                <View style={styles.imagePickerIconContainer}>
+                  <Ionicons name="camera-outline" size={28} color={COLORS.primary} />
+                </View>
+                <Text style={styles.imagePickerOptionTitle}>Kamera</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Barcode Scanner Modal */}
       <Modal
@@ -603,6 +817,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  imageSearchButton: {
+    marginLeft: 8,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.gray50,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  imagePreviewText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gray600,
+    textAlign: 'center',
+  },
   scannerContainer: {
     flex: 1,
     backgroundColor: COLORS.textMain,
@@ -827,5 +1073,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.gray600,
     marginTop: 16,
+  },
+  imagePickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  imagePickerModal: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  imagePickerCloseButton: {
+    alignSelf: 'flex-end',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  imagePickerOptions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+    marginTop: 8,
+  },
+  imagePickerOption: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    minWidth: 120,
+  },
+  imagePickerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(17, 212, 33, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePickerOptionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textMain,
   },
 });

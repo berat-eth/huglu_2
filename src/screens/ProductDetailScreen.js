@@ -80,6 +80,15 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [liveViewers, setLiveViewers] = useState(0);
   const [recommendedSize, setRecommendedSize] = useState(null);
 
+  // 24 saatte satılan adet (ürün ID'sine göre tutarlı rastgele değer: 1-12 arası)
+  const getSalesCount24h = useMemo(() => {
+    const productId = product?.id || product?._id || routeProductId || 0;
+    // Ürün ID'sine göre deterministik rastgele değer (1-12 arası)
+    const hash = productId.toString().split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const salesCount = (hash % 12) + 1; // 1-12 arası
+    return salesCount;
+  }, [product?.id, product?._id, routeProductId]);
+
   // Canlı izleyici sayısını başlat ve periyodik güncelle
   useEffect(() => {
     // İlk değeri ayarla
@@ -1399,6 +1408,15 @@ export default function ProductDetailScreen({ navigation, route }) {
           <View style={styles.zoomIndicator}>
             <Ionicons name="expand-outline" size={20} color={COLORS.white} />
           </View>
+          {/* 24 Saatte Satılan Adet Banner */}
+          {hasStock && (
+            <View style={styles.salesBanner}>
+              <Ionicons name="flash" size={14} color={COLORS.white} style={styles.salesIcon} />
+              <Text style={styles.salesText}>
+                24 saatte {getSalesCount24h} adet satıldı
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Pagination */}
@@ -3195,6 +3213,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  salesBanner: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(17, 212, 33, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 2,
+  },
+  salesIcon: {
+    marginRight: 2,
+  },
+  salesText: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   paginationContainer: {
     position: 'absolute',

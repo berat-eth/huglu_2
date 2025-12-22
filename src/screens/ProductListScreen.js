@@ -18,8 +18,8 @@ const SORT_OPTIONS = [
   { id: 'newest', label: 'En Yeni', icon: 'time-outline' },
 ];
 
-export default function ProductListScreen({ navigation }) {
-  const [selectedCategory, setSelectedCategory] = useState('Tümü');
+export default function ProductListScreen({ navigation, route }) {
+  const [selectedCategory, setSelectedCategory] = useState(route?.params?.category || 'Tümü');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,7 +36,11 @@ export default function ProductListScreen({ navigation }) {
   useEffect(() => {
     loadInitialData();
     loadUserId();
-  }, []);
+    // Route parametresinden kategori varsa seç
+    if (route?.params?.category) {
+      setSelectedCategory(route.params.category);
+    }
+  }, [route?.params?.category]);
 
   const loadUserId = async () => {
     const storedUserId = await AsyncStorage.getItem('userId');
@@ -53,21 +57,26 @@ export default function ProductListScreen({ navigation }) {
     try {
       setCategoriesLoading(true);
       const response = await productsAPI.getCategories();
-      if (response.data?.success) {
-        const categoriesData = response.data.data?.categories || response.data.data || [];
-        const names = categoriesData.map((cat) => {
-          if (typeof cat === 'string') return cat;
-          return cat.name || cat.categoryName || cat.category || '';
-        }).filter(Boolean);
+      if (response.data && response.data.success) {
+        // Backend direkt string array döndürüyor: { success: true, data: ['Kategori1', 'Kategori2', ...] }
+        const categoriesData = response.data.data || [];
+        const names = categoriesData
+          .filter(cat => cat && typeof cat === 'string' && cat.trim() !== '')
+          .map(cat => cat.trim());
         const uniq = Array.from(new Set(names));
         setCategories(['Tümü', ...uniq]);
-        if (!['Tümü', ...uniq].includes(selectedCategory)) {
+        
+        // Route parametresinden kategori varsa onu kullan, yoksa mevcut seçili kategoriyi kontrol et
+        const categoryToSet = route?.params?.category || selectedCategory;
+        if (['Tümü', ...uniq].includes(categoryToSet)) {
+          setSelectedCategory(categoryToSet);
+        } else {
           setSelectedCategory('Tümü');
         }
       } else {
         console.warn('Categories response not successful:', response.data);
         setCategories(['Tümü']);
-        setSelectedCategory('Tümü');
+        setSelectedCategory(route?.params?.category || 'Tümü');
       }
     } catch (error) {
       console.error('❌ Kategoriler yüklenemedi:', {
@@ -77,7 +86,7 @@ export default function ProductListScreen({ navigation }) {
         status: error.response?.status
       });
       setCategories(['Tümü']);
-      setSelectedCategory('Tümü');
+      setSelectedCategory(route?.params?.category || 'Tümü');
     } finally {
       setCategoriesLoading(false);
     }

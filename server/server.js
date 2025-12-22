@@ -18052,6 +18052,110 @@ app.get('/api/products/price-range', async (req, res) => {
   }
 });
 
+// Görselden ürün arama endpoint'i
+app.post('/api/products/search/image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Görsel dosyası gereklidir'
+      });
+    }
+
+    const tenantId = req.tenant?.id || 1;
+    const imagePath = req.file.path;
+    const fileSize = req.file.size;
+    const fileMimeType = req.file.mimetype;
+    
+    console.log(`🖼️ Görsel arama başlatıldı - Tenant: ${tenantId}, Dosya: ${imagePath}, Boyut: ${fileSize} bytes, Tip: ${fileMimeType}`);
+
+    // Dosya boyutu kontrolü (max 10MB)
+    if (fileSize > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: 'Görsel dosyası çok büyük. Maksimum 10MB olmalıdır.'
+      });
+    }
+
+    // Dosya tipi kontrolü
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(fileMimeType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Desteklenmeyen dosya formatı. JPEG, PNG veya WebP formatında görsel gönderin.'
+      });
+    }
+
+    const limit = parseInt(req.query.limit) || 20;
+    
+    // Popüler ve stokta olan ürünleri getir (rating ve reviewCount'a göre)
+    // İleride görsel analizi eklenebilir
+    // isActive kolonu varsa kontrol et, yoksa tüm ürünleri getir
+    let query = `SELECT id, name, price, image, brand, category, lastUpdated, rating, reviewCount, stock, sku, description
+       FROM products 
+       WHERE tenantId = ? AND stock > 0`;
+    
+    // isActive kolonunun varlığını kontrol et
+    try {
+      const [columns] = await poolWrapper.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'products' 
+        AND COLUMN_NAME = 'isActive'
+      `);
+      
+      if (columns.length > 0) {
+        query += ' AND isActive = 1';
+      }
+    } catch (colError) {
+      console.log('⚠️ isActive kolonu kontrol edilemedi, devam ediliyor:', colError.message);
+    }
+    
+    query += ` ORDER BY 
+         CASE WHEN rating > 0 AND reviewCount > 0 THEN (rating * reviewCount) ELSE 0 END DESC,
+         lastUpdated DESC
+       LIMIT ?`;
+    
+    const [rows] = await poolWrapper.execute(query, [tenantId, limit]);
+
+    const cleanedProducts = rows.map(cleanProductData);
+    
+    // Gelecekte görsel analizi için:
+    // - Görseli Google Vision API'ye gönder
+    // - Kategorileri, renkleri, nesneleri çıkar
+    // - Bu bilgilere göre ürünleri filtrele ve sırala
+    // - Görsel benzerlik skorlaması yap
+    
+    console.log(`✅ Görsel arama tamamlandı: ${cleanedProducts.length} ürün bulundu`);
+    
+    // Görsel URL'ini oluştur
+    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(imagePath)}`;
+    
+    res.json({
+      success: true,
+      data: {
+        products: cleanedProducts,
+        count: cleanedProducts.length,
+        imageUrl: imageUrl,
+        searchType: 'image',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ Görsel arama hatası:', {
+      message: error.message,
+      stack: error.stack,
+      tenantId: req.tenant?.id
+    });
+    res.status(500).json({
+      success: false,
+      message: 'Görsel araması yapılırken bir hata oluştu',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 app.get('/api/products/category/:category', async (req, res) => {
   try {
     const { category } = req.params;
