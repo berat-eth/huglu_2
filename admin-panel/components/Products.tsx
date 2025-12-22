@@ -629,23 +629,13 @@ export default function Products() {
   }
 
   return (
-    <>
     <div className="space-y-6">
-      {/* Modern Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl p-8 text-white">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-3xl font-bold">Ürün Yönetimi</h2>
-                <p className="text-blue-100 mt-1">Toplam {totalProducts} ürün • {filteredProducts.length} görüntüleniyor</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Ürün Yönetimi</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Backend'den gelen ürünler</p>
+        </div>
+        <div className="flex items-center gap-2">
           {/* Bulk Actions */}
           {selectedProducts.length > 0 && (
             <div className="flex items-center gap-2 mr-4 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -675,222 +665,158 @@ export default function Products() {
             </div>
           )}
           
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              <Plus className="w-5 h-5" />
-              Ürün Ekle
-            </button>
-            <button
-              onClick={async()=>{
-                try {
-                  setSyncing(true)
-                  setSyncProgress(null)
-                  await api.post('/sync/products')
-                  await fetchSyncStatus()
-                  await fetchSyncProgress()
-                  await fetchProducts(currentPage)
-                } catch { alert('Senkron başlatılamadı') } finally { setSyncing(false) }
-              }}
-              disabled={syncing}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UploadCloud className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Senkron Başlatılıyor...' : 'XML Senkronu'}
-            </button>
-            <button
-              onClick={() => fetchProducts(currentPage)}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              <RefreshCw className="w-5 h-5" />
-              Yenile
-            </button>
-            <button
-              onClick={handleShowInvoices}
-              disabled={invoicesLoading}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50"
-            >
-              <FileText className="w-5 h-5" />
-              Faturalar
-            </button>
-          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-xl flex items-center hover:shadow-lg transition-shadow"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Ürün Ekle
+          </button>
+          <button
+            onClick={async()=>{
+              try {
+                setSyncing(true)
+                setSyncProgress(null) // Progress'i sıfırla
+                await api.post('/sync/products')
+                await fetchSyncStatus()
+                await fetchSyncProgress()
+                await fetchProducts(currentPage)
+              } catch { alert('Senkron başlatılamadı') } finally { setSyncing(false) }
+            }}
+            disabled={syncing}
+            className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-2 rounded-xl flex items-center hover:shadow-lg transition-shadow disabled:opacity-60"
+          >
+            <UploadCloud className="w-4 h-4 mr-2" />
+            {syncing ? 'Senkron Başlatılıyor...' : 'XML Senkronu Başlat'}
+          </button>
+          <button
+            onClick={() => fetchProducts(currentPage)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-xl flex items-center hover:shadow-lg transition-shadow"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Yenile
+          </button>
+          <button
+            onClick={handleShowInvoices}
+            disabled={invoicesLoading}
+            className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2 rounded-xl flex items-center hover:shadow-lg transition-shadow disabled:opacity-60"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {invoicesLoading ? 'Yükleniyor...' : 'Faturalar'}
+          </button>
         </div>
       </div>
 
-      {/* Modern Sync Status Panel */}
-      <div className="bg-gradient-to-br from-white via-blue-50 to-purple-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 rounded-2xl shadow-lg border-2 border-blue-200 dark:border-blue-800 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg transition-all ${
-              syncStatus?.running 
-                ? 'bg-gradient-to-br from-green-400 to-emerald-500 animate-pulse' 
-                : 'bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700'
-            }`}>
-              <Activity className={`w-7 h-7 text-white ${syncStatus?.running ? 'animate-pulse' : ''}`} />
+      {/* Sync status panel */}
+      <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-4 card-hover">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${syncStatus?.running ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700'}`}>
+              <Activity className={`w-5 h-5 ${syncStatus?.running ? 'text-green-600 dark:text-green-400 animate-pulse' : 'text-slate-600 dark:text-slate-400'}`} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">XML Senkron Durumu</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                {syncStatus?.running ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="font-medium text-green-600 dark:text-green-400">Çalışıyor</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-slate-400 rounded-full"></span>
-                    <span>Beklemede</span>
-                  </span>
-                )}
-                {syncStatus?.last && (
-                  <span className="ml-3">
-                    • Son: {formatDDMMYYYY(syncStatus.last)} {new Date(syncStatus.last).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </p>
+            <p className="text-slate-700 dark:text-slate-200 font-semibold">XML Senkron Durumu</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{syncStatus?.running ? 'Çalışıyor' : 'Beklemede'}{syncStatus?.last ? ` • Son: ${formatDDMMYYYY(syncStatus.last)} ${new Date(syncStatus.last).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
             </div>
           </div>
-          <div className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Ticimax XML</p>
-          </div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">Kaynak: Ticimax XML</div>
         </div>
 
-        {/* Modern Progress Bar */}
+        {/* Progress Bar */}
         {syncProgress && (
-          <div className="space-y-4 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl p-5 border border-slate-200 dark:border-slate-600">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-md">
-                  <Package className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    {syncProgress.current} / {syncProgress.total} ürün işlendi
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{syncProgress.status}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  %{Math.round(syncProgress.percentage)}
-                </p>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600 dark:text-slate-300">
+                {syncProgress.current} / {syncProgress.total} ürün işlendi
+              </span>
+              <span className="text-slate-500 dark:text-slate-400">
+                %{Math.round(syncProgress.percentage)}
+              </span>
             </div>
             
-            <div className="relative w-full bg-slate-200 dark:bg-slate-600 rounded-full h-4 overflow-hidden shadow-inner">
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
               <div 
-                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500 ease-out shadow-lg"
+                className="bg-gradient-to-r from-blue-500 to-green-500 h-2.5 rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${syncProgress.percentage}%` }}
-              >
-                <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
-              </div>
+              ></div>
             </div>
 
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>{syncProgress.status}</span>
               {syncProgress.currentItem && (
-                <span className="text-slate-600 dark:text-slate-400 truncate max-w-md font-medium">
-                  🔄 {syncProgress.currentItem}
-                </span>
+                <span className="truncate max-w-xs">{syncProgress.currentItem}</span>
               )}
               {syncProgress.errors && syncProgress.errors > 0 && (
-                <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-semibold border border-red-200 dark:border-red-800">
-                  ⚠ {syncProgress.errors} hata
-                </span>
+                <span className="text-red-500 dark:text-red-400">{syncProgress.errors} hata</span>
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modern Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all duration-300 hover:scale-105"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Package className="w-7 h-7" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-4 card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Toplam Ürün</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">{totalProducts}</p>
             </div>
-            <div className="text-right">
-              <p className="text-blue-100 text-sm font-medium">Toplam</p>
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <p className="text-4xl font-bold mb-1">{totalProducts}</p>
-          <p className="text-blue-100 text-sm">Ürün</p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all duration-300 hover:scale-105"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-7 h-7" />
+        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-4 card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Aktif Ürün</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                {products.filter(p => {
+                  const status = getStockStatus(p.id, p.stock ?? 0)
+                  return status === 'active'
+                }).length}
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-green-100 text-sm font-medium">Aktif</p>
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <p className="text-4xl font-bold mb-1">
-            {products.filter(p => {
-              const status = getStockStatus(p.id, p.stock ?? 0)
-              return status === 'active'
-            }).length}
-          </p>
-          <p className="text-green-100 text-sm">Stokta Var</p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all duration-300 hover:scale-105"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Package className="w-7 h-7" />
+        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-4 card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Düşük Stok</p>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
+                {products.filter(p => {
+                  const status = getStockStatus(p.id, p.stock ?? 0)
+                  return status === 'low-stock'
+                }).length}
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-orange-100 text-sm font-medium">Düşük</p>
+            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+              <Package className="w-6 h-6 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
-          <p className="text-4xl font-bold mb-1">
-            {products.filter(p => {
-              const status = getStockStatus(p.id, p.stock ?? 0)
-              return status === 'low-stock'
-            }).length}
-          </p>
-          <p className="text-orange-100 text-sm">Stok Azalıyor</p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all duration-300 hover:scale-105"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Package className="w-7 h-7" />
+        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-4 card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Stok Yok</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                {products.filter(p => {
+                  const status = getStockStatus(p.id, p.stock ?? 0)
+                  return status === 'out-of-stock'
+                }).length}
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-red-100 text-sm font-medium">Yok</p>
+            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+              <Package className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
-          <p className="text-4xl font-bold mb-1">
-            {products.filter(p => {
-              const status = getStockStatus(p.id, p.stock ?? 0)
-              return status === 'out-of-stock'
-            }).length}
-          </p>
-          <p className="text-red-100 text-sm">Stokta Yok</p>
-        </motion.div>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -1139,326 +1065,256 @@ export default function Products() {
         )}
       </AnimatePresence>
 
-      {/* Modern Search and Filter Bar */}
-      <div className="bg-gradient-to-r from-white via-slate-50 to-white dark:from-slate-800 dark:via-slate-800/50 dark:to-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex-1 max-w-2xl">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Ürün ara... (isim, kategori, marka, SKU)"
+                placeholder="Ürün ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all dark:text-slate-300 dark:placeholder-slate-400 shadow-sm hover:shadow-md"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all dark:text-slate-300 dark:placeholder-slate-400"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
-              <select 
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="pl-10 pr-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-slate-300 shadow-sm hover:shadow-md transition-all appearance-none cursor-pointer"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            
-            {selectedProducts.length > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {selectedProducts.length} seçili
-                </span>
-              </div>
-            )}
+          <div className="flex items-center space-x-3">
+            <select 
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-300"
+            >
+              {categories.map(cat => (
+                <option key={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
         </div>
-      </div>
 
-      {/* Modern Card-Based Product Grid */}
-      {filteredProducts.length === 0 ? (
-        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-12 text-center">
-          <Package className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-          <p className="text-lg font-semibold text-slate-600 dark:text-slate-400 mb-2">Ürün bulunamadı</p>
-          <p className="text-sm text-slate-500 dark:text-slate-500">Arama kriterlerinizi değiştirip tekrar deneyin</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product, index) => {
-            const status = getStockStatus(product.id, product.stock ?? 0)
-            const totalStock = getTotalStock(product.id, product.stock ?? 0)
-            const isSelected = selectedProducts.includes(product.id)
-            
-            return (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className={`group relative bg-white dark:bg-slate-800 rounded-2xl shadow-md hover:shadow-xl border-2 transition-all duration-300 overflow-hidden ${
-                  isSelected 
-                    ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' 
-                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
-                }`}
-              >
-                {/* Selection Checkbox */}
-                <div className="absolute top-4 left-4 z-10">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleProductSelection(product.id)}
-                    className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 cursor-pointer bg-white dark:bg-slate-700"
-                  />
-                </div>
-
-                {/* Product Image */}
-                <div className="relative h-48 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 overflow-hidden">
-                  {product.image ? (
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                      onChange={() => {
+                        if (selectedProducts.length === filteredProducts.length) {
+                          deselectAllProducts()
+                        } else {
+                          selectAllProducts()
+                        }
+                      }}
+                      className="rounded border-slate-300 dark:border-slate-600 text-blue-600 dark:text-blue-400"
                     />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-16 h-16 text-blue-400 dark:text-blue-500" />
-                    </div>
-                  )}
-                  
-                  {/* Status Badge */}
-                  <div className="absolute top-4 right-4">
-                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
-                      status === 'active' 
-                        ? 'bg-green-500/90 text-white' 
-                        : status === 'low-stock' 
-                        ? 'bg-orange-500/90 text-white' 
-                        : 'bg-red-500/90 text-white'
-                    }`}>
-                      {status === 'active' ? '✓ Stokta' :
-                       status === 'low-stock' ? '⚠ Düşük' : '✗ Yok'}
-                    </span>
+                    <span>Seç</span>
                   </div>
-
-                  {/* Stock Count Overlay */}
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Stok</span>
-                        <span className={`text-lg font-bold ${
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Ürün</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Kategori</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Fiyat</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Stok</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Bedenler</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Marka</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Durum</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">SKU</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">İşlem</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-dark-card">
+              {filteredProducts.map((product, index) => {
+                const status = getStockStatus(product.id, product.stock ?? 0)
+                const totalStock = getTotalStock(product.id, product.stock ?? 0)
+                return (
+                  <motion.tr
+                    key={product.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                        className="rounded border-slate-300 dark:border-slate-600 text-blue-600 dark:text-blue-400"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl flex items-center justify-center overflow-hidden">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">{product.name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">ID: #{product.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium">
+                        {product.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-bold text-slate-800 dark:text-slate-100">₺{product.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-semibold ${
                           status === 'active' ? 'text-green-600 dark:text-green-400' :
-                          status === 'low-stock' ? 'text-orange-600 dark:text-orange-400' : 
-                          'text-red-600 dark:text-red-400'
+                          status === 'low-stock' ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'
                         }`}>
                           {totalStock}
                         </span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">adet</span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product Info */}
-                <div className="p-5 space-y-3">
-                  {/* Product Name & ID */}
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 line-clamp-2 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: #{product.id}</p>
-                  </div>
-
-                  {/* Category & Brand */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-semibold">
-                      {product.category}
-                    </span>
-                    {product.brand && (
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium">
-                        {product.brand}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      ₺{product.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-
-                  {/* Sizes */}
-                  <div>
-                    {sizesLoading[product.id] ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        <span>Yükleniyor...</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {(sizesMap[product.id] || []).slice(0, 5).map((s, i) => (
-                          <span 
-                            key={`${product.id}-size-${i}`} 
-                            className="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-600"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                        {Array.isArray(sizesMap[product.id]) && sizesMap[product.id].length > 5 && (
-                          <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md text-xs font-medium border border-blue-200 dark:border-blue-800">
-                            +{sizesMap[product.id].length - 5}
-                          </span>
-                        )}
-                        {Array.isArray(sizesMap[product.id]) && sizesMap[product.id].length === 0 && (
-                          <span className="text-xs text-slate-400 dark:text-slate-500 italic">Beden yok</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SKU */}
-                  {product.sku && (
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-medium">SKU:</span> <span className="font-mono">{product.sku}</span>
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <button
-                      onClick={async () => {
-                        try {
-                          const [detailsRes, varsRes] = await Promise.all([
-                            productService.getProductById(product.id),
-                            productService.getProductVariations(product.id)
-                          ])
-                          setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: varsRes?.data?.variations || [] })
-                        } catch {
-                          setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [] })
-                        }
-                      }}
-                      className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                      title="Görüntüle"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Görüntüle</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => openEdit(product)}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      title="Düzenle"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => toggleProductStatus(product.id, (product as any).isActive ?? true)}
-                      disabled={statusToggleLoading[product.id]}
-                      className={`px-3 py-2 rounded-lg transition-colors ${
-                        (product as any).isActive
-                          ? 'bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400'
-                          : 'bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-400'
-                      } disabled:opacity-50`}
-                      title={(product as any).isActive ? 'Pasif et' : 'Aktif et'}
-                    >
-                      {statusToggleLoading[product.id] ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (product as any).isActive ? (
-                        <Power className="w-4 h-4" />
-                      ) : (
-                        <Power className="w-4 h-4" />
+                    </td>
+                    <td className="px-6 py-4">
+                      {sizesLoading[product.id] && (
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Yükleniyor...</span>
                       )}
-                    </button>
-                    
-                    <button
-                      onClick={() => deleteProduct(product.id, product.name)}
-                      className="px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors"
-                      title="Sil"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Trendyol Transfer Button */}
-                  {trendyolIntegration && (
-                    <button
-                      onClick={() => transferToTrendyol(product.id)}
-                      disabled={transferringProducts[product.id]}
-                      className="w-full px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium relative"
-                      title="Trendyol'a Aktar"
-                    >
-                      {transferringProducts[product.id] ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Aktarılıyor...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          <span>Trendyol'a Aktar</span>
-                        </>
-                      )}
-                      {transferMessages[product.id] && (
-                        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 text-xs rounded-lg whitespace-nowrap z-10 shadow-lg ${
-                          transferMessages[product.id].type === 'success'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-red-500 text-white'
-                        }`}>
-                          {transferMessages[product.id].message}
+                      {!sizesLoading[product.id] && (
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {(sizesMap[product.id] || []).slice(0, 6).map((s, i) => (
+                            <span key={`${product.id}-size-${i}`} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs border border-slate-200 dark:border-slate-600">
+                              {s}
+                            </span>
+                          ))}
+                          {Array.isArray(sizesMap[product.id]) && sizesMap[product.id].length > 6 && (
+                            <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-xs border border-slate-200 dark:border-slate-600">+{sizesMap[product.id].length - 6}</span>
+                          )}
+                          {Array.isArray(sizesMap[product.id]) && sizesMap[product.id].length === 0 && (
+                            <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                          )}
                         </div>
                       )}
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )
-          })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">{product.brand}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                          status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' :
+                          status === 'low-stock' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                        }`}>
+                          {status === 'active' ? 'Aktif' :
+                           status === 'low-stock' ? 'Düşük Stok' : 'Stok Yok'}
+                        </span>
+                        <button
+                          onClick={() => toggleProductStatus(product.id, (product as any).isActive ?? true)}
+                          disabled={statusToggleLoading[product.id]}
+                          className={`p-1 rounded transition-colors ${
+                            (product as any).isActive 
+                              ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30' 
+                              : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'
+                          }`}
+                          title={(product as any).isActive ? 'Pasif et' : 'Aktif et'}
+                        >
+                          {statusToggleLoading[product.id] ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (product as any).isActive ? (
+                            <ToggleRight className="w-4 h-4" />
+                          ) : (
+                            <ToggleLeft className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-500 dark:text-slate-400 font-mono">{product.sku || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={async () => {
+                          try {
+                            const [detailsRes, varsRes] = await Promise.all([
+                              productService.getProductById(product.id),
+                              productService.getProductVariations(product.id)
+                            ])
+                            setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: varsRes?.data?.variations || [] })
+                          } catch {
+                            setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [] })
+                          }
+                        }} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg" title="Görüntüle">
+                          <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                        </button>
+                        <button onClick={() => openEdit(product)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg" title="Güncelle">
+                          <Edit className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </button>
+                        <button 
+                          onClick={() => transferToTrendyol(product.id)}
+                          disabled={transferringProducts[product.id] || !trendyolIntegration}
+                          className="p-2 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed relative" 
+                          title={trendyolIntegration ? "Trendyol'a Aktar" : "Trendyol entegrasyonu gerekli"}
+                        >
+                          {transferringProducts[product.id] ? (
+                            <RefreshCw className="w-4 h-4 text-orange-600 dark:text-orange-400 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          )}
+                          {transferMessages[product.id] && (
+                            <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs rounded whitespace-nowrap z-10 ${
+                              transferMessages[product.id].type === 'success' 
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800' 
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800'
+                            }`}>
+                              {transferMessages[product.id].message}
+                            </div>
+                          )}
+                        </button>
+                        <button 
+                          onClick={() => deleteProduct(product.id, product.name)} 
+                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" 
+                          title="Sil"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {/* Modern Pagination */}
-      {filteredProducts.length > 0 && (
-        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-              <Package className="w-4 h-4" />
-              <p className="text-sm font-medium">
-                <span className="text-slate-800 dark:text-slate-200 font-bold">{filteredProducts.length}</span> ürün gösteriliyor
-                {totalProducts !== filteredProducts.length && (
-                  <span className="text-slate-500 dark:text-slate-500"> / {totalProducts} toplam</span>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-5 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-100 dark:disabled:hover:bg-slate-700 shadow-sm hover:shadow-md"
-              >
-                ← Önceki
-              </button>
-              <div className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold shadow-lg">
-                Sayfa {currentPage}
-              </div>
-              <button
-                onClick={() => setCurrentPage(p => p + 1)}
-                disabled={!hasMore}
-                className="px-5 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-100 dark:disabled:hover:bg-slate-700 shadow-sm hover:shadow-md"
-              >
-                Sonraki →
-              </button>
-            </div>
+        <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Toplam {totalProducts} ürün içinden {filteredProducts.length} gösteriliyor
+          </p>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-300"
+            >
+              Önceki
+            </button>
+            <span className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg text-sm">
+              {currentPage}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={!hasMore}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-300"
+            >
+              Sonraki
+            </button>
           </div>
         </div>
-      )}
-
+      </div>
       {/* View modal - full product data */}
       <AnimatePresence>
         {showViewModal.open && showViewModal.product && (
@@ -1599,6 +1455,5 @@ export default function Products() {
         )}
       </AnimatePresence>
     </div>
-    </>
   )
 }
