@@ -639,82 +639,14 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// OPTİMİZASYON: Rate limiting - Yüksek trafik için optimize edilmiş
-// Limitler environment variable'lardan yapılandırılabilir
-const {
-  createUnifiedAPILimiter,
-  createLoginLimiter,
-  createAdminLimiter,
-  createCriticalLimiter,
-  createWalletTransferLimiter,
-  createPaymentLimiter,
-  createGiftCardLimiter,
-  createAdminWalletTransferLimiter,
-  createSuspiciousIPLimiter,
-  getClientIP
-} = require('./utils/rate-limiting');
+// Endpoint-specific rate limiting - Her endpoint için ayrı rate limit
+// Rate limitler server/config/endpoint-rate-limits.js dosyasında tanımlı
+const endpointRateLimitMiddleware = require('./middleware/endpoint-rate-limit');
+const { getClientIP } = require('./utils/rate-limiting');
 
-// Birleşik API limiter - Mobil/web tespiti yaparak tek limiter'da birleştirir
-// Guest kullanıcılar için artırılmış limitler, çift rate limiting sorununu çözer
-const unifiedLimiter = createUnifiedAPILimiter();
-
-// Login limiter - Environment variable'dan yapılandırılabilir
-const loginLimiter = createLoginLimiter();
-
-// Admin limiter - Rate limit kaldırıldı
-// const adminLimiter = createAdminLimiter();
-
-// Critical limiter - Yüksek trafik için 30+ istek/dakika
-const criticalLimiter = createCriticalLimiter();
-
-// OPTİMİZASYON: Kritik endpoint'ler için özel rate limiting - Utility'den al
-// Key generator'lar iyileştirildi (unknown yerine IP bazlı fallback)
-const walletTransferLimiter = createWalletTransferLimiter();
-const paymentLimiter = createPaymentLimiter();
-const giftCardLimiter = createGiftCardLimiter();
-// Admin wallet transfer limiter - Rate limit kaldırıldı
-// const adminWalletTransferLimiter = createAdminWalletTransferLimiter();
-
-// OPTİMİZASYON: Suspicious IP limiter - Yüksek trafik için limit artırıldı veya devre dışı
-// Environment variable ile kontrol edilebilir (DISABLE_SUSPICIOUS_IP_LIMITER=true)
-const suspiciousIPLimiter = createSuspiciousIPLimiter();
-
-// OPTİMİZASYON: Rate limiting uygulama - Sıralama düzenlendi
-// Spesifik limiter'lar önce, global limiter'lar son (çakışma önleme)
-
-// 1. En spesifik endpoint'ler önce (login, kritik endpoint'ler)
-app.use('/api/users/login', loginLimiter);
-// Admin login rate limit kaldırıldı
-// app.use('/api/admin/login', loginLimiter);
-
-// 2. Kritik endpoint'ler (finansal)
-app.use('/api/wallet/transfer', walletTransferLimiter);
-app.use('/api/wallet/gift-card', giftCardLimiter);
-app.use('/api/payments/process', paymentLimiter);
-// Admin wallet transfer rate limit kaldırıldı
-// app.use('/api/admin/wallets/transfer', adminWalletTransferLimiter);
-
-// 3. Kategori bazlı endpoint'ler (admin, orders, critical)
-app.use('/api/orders', criticalLimiter);
-
-// 4. Genel endpoint'ler (users, products, cart, chatbot, reviews)
-// Birleşik limiter kullan - mobil/web tespiti yaparak tek limiter'da birleştirir
-// Çift rate limiting sorununu çözer
-app.use('/api/users', unifiedLimiter);
-app.use('/api/products', unifiedLimiter);
-app.use('/api/cart', unifiedLimiter);
-app.use('/api/chatbot', unifiedLimiter);
-app.use('/api/reviews', unifiedLimiter);
-
-// 5. Admin endpoint'leri - Rate limit kaldırıldı
-// app.use('/api/admin', adminLimiter);
-
-// 6. Global limiter (en son, opsiyonel - environment variable ile kontrol edilebilir)
-// NOT: Suspicious IP limiter artık 500+ istek/15 dakika veya devre dışı
-// Diğer limiter'lar yeterli olduğu için genelde devre dışı bırakılabilir
-if (process.env.DISABLE_SUSPICIOUS_IP_LIMITER !== 'true') {
-  app.use('/api', suspiciousIPLimiter);
-}
+// Endpoint rate limiting middleware - Her endpoint için ayrı rate limit uygular
+// Bu middleware, request path ve method'a göre uygun rate limiter'ı seçer ve uygular
+app.use('/api', endpointRateLimitMiddleware);
 
 // SQL Query Logger Middleware
 app.use((req, res, next) => {

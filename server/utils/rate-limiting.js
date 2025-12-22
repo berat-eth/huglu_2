@@ -312,6 +312,122 @@ const createMobileAPILimiter = () => createUnifiedAPILimiter();
  */
 const createGeneralAPILimiter = () => createUnifiedAPILimiter();
 
+/**
+ * Endpoint-specific rate limiter factory
+ * Her endpoint için ayrı rate limit oluşturur
+ */
+const createEndpointLimiter = (endpointPath, category, customLimit = null, windowMs = null, skipSuccessfulRequests = false) => {
+  const categoryConfig = {
+    auth: {
+      limit: parseInt(process.env.RATE_LIMIT_AUTH || '10', 10),
+      windowMs: 15 * 60 * 1000,
+      skipSuccessfulRequests: true
+    },
+    payment: {
+      limit: parseInt(process.env.RATE_LIMIT_PAYMENT || '15', 10),
+      windowMs: 60 * 1000
+    },
+    wallet: {
+      limit: parseInt(process.env.RATE_LIMIT_WALLET || '20', 10),
+      windowMs: 60 * 1000
+    },
+    admin: {
+      limit: parseInt(process.env.RATE_LIMIT_ADMIN || '500', 10),
+      windowMs: 15 * 60 * 1000
+    },
+    read: {
+      limitAuth: parseInt(process.env.RATE_LIMIT_READ_AUTH || '200', 10),
+      limitGuest: parseInt(process.env.RATE_LIMIT_READ_GUEST || '100', 10),
+      windowMs: 60 * 1000
+    },
+    write: {
+      limitAuth: parseInt(process.env.RATE_LIMIT_WRITE_AUTH || '100', 10),
+      limitGuest: parseInt(process.env.RATE_LIMIT_WRITE_GUEST || '50', 10),
+      windowMs: 60 * 1000
+    },
+    analytics: {
+      limit: parseInt(process.env.RATE_LIMIT_ANALYTICS || '300', 10),
+      windowMs: 60 * 1000
+    },
+    critical: {
+      limit: parseInt(process.env.RATE_LIMIT_CRITICAL || '50', 10),
+      windowMs: 60 * 1000
+    },
+    default: {
+      limitAuth: parseInt(process.env.RATE_LIMIT_DEFAULT_AUTH || '100', 10),
+      limitGuest: parseInt(process.env.RATE_LIMIT_DEFAULT_GUEST || '50', 10),
+      windowMs: 60 * 1000
+    }
+  };
+
+  const config = categoryConfig[category] || categoryConfig.default;
+
+  // Read ve write kategorileri için authenticated/guest ayrımı
+  if (category === 'read' || category === 'write' || category === 'default') {
+    return rateLimit({
+      windowMs: windowMs || config.windowMs,
+      max: (req) => {
+        const userId = getUserIdFromRequest(req);
+        const isAuthenticated = !!userId;
+        return isAuthenticated ? config.limitAuth : config.limitGuest;
+      },
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: (req) => {
+        const ip = getClientIP(req);
+        const userId = getUserIdFromRequest(req);
+        const isMobile = detectClientType(req);
+        const identifier = userId ? `user:${userId}` : `ip:${ip}`;
+        return `${endpointPath}:${isMobile ? 'mobile' : 'web'}:${identifier}`;
+      },
+      message: `Rate limit exceeded for ${endpointPath}`,
+      skip: (req) => isPrivateIP(req.ip),
+      handler: (req, res, next, options) => {
+        if (req.rateLimit && req.rateLimit.used === req.rateLimit.limit + 1) {
+          const ip = getClientIP(req);
+          const userId = getUserIdFromRequest(req);
+          const isMobile = detectClientType(req);
+          console.warn(`[RATE_LIMIT_ENDPOINT] Limit exceeded - Endpoint: ${endpointPath}, IP: ${ip}, UserId: ${userId || 'guest'}, Client: ${isMobile ? 'mobile' : 'web'}, Method: ${req.method}`);
+        }
+        res.status(options.statusCode).json({
+          success: false,
+          message: options.message
+        });
+      }
+    });
+  }
+
+  // Diğer kategoriler için sabit limit
+  return rateLimit({
+    windowMs: windowMs || config.windowMs,
+    max: customLimit || config.limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: skipSuccessfulRequests || config.skipSuccessfulRequests || false,
+    keyGenerator: (req) => {
+      const ip = getClientIP(req);
+      const userId = getUserIdFromRequest(req);
+      const isMobile = detectClientType(req);
+      const identifier = userId ? `user:${userId}` : `ip:${ip}`;
+      return `${endpointPath}:${isMobile ? 'mobile' : 'web'}:${identifier}`;
+    },
+    message: `Rate limit exceeded for ${endpointPath}`,
+    skip: (req) => isPrivateIP(req.ip),
+    handler: (req, res, next, options) => {
+      if (req.rateLimit && req.rateLimit.used === req.rateLimit.limit + 1) {
+        const ip = getClientIP(req);
+        const userId = getUserIdFromRequest(req);
+        const isMobile = detectClientType(req);
+        console.warn(`[RATE_LIMIT_ENDPOINT] Limit exceeded - Endpoint: ${endpointPath}, IP: ${ip}, UserId: ${userId || 'guest'}, Client: ${isMobile ? 'mobile' : 'web'}, Method: ${req.method}`);
+      }
+      res.status(options.statusCode).json({
+        success: false,
+        message: options.message
+      });
+    }
+  });
+};
+
 module.exports = {
   createWalletTransferLimiter,
   createPaymentLimiter,
@@ -324,7 +440,10 @@ module.exports = {
   createGeneralAPILimiter,
   createMobileAPILimiter,
   createUnifiedAPILimiter,
+  createEndpointLimiter,
   isPrivateIP,
-  getClientIP
+  getClientIP,
+  getUserIdFromRequest,
+  detectClientType
 };
 
