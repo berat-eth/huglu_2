@@ -6190,7 +6190,7 @@ app.get('/api/admin/users/admins', authenticateAdmin, async (req, res) => {
     }
     
     const [rows] = await poolWrapper.execute(`
-      SELECT u.id, u.name, u.email, u.phone, u.role, u.isActive, u.permissions, u.createdAt,
+      SELECT u.id, u.name, u.email, u.phone, u.role, u.isActive, u.createdAt,
              (SELECT MAX(detectedAt) FROM security_events WHERE username = u.email AND eventType = 'ADMIN_LOGIN_SUCCESS') as lastLogin
       FROM users u 
       WHERE u.role = 'admin'
@@ -6198,12 +6198,8 @@ app.get('/api/admin/users/admins', authenticateAdmin, async (req, res) => {
     `);
     
     const admins = rows.map(admin => {
-      let permissions = [];
-      try {
-        permissions = admin.permissions ? JSON.parse(admin.permissions) : [];
-      } catch (e) {
-        permissions = [];
-      }
+      // Permissions kolonu users tablosunda yok, varsayılan olarak boş array döndür
+      const permissions = [];
       
       return {
         id: admin.id,
@@ -6321,10 +6317,11 @@ app.put('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
       values.push(isActive);
     }
     
-    if (permissionsJson !== null) {
-      updates.push('permissions = ?');
-      values.push(permissionsJson);
-    }
+    // Permissions kolonu users tablosunda yok, bu kısmı atla
+    // if (permissionsJson !== null) {
+    //   updates.push('permissions = ?');
+    //   values.push(permissionsJson);
+    // }
     
     values.push(userId);
     
@@ -6431,7 +6428,7 @@ app.get('/api/admin/profile', authenticateAdmin, async (req, res) => {
     // In a real scenario, you'd get this from the token or session
     const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'berat1@admin.local').toString();
     const [rows] = await poolWrapper.execute(
-      'SELECT id, name, email, phone, role, permissions FROM users WHERE email = ? AND role = "admin" LIMIT 1',
+      'SELECT id, name, email, phone, role FROM users WHERE email = ? AND role = "admin" LIMIT 1',
       [ADMIN_EMAIL]
     );
     
@@ -6440,12 +6437,8 @@ app.get('/api/admin/profile', authenticateAdmin, async (req, res) => {
     }
     
     const admin = rows[0];
-    let permissions = [];
-    try {
-      permissions = admin.permissions ? JSON.parse(admin.permissions) : [];
-    } catch (e) {
-      permissions = [];
-    }
+    // Permissions kolonu users tablosunda yok, varsayılan olarak boş array döndür
+    const permissions = [];
     
     res.json({
       success: true,
@@ -6454,7 +6447,7 @@ app.get('/api/admin/profile', authenticateAdmin, async (req, res) => {
         name: admin.name,
         email: admin.email,
         phone: admin.phone || '',
-        role: admin.role,
+        role: admin.role || 'admin',
         permissions: permissions
       }
     });
