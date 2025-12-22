@@ -1435,30 +1435,68 @@ export default function Products() {
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
                     <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
                       <Activity className="w-4 h-4 mr-2 text-purple-600 dark:text-purple-400" />
-                      Bedenler & Varyasyonlar
+                      Bedenler & Stok Durumu
                     </h4>
                     {(sizesMap[showViewModal.product.id] || []).length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {(sizesMap[showViewModal.product.id] || []).map((s, i) => (
-                          <span 
-                            key={`view-size-${i}`} 
-                            className="px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-600 shadow-sm"
-                          >
-                            {s}
-                          </span>
-                        ))}
+                      <div className="space-y-2">
+                        {(sizesMap[showViewModal.product.id] || []).map((size, i) => {
+                          const stock = productSizes[showViewModal.product.id]?.[size] ?? 0
+                          const stockColor = stock > 10 ? 'text-green-600 dark:text-green-400' :
+                                           stock > 0 ? 'text-orange-600 dark:text-orange-400' :
+                                           'text-red-600 dark:text-red-400'
+                          const bgColor = stock > 10 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                                         stock > 0 ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' :
+                                         'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                          
+                          return (
+                            <div 
+                              key={`view-size-${i}`} 
+                              className={`px-4 py-3 bg-white dark:bg-slate-700 rounded-lg border ${bgColor} shadow-sm flex items-center justify-between`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                  {size}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-bold ${stockColor}`}>
+                                  {stock} adet
+                                </span>
+                                {stock === 0 && (
+                                  <span className="text-xs text-red-500 dark:text-red-400">Stokta Yok</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {/* Toplam Stok */}
+                        {productSizes[showViewModal.product.id] && Object.keys(productSizes[showViewModal.product.id]).length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between px-2">
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Toplam Stok:</span>
+                              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                {Object.values(productSizes[showViewModal.product.id]).reduce((sum: number, stock: number) => sum + (Number(stock) || 0), 0)} adet
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <Package className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                         <p className="text-sm text-slate-400 dark:text-slate-500">Beden bilgisi bulunmuyor</p>
+                        {showViewModal.product.stock !== undefined && showViewModal.product.stock > 0 && (
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                            Genel Stok: {showViewModal.product.stock} adet
+                          </p>
+                        )}
                       </div>
                     )}
                     
                     {/* Varyasyonlar varsa göster */}
                     {showViewModal.variations && showViewModal.variations.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Varyasyonlar:</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-semibold">Varyasyonlar:</p>
                         <div className="space-y-2">
                           {showViewModal.variations.slice(0, 5).map((variation: any, idx: number) => (
                             <div key={idx} className="text-xs bg-white dark:bg-slate-700 p-2 rounded border border-slate-200 dark:border-slate-600">

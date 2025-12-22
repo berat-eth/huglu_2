@@ -308,6 +308,8 @@ async function createDatabaseSchema(pool) {
       image3 VARCHAR(500),
       image4 VARCHAR(500),
       image5 VARCHAR(500),
+      thumbnail VARCHAR(500),
+      gallery JSON,
       stock INT DEFAULT 0,
       brand VARCHAR(100),
       rating DECIMAL(3,2) DEFAULT 0.00,
@@ -399,6 +401,14 @@ async function createDatabaseSchema(pool) {
       if (!prodColNames.includes('image5')) {
           await pool.execute('ALTER TABLE products ADD COLUMN image5 VARCHAR(500) AFTER image4');
           console.log('✅ Added image5 to products');
+      }
+      if (!prodColNames.includes('thumbnail')) {
+          await pool.execute('ALTER TABLE products ADD COLUMN thumbnail VARCHAR(500) AFTER image5');
+          console.log('✅ Added thumbnail to products');
+      }
+      if (!prodColNames.includes('gallery')) {
+          await pool.execute('ALTER TABLE products ADD COLUMN gallery JSON AFTER thumbnail');
+          console.log('✅ Added gallery to products');
       }
       if (!prodColNames.includes('sku')) {
           await pool.execute('ALTER TABLE products ADD COLUMN sku VARCHAR(100) AFTER hasVariations');
