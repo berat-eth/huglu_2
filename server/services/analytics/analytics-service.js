@@ -201,7 +201,7 @@ class AnalyticsService {
       const pageViewsCount = pageViews[0]?.count || 0;
 
       // Conversion bilgileri
-      const conversion = conversionData ? true : false;
+      const conversion = conversionData ? 1 : 0; // MySQL BOOLEAN için 1 veya 0
       const conversionValue = conversionData?.value || null;
       const conversionType = conversionData?.type || null;
 
@@ -214,18 +214,18 @@ class AnalyticsService {
           conversion = ?,
           conversionValue = ?,
           conversionType = ?,
-          isActive = false,
+          isActive = 0,
           lastActivity = ?
          WHERE id = ? AND tenantId = ?`,
         [
-          sessionEnd,
+          sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // sessionEnd: DATETIME format
           duration,
           pageViewsCount,
           eventsCount,
           conversion,
           conversionValue,
           conversionType,
-          sessionEnd,
+          sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // lastActivity: DATETIME format
           sessionId,
           tenantId
         ]
