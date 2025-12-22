@@ -153,9 +153,7 @@ export default function Dashboard() {
             setSnortStats({ total:0, high:0, medium:0, low:0, alerts:0, dropped:0, last:'' })
           }
         } catch { setSnortStats({ total:0, high:0, medium:0, low:0, alerts:0, dropped:0, last:'' }) }
-        // Canlı görüntülemeler (yaklaşık canlı kullanıcı metrikleri için)
-        let liveViews: any = { success: true, data: [] as any[] }
-        try { liveViews = await api.get<any>('/admin/live-views') } catch {}
+        // Live views removed
         // Kategori dağılımı ve performansı
         const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
         let categoryDistributionSet = false
@@ -477,9 +475,9 @@ export default function Dashboard() {
 
         // Müşteri davranışı (radar) — canlı görüntülemelerden türet
         try {
-          const views = (liveViews as any)?.data || []
-          const totalViews = views.length
-          const addedToCart = views.filter((v:any)=>v.addedToCart).length
+          // Live views removed
+          const totalViews = 0
+          const addedToCart = 0
           const purchases = views.filter((v:any)=>v.purchased).length
           const score = (n:number, base:number) => Math.min(100, Math.round((n/Math.max(base,1))*100))
           setCustomerBehavior([

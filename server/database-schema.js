@@ -30,6 +30,7 @@ async function createDatabaseSchema(pool) {
           'return_requests', 'payment_transactions', 'custom_production_messages', 'custom_production_requests',
           'custom_production_items', 'customer_segments', 'campaigns', 'customer_segment_assignments',
           'campaign_usage', 'customer_analytics', 'discount_wheel_spins', 'chatbot_analytics',
+          'analytics_events', 'analytics_sessions', 'analytics_funnels', 'analytics_cohorts', 'analytics_reports', 'analytics_alerts',
           'wallet_recharge_requests', 'user_discount_codes', 'referral_earnings', 'user_events',
           'user_profiles', 'categories', 'recommendations', 'gift_cards', 'security_events',
           // Segments
@@ -3101,6 +3102,185 @@ async function createDatabaseSchema(pool) {
       `);
       console.log('✅ analytics_aggregates table ready');
 
+      // Analytics events table - Tüm analitik eventlerin merkezi tablosu
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_events (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NULL,
+          deviceId VARCHAR(255) NOT NULL,
+          sessionId VARCHAR(255) NOT NULL,
+          eventType ENUM('screen_view', 'product_view', 'add_to_cart', 'remove_from_cart', 'purchase', 'search', 'click', 'scroll', 'error', 'performance', 'custom') NOT NULL,
+          screenName VARCHAR(255) NULL,
+          properties JSON,
+          productId INT NULL,
+          categoryId INT NULL,
+          orderId INT NULL,
+          amount DECIMAL(10,2) NULL,
+          searchQuery VARCHAR(500) NULL,
+          errorMessage TEXT NULL,
+          performanceMetrics JSON,
+          ipAddress VARCHAR(45),
+          userAgent VARCHAR(500),
+          timestamp DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_user (userId),
+          INDEX idx_device (deviceId),
+          INDEX idx_session (sessionId),
+          INDEX idx_event_type (eventType),
+          INDEX idx_timestamp (timestamp),
+          INDEX idx_product (productId),
+          INDEX idx_order (orderId),
+          INDEX idx_tenant_event_time (tenantId, eventType, timestamp),
+          INDEX idx_user_session (userId, sessionId),
+          INDEX idx_device_session (deviceId, sessionId),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
+          FOREIGN KEY (productId) REFERENCES products(id) ON DELETE SET NULL,
+          FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_events table ready');
+
+      // Analytics sessions table - Gelişmiş session takibi
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_sessions (
+          id VARCHAR(255) PRIMARY KEY,
+          tenantId INT NOT NULL,
+          userId INT NULL,
+          deviceId VARCHAR(255) NOT NULL,
+          sessionStart DATETIME(3) NOT NULL,
+          sessionEnd DATETIME(3) NULL,
+          duration INT NULL COMMENT 'Session süresi (saniye)',
+          pageViews INT DEFAULT 0,
+          eventsCount INT DEFAULT 0,
+          conversion BOOLEAN DEFAULT false,
+          conversionValue DECIMAL(10,2) NULL,
+          conversionType VARCHAR(50) NULL COMMENT 'purchase, signup, etc.',
+          deviceInfo JSON,
+          ipAddress VARCHAR(45),
+          userAgent VARCHAR(500),
+          referrer VARCHAR(500),
+          country VARCHAR(100),
+          city VARCHAR(100),
+          isActive BOOLEAN DEFAULT true,
+          lastActivity DATETIME(3) NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_user (userId),
+          INDEX idx_device (deviceId),
+          INDEX idx_session_start (sessionStart),
+          INDEX idx_active (isActive),
+          INDEX idx_conversion (conversion),
+          INDEX idx_tenant_active (tenantId, isActive),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_sessions table ready');
+
+      // Analytics funnels table - Conversion funnel analizi
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_funnels (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          funnelName VARCHAR(255) NOT NULL,
+          funnelSteps JSON NOT NULL COMMENT 'Funnel adımları array',
+          totalUsers INT DEFAULT 0 COMMENT 'Funnel başlangıcındaki toplam kullanıcı',
+          conversions INT DEFAULT 0 COMMENT 'Funnel sonundaki conversion sayısı',
+          conversionRate DECIMAL(5,2) DEFAULT 0,
+          dropOffPoints JSON COMMENT 'Her adımdaki drop-off sayıları',
+          abTestId VARCHAR(100) NULL COMMENT 'A/B test ID',
+          dateRangeStart DATE NULL,
+          dateRangeEnd DATE NULL,
+          isActive BOOLEAN DEFAULT true,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_active (isActive),
+          INDEX idx_date_range (dateRangeStart, dateRangeEnd),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_funnels table ready');
+
+      // Analytics cohorts table - Kullanıcı kohort analizi
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_cohorts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          cohortName VARCHAR(255) NOT NULL,
+          cohortType ENUM('registration', 'first_purchase', 'custom') NOT NULL DEFAULT 'registration',
+          cohortDate DATE NOT NULL COMMENT 'Kohort tarihi',
+          totalUsers INT DEFAULT 0 COMMENT 'Kohorttaki toplam kullanıcı',
+          retentionData JSON COMMENT 'Retention metrikleri (haftalık/aylık)',
+          revenueData JSON COMMENT 'Kohort bazlı gelir analizi',
+          metadata JSON,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_cohort (tenantId, cohortName, cohortDate),
+          INDEX idx_tenant (tenantId),
+          INDEX idx_cohort_date (cohortDate),
+          INDEX idx_type (cohortType),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_cohorts table ready');
+
+      // Analytics reports table - Oluşturulan raporların cache'i
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_reports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          reportName VARCHAR(255) NOT NULL,
+          reportType ENUM('daily', 'weekly', 'monthly', 'custom') NOT NULL,
+          reportTemplate VARCHAR(100) NULL COMMENT 'Rapor şablonu',
+          parameters JSON COMMENT 'Rapor parametreleri',
+          results JSON COMMENT 'Rapor sonuçları',
+          status ENUM('pending', 'generating', 'completed', 'failed') DEFAULT 'pending',
+          generatedAt TIMESTAMP NULL,
+          expiresAt TIMESTAMP NULL,
+          filePath VARCHAR(500) NULL COMMENT 'Export edilmiş dosya yolu',
+          fileFormat ENUM('json', 'pdf', 'excel', 'csv') NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_type (reportType),
+          INDEX idx_status (status),
+          INDEX idx_expires (expiresAt),
+          INDEX idx_created (createdAt),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_reports table ready');
+
+      // Analytics alerts table - Metrik bazlı uyarılar
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS analytics_alerts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL,
+          alertName VARCHAR(255) NOT NULL,
+          metricType VARCHAR(100) NOT NULL COMMENT 'revenue, users, conversion_rate, etc.',
+          conditionType ENUM('greater_than', 'less_than', 'equals', 'percentage_change') NOT NULL,
+          thresholdValue DECIMAL(10,2) NOT NULL,
+          comparisonPeriod VARCHAR(50) NULL COMMENT 'previous_day, previous_week, etc.',
+          isActive BOOLEAN DEFAULT true,
+          lastTriggered TIMESTAMP NULL,
+          triggerCount INT DEFAULT 0,
+          notificationChannels JSON COMMENT 'email, webhook, etc.',
+          webhookUrl VARCHAR(500) NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_active (isActive),
+          INDEX idx_metric (metricType),
+          INDEX idx_last_triggered (lastTriggered),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ analytics_alerts table ready');
 
       // Chat Sessions table
       await pool.execute(`

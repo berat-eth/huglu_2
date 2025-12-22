@@ -18,8 +18,6 @@ import Applications from '@/components/Applications'
 import CustomerCare from '@/components/CustomerCare'
 import Segments from '@/components/Segments'
 
-import LiveData from '@/components/LiveData'
-import LiveUsers from '@/components/LiveUsers'
 
 import Chatbot from '@/components/Chatbot'
 import Security from '@/components/Security'
@@ -58,7 +56,6 @@ import CRM from '@/components/CRM'
 import GoogleMapsScraper from '@/components/GoogleMapsScraper'
 import SEO from '@/components/SEO'
 import Popups from '@/components/Popups'
-import Analytics from '@/components/Analytics'
 import Integrations from '@/components/Integrations'
 import TrendyolOrders from '@/components/TrendyolOrders'
 import TrendyolAuth from '@/components/TrendyolAuth'
@@ -254,9 +251,6 @@ export default function DashboardPage() {
           {activeTab === 'customer-care' && <CustomerCare />}
           {activeTab === 'segments' && <Segments />}
 
-          {activeTab === 'analytics' && <Analytics />}
-          {activeTab === 'live-data' && <LiveData />}
-          {activeTab === 'live-users' && <LiveUsers />}
           {activeTab === 'server-stats' && <ServerStats />}
           {activeTab === 'backup' && <Backup />}
 

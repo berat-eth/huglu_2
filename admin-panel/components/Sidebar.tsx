@@ -113,14 +113,6 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
       ]
     },
     {
-      title: 'Analiz & Raporlama',
-      items: [
-        { id: 'analytics', label: 'Detaylı Analitik', icon: BarChart3 },
-        { id: 'live-data', label: 'Canlı Veriler', icon: Radio },
-        { id: 'live-users', label: 'Canlı Kullanıcılar', icon: Eye },
-      ]
-    },
-    {
       title: 'Yapay Zeka',
       items: [
         { id: 'project-ajax', label: 'Project Ajax', icon: Sparkles },

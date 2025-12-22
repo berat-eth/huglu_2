@@ -53,19 +53,10 @@ api.interceptors.request.use(
 // Response interceptor - Hata yönetimi
 api.interceptors.response.use(
   (response) => {
-    // Analytics endpoint'leri için daha az log
-    const isAnalyticsEndpoint = response.config.url?.includes('/events/');
-    if (!isAnalyticsEndpoint) {
-      console.log('✅ API Response:', response.config.url, response.status, {
-        dataSize: JSON.stringify(response.data).length,
-        success: response.data?.success
-      });
-    } else {
-      // Analytics için sadece başarı/hata logla
-      if (response.data?.success) {
-        console.log('✅ Analytics API:', response.config.url, 'Başarılı');
-      }
-    }
+    console.log('✅ API Response:', response.config.url, response.status, {
+      dataSize: JSON.stringify(response.data).length,
+      success: response.data?.success
+    });
     return response;
   },
   async (error) => {
@@ -416,24 +407,9 @@ export const liveSupportAPI = {
     api.get(`/chatbot/live-support/conversations/${userId}`),
 };
 
-// ==================== EVENTS API (Hafif Veri Toplama) ====================
-export const eventsAPI = {
-  trackEvent: (eventData) => api.post('/events/track', eventData),
-  trackBatch: (events) => api.post('/events/batch', { events }),
-  startSession: (sessionData) => api.post('/events/session/start', sessionData),
-  endSession: (sessionData) => api.post('/events/session/end', sessionData),
-};
+// Events API removed
 
-// ==================== ANALYTICS API (Deprecated - eventsAPI kullanın) ====================
-export const analyticsAPI = {
-  trackEvent: (eventData) => eventsAPI.trackEvent(eventData),
-  startSession: (sessionData) => eventsAPI.startSession(sessionData),
-  endSession: (sessionData) => eventsAPI.endSession(sessionData),
-  linkDevice: (deviceId, userId) => {
-    console.warn('⚠️ linkDevice endpoint deprecated. Device linking artık otomatik yapılıyor.');
-    return Promise.resolve({ success: true });
-  },
-};
+// Analytics API removed
 
 // ==================== REFERRAL API ====================
 export const referralAPI = {

@@ -3,17 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import ProductCard from './ProductCard';
 import { COLORS } from '../constants/colors';
-import analyticsService from '../services/analytics';
-
 export default function ProductSlider({ title, products, onSeeAll, onProductPress, onFavorite }) {
   const handleProductPress = (product) => {
-    // Product click tracking
-    analyticsService.trackClick('product_card', {
-      productId: product.id || product._id,
-      productName: product.name,
-      source: title || 'product_slider'
-    });
-    
     if (onProductPress) {
       onProductPress(product);
     }

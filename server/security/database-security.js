@@ -437,6 +437,7 @@ class DatabaseSecurity {
       'custom_production_messages', 'custom_production_requests', 'custom_production_items',
       'customer_segments', 'campaigns', 'customer_segment_assignments', 'campaign_usage',
       'customer_analytics', 'discount_wheel_spins', 'chatbot_analytics',
+      'analytics_events', 'analytics_sessions', 'analytics_funnels', 'analytics_cohorts', 'analytics_reports', 'analytics_alerts',
       'wallet_recharge_requests', 'user_discount_codes', 'referral_earnings', 'user_events',
       'user_profiles', 'categories', 'recommendations', 'gift_cards', 'security_events',
       'segments', 'user_segments', 'segment_stats',
