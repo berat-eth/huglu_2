@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { api, ApiResponse } from '@/lib/api'
 import { useTheme } from '@/lib/ThemeContext'
 import { Brain, Settings, FileText, Activity, ToggleLeft, ToggleRight, Plus, Edit, Trash2, Eye, AlertCircle, CheckCircle, X, RefreshCw, Zap, Shield, TrendingUp, Clock, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -57,17 +57,17 @@ export default function PlatformBrain() {
     try {
       setLoading(true)
       if (activeTab === 'dashboard') {
-        const statusData = await api.get('/platform-brain/status')
+        const statusData = await api.get<ApiResponse<any>>('/platform-brain/status') as ApiResponse<any>
         setStatus(statusData.data)
       } else if (activeTab === 'flags') {
-        const flagsData = await api.get('/platform-brain/feature-flags')
-        setFeatureFlags(flagsData.data)
+        const flagsData = await api.get<ApiResponse<FeatureFlag[]>>('/platform-brain/feature-flags') as ApiResponse<FeatureFlag[]>
+        setFeatureFlags(flagsData.data || [])
       } else if (activeTab === 'rules') {
-        const rulesData = await api.get('/platform-brain/rules')
-        setRules(rulesData.data)
+        const rulesData = await api.get<ApiResponse<Rule[]>>('/platform-brain/rules') as ApiResponse<Rule[]>
+        setRules(rulesData.data || [])
       } else if (activeTab === 'decisions') {
-        const decisionsData = await api.get('/platform-brain/decisions', { limit: 100 })
-        setDecisions(decisionsData.data)
+        const decisionsData = await api.get<ApiResponse<Decision[]>>('/platform-brain/decisions', { limit: 100 }) as ApiResponse<Decision[]>
+        setDecisions(decisionsData.data || [])
       }
     } catch (error: any) {
       console.error('Huğlu AI veri yükleme hatası:', error)
