@@ -1,11 +1,31 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Activity, Users, Eye, TrendingUp, Clock, MapPin, Smartphone, Monitor } from 'lucide-react'
+import { Activity, Users, Eye, TrendingUp, Clock, MapPin, Smartphone, Monitor, Wallet, User, FileText } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { motion } from 'framer-motion'
 import { analyticsService } from '@/lib/services/analyticsService'
 import { useTheme } from '@/lib/ThemeContext'
+
+// Helper function to safely format numbers
+const formatNumber = (value: any, decimals: number = 2): string => {
+  try {
+    if (value === null || value === undefined || value === '') return '0'
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value.toFixed(decimals)
+    }
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      if (isNaN(num)) return '0'
+      return num.toFixed(decimals)
+    }
+    const num = Number(value)
+    if (isNaN(num)) return '0'
+    return num.toFixed(decimals)
+  } catch (error) {
+    return '0'
+  }
+}
 
 export default function RealtimeAnalytics() {
   const { theme } = useTheme()
@@ -146,7 +166,7 @@ export default function RealtimeAnalytics() {
             <div>
               <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Canlı Gelir</p>
               <p className="text-3xl font-bold text-red-900 dark:text-red-100">
-                {overview?.revenue?.toFixed(2) || 0} ₺
+                {formatNumber(overview?.revenue, 2)} ₺
               </p>
               <p className="text-xs text-red-600 dark:text-red-400 mt-1">Son 1 saat</p>
             </div>
@@ -175,33 +195,90 @@ export default function RealtimeAnalytics() {
                   transition={{ delay: index * 0.05 }}
                   className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                        {session.id.substring(0, 12)}...
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 dark:text-gray-400">
-                        {session.userId && (
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            User: {session.userId}
-                          </span>
+                  <div className="space-y-3">
+                    {/* Kullanıcı Bilgileri */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        {session.userName ? (
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="w-4 h-4 text-blue-500" />
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                              {session.userName}
+                            </p>
+                            <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs">
+                              Giriş Yapmış
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm mb-2">
+                            Misafir Kullanıcı ({session.deviceId?.substring(0, 8)}...)
+                          </p>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {session.pageViews} sayfa
-                        </span>
-                        {session.country && (
+                        
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-600 dark:text-gray-400">
+                          {session.userId && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              ID: {session.userId}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {session.country}
+                            <Eye className="w-3 h-3" />
+                            {session.pageViews || 0} sayfa
                           </span>
-                        )}
+                          {session.country && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {session.country}
+                            </span>
+                          )}
+                          {session.walletBalance !== undefined && session.walletBalance > 0 && (
+                            <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-semibold">
+                              <Wallet className="w-3 h-3" />
+                              {session.walletBalance.toFixed(2)} ₺
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {session.lastActivity && new Date(session.lastActivity).toLocaleTimeString()}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {session.lastActivity && new Date(session.lastActivity).toLocaleTimeString()}
-                    </div>
+
+                    {/* Sayfa Görüntüleme Süreleri */}
+                    {session.pages && session.pages.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-1 mb-2">
+                          <FileText className="w-3 h-3 text-purple-500" />
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sayfa Aktivitesi:</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          {session.pages.slice(0, 3).map((page: any, pageIndex: number) => (
+                            <div key={pageIndex} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/50 rounded px-2 py-1">
+                              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">
+                                {page.screenName || 'Bilinmeyen Sayfa'}
+                              </span>
+                              <div className="flex items-center gap-3 ml-2">
+                                <span className="text-gray-500 dark:text-gray-400">
+                                  {page.viewCount}x
+                                </span>
+                                {page.avgTimeOnScreen > 0 && (
+                                  <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                                    <Clock className="w-3 h-3" />
+                                    {page.avgTimeOnScreen}s
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {session.pages.length > 3 && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+                              +{session.pages.length - 3} sayfa daha
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))

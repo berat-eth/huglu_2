@@ -145,22 +145,72 @@ class RealtimeService {
   }
 
   /**
-   * Aktif session'ları al
+   * Aktif session'ları al - Kullanıcı bilgileri ve sayfa süreleri ile
    */
   async getActiveSessions(tenantId, limit = 100) {
     try {
       const [sessions] = await this.pool.execute(
         `SELECT 
-          id, userId, deviceId, sessionStart, lastActivity,
-          pageViews, eventsCount, country, city
-         FROM analytics_sessions
-         WHERE tenantId = ? AND isActive = true AND lastActivity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-         ORDER BY lastActivity DESC
+          s.id, 
+          s.userId, 
+          s.deviceId, 
+          s.sessionStart, 
+          s.lastActivity,
+          s.pageViews, 
+          s.eventsCount, 
+          s.country, 
+          s.city,
+          u.name as userName,
+          COALESCE(w.balance, 0) as walletBalance
+         FROM analytics_sessions s
+         LEFT JOIN users u ON s.userId = u.id AND s.tenantId = u.tenantId
+         LEFT JOIN user_wallets w ON s.userId = w.userId AND s.tenantId = w.tenantId
+         WHERE s.tenantId = ? AND s.isActive = true AND s.lastActivity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+         ORDER BY s.lastActivity DESC
          LIMIT ?`,
         [tenantId, limit]
       );
 
-      return sessions;
+      // Her session için sayfa görüntüleme sürelerini hesapla
+      const sessionsWithPageTimes = await Promise.all(
+        sessions.map(async (session) => {
+          // Bu session için sayfa görüntüleme sürelerini al
+          const [pageTimes] = await this.pool.execute(
+            `SELECT 
+              screenName,
+              COUNT(*) as viewCount,
+              AVG(CASE 
+                WHEN properties IS NOT NULL AND JSON_EXTRACT(properties, '$.timeOnScreen') IS NOT NULL 
+                THEN CAST(JSON_EXTRACT(properties, '$.timeOnScreen') AS UNSIGNED) 
+                ELSE NULL 
+              END) as avgTimeOnScreen,
+              SUM(CASE 
+                WHEN properties IS NOT NULL AND JSON_EXTRACT(properties, '$.timeOnScreen') IS NOT NULL 
+                THEN CAST(JSON_EXTRACT(properties, '$.timeOnScreen') AS UNSIGNED) 
+                ELSE 0 
+              END) as totalTimeOnScreen
+             FROM analytics_events
+             WHERE tenantId = ? AND sessionId = ? AND eventType = 'screen_view'
+             GROUP BY screenName
+             ORDER BY viewCount DESC`,
+            [tenantId, session.id]
+          );
+
+          return {
+            ...session,
+            userName: session.userName || null,
+            walletBalance: parseFloat(session.walletBalance || 0),
+            pages: pageTimes.map(page => ({
+              screenName: page.screenName,
+              viewCount: page.viewCount,
+              avgTimeOnScreen: Math.floor(page.avgTimeOnScreen || 0),
+              totalTimeOnScreen: Math.floor(page.totalTimeOnScreen || 0)
+            }))
+          };
+        })
+      );
+
+      return sessionsWithPageTimes;
     } catch (error) {
       console.error('❌ Real-time Service: Error getting active sessions:', error);
       throw error;
