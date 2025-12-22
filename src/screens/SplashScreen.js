@@ -49,11 +49,26 @@ export default function SplashScreen({ navigation }) {
         return;
       }
       
-      // 2. Verileri önceden yükle (opsiyonel)
+      // 2. Onboarding kontrolü
+      const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+      if (!hasSeenOnboarding) {
+        console.log('📱 İlk açılış, OnboardingScreen\'e yönlendiriliyor');
+        navigation.replace('Onboarding');
+        return;
+      }
+      
+      // 3. Verileri önceden yükle (opsiyonel)
       await preloadHomeData();
       
-      // 3. Ana sayfaya git
-      navigation.replace('Main');
+      // 4. Kullanıcı giriş kontrolü
+      const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
+      if (isLoggedIn === 'true') {
+        // Kullanıcı giriş yapmışsa ana sayfaya git
+        navigation.replace('Main');
+      } else {
+        // Kullanıcı giriş yapmamışsa login sayfasına git
+        navigation.replace('Login');
+      }
     } catch (error) {
       console.error('❌ App initialization error:', error);
       
@@ -63,8 +78,19 @@ export default function SplashScreen({ navigation }) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      // Hata olsa bile ana sayfaya git (bakım modu kontrolü başarısız olsa bile)
-      navigation.replace('Main');
+      // Hata olsa bile onboarding kontrolü yap
+      try {
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        if (!hasSeenOnboarding) {
+          navigation.replace('Onboarding');
+          return;
+        }
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+      }
+      
+      // Hata olsa bile login sayfasına git
+      navigation.replace('Login');
     }
   };
 

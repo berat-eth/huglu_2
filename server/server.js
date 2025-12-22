@@ -18087,13 +18087,24 @@ app.post('/api/products/search/image', upload.single('image'), async (req, res) 
     }
 
     const limit = parseInt(req.query.limit) || 20;
+    // FormData'dan kategori parametresini al (multer ile gönderilen)
+    const category = req.body?.category || req.query?.category || null;
     
     // Popüler ve stokta olan ürünleri getir (rating ve reviewCount'a göre)
-    // İleride görsel analizi eklenebilir
+    // Kategori filtresi varsa uygula
     // isActive kolonu varsa kontrol et, yoksa tüm ürünleri getir
     let query = `SELECT id, name, price, image, brand, category, lastUpdated, rating, reviewCount, stock, sku, description
        FROM products 
        WHERE tenantId = ? AND stock > 0`;
+    
+    const queryParams = [tenantId];
+    
+    // Kategori filtresi ekle
+    if (category && category.trim() !== '') {
+      query += ' AND category = ?';
+      queryParams.push(category.trim());
+      console.log(`🔍 Kategori filtresi uygulanıyor: ${category}`);
+    }
     
     // isActive kolonunun varlığını kontrol et
     try {
@@ -18117,7 +18128,8 @@ app.post('/api/products/search/image', upload.single('image'), async (req, res) 
          lastUpdated DESC
        LIMIT ?`;
     
-    const [rows] = await poolWrapper.execute(query, [tenantId, limit]);
+    queryParams.push(limit);
+    const [rows] = await poolWrapper.execute(query, queryParams);
 
     const cleanedProducts = rows.map(cleanProductData);
     
@@ -18127,7 +18139,8 @@ app.post('/api/products/search/image', upload.single('image'), async (req, res) 
     // - Bu bilgilere göre ürünleri filtrele ve sırala
     // - Görsel benzerlik skorlaması yap
     
-    console.log(`✅ Görsel arama tamamlandı: ${cleanedProducts.length} ürün bulundu`);
+    const categoryInfo = category ? ` (Kategori: ${category})` : ' (Tüm kategoriler)';
+    console.log(`✅ Görsel arama tamamlandı: ${cleanedProducts.length} ürün bulundu${categoryInfo}`);
     
     // Görsel URL'ini oluştur
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(imagePath)}`;
@@ -18139,6 +18152,7 @@ app.post('/api/products/search/image', upload.single('image'), async (req, res) 
         count: cleanedProducts.length,
         imageUrl: imageUrl,
         searchType: 'image',
+        category: category || null,
         timestamp: new Date().toISOString()
       }
     });

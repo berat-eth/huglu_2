@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ScrollView, Modal, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ScrollView, Modal, Alert, Image, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarCodeScanner } from 'expo-barcode-scanner';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import ProductCard from '../components/ProductCard';
+import ErrorModal from '../components/ErrorModal';
 import { COLORS } from '../constants/colors';
 import { productsAPI } from '../services/api';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
@@ -47,6 +48,12 @@ export default function SearchScreen({ navigation }) {
   const [isImageSearching, setIsImageSearching] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [pendingImageUri, setPendingImageUri] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionMessage, setPermissionMessage] = useState('');
+  const [pendingPermissionType, setPendingPermissionType] = useState(null); // 'camera' or 'storage'
 
   useEffect(() => {
     (async () => {
@@ -54,7 +61,23 @@ export default function SearchScreen({ navigation }) {
       setHasPermission(status === 'granted');
     })();
     loadCategories();
+    loadAllCategories();
   }, []);
+
+  const loadAllCategories = async () => {
+    try {
+      const response = await productsAPI.getCategories();
+      if (response.data?.success) {
+        const categoriesData = response.data.data || [];
+        const categoryList = categoriesData
+          .filter(cat => cat && typeof cat === 'string' && cat.trim() !== '')
+          .map(cat => cat.trim());
+        setAllCategories(categoryList);
+      }
+    } catch (error) {
+      console.error('Tüm kategoriler yüklenemedi:', error);
+    }
+  };
 
   const loadCategories = async () => {
     try {
@@ -279,70 +302,150 @@ export default function SearchScreen({ navigation }) {
     setShowImagePickerModal(true);
   };
 
+  const checkStoragePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        let permission;
+        if (Platform.Version >= 33) {
+          permission = PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+        } else {
+          permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+        }
+        const result = await PermissionsAndroid.check(permission);
+        return result;
+      } catch (err) {
+        console.warn('İzin kontrolü hatası:', err);
+        return false;
+      }
+    }
+    return true; // iOS için varsayılan olarak true
+  };
+
+  const requestStoragePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        let permission;
+        if (Platform.Version >= 33) {
+          permission = PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+        } else {
+          permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+        }
+        const granted = await PermissionsAndroid.request(permission);
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('İzin hatası:', err);
+        return false;
+      }
+    }
+    return true; // iOS için varsayılan olarak true
+  };
+
   const selectImageFromGallery = async () => {
     try {
       setShowImagePickerModal(false);
-      // İzin kontrolü
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'İzin Gerekli',
-          'Galeriye erişmek için izin gereklidir. Lütfen ayarlardan izin verin.',
-          [{ text: 'Tamam' }]
-        );
+      
+      // Önce izin kontrolü yap (native dialog göstermeden)
+      const hasPermission = await checkStoragePermission();
+      if (!hasPermission) {
+        setPermissionMessage('Galeriye erişmek için depolama iznine ihtiyacımız var.');
+        setPendingPermissionType('storage');
+        setShowPermissionModal(true);
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        allowsMultipleSelection: false,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        performImageSearch(imageUri);
-      }
+      launchImageLibrary(
+        {
+          mediaType: 'photo',
+          quality: 0.8,
+          selectionLimit: 1,
+        },
+        (response) => {
+          if (response.didCancel) {
+            return;
+          }
+          if (response.errorMessage) {
+            Alert.alert('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
+            return;
+          }
+          if (response.assets && response.assets.length > 0) {
+            const imageUri = response.assets[0].uri;
+            setPendingImageUri(imageUri);
+            setShowCategoryModal(true);
+          }
+        }
+      );
     } catch (error) {
       console.error('❌ Galeri seçme hatası:', error);
       Alert.alert('Hata', 'Görsel seçilirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
+  const checkCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+        return result;
+      } catch (err) {
+        console.warn('İzin kontrolü hatası:', err);
+        return false;
+      }
+    }
+    return true; // iOS için varsayılan olarak true
+  };
+
+  const requestCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('İzin hatası:', err);
+        return false;
+      }
+    }
+    return true; // iOS için varsayılan olarak true
+  };
+
   const takePhoto = async () => {
     try {
       setShowImagePickerModal(false);
-      // İzin kontrolü
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'İzin Gerekli',
-          'Kameraya erişmek için izin gereklidir. Lütfen ayarlardan izin verin.',
-          [{ text: 'Tamam' }]
-        );
+      
+      // Önce izin kontrolü yap (native dialog göstermeden)
+      const hasPermission = await checkCameraPermission();
+      if (!hasPermission) {
+        setPermissionMessage('Fotoğraf çekmek için kamera iznine ihtiyacımız var.');
+        setPendingPermissionType('camera');
+        setShowPermissionModal(true);
         return;
       }
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        performImageSearch(imageUri);
-      }
+      launchCamera(
+        {
+          mediaType: 'photo',
+          quality: 0.8,
+        },
+        (response) => {
+          if (response.didCancel) {
+            return;
+          }
+          if (response.errorMessage) {
+            Alert.alert('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
+            return;
+          }
+          if (response.assets && response.assets.length > 0) {
+            const imageUri = response.assets[0].uri;
+            setPendingImageUri(imageUri);
+            setShowCategoryModal(true);
+          }
+        }
+      );
     } catch (error) {
       console.error('❌ Kamera hatası:', error);
       Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
-  const performImageSearch = async (imageUri) => {
+  const performImageSearch = async (imageUri, category = null) => {
     if (!imageUri) {
       Alert.alert('Hata', 'Görsel URI bulunamadı.');
       return;
@@ -353,17 +456,18 @@ export default function SearchScreen({ navigation }) {
       setSelectedImage(imageUri);
       setSearchQuery('');
       setIsSearching(true);
+      setShowCategoryModal(false);
       
-      console.log('🖼️ Görselden arama yapılıyor...', imageUri);
+      console.log('🖼️ Görselden arama yapılıyor...', imageUri, category ? `Kategori: ${category}` : '');
       
       // Analytics: Image search tracking
       try {
-        await analytics.trackEvent('image_search', { source: 'search_screen' });
+        await analytics.trackEvent('image_search', { source: 'search_screen', category });
       } catch (analyticsError) {
         console.log('Analytics image search error:', analyticsError);
       }
       
-      const response = await productsAPI.searchByImage(imageUri);
+      const response = await productsAPI.searchByImage(imageUri, category);
       
       console.log('📦 Görsel arama yanıtı:', response.data);
       
@@ -405,6 +509,13 @@ export default function SearchScreen({ navigation }) {
       setSearchResults([]);
     } finally {
       setIsImageSearching(false);
+      setPendingImageUri(null);
+    }
+  };
+
+  const handleCategorySelect = (category) => {
+    if (pendingImageUri) {
+      performImageSearch(pendingImageUri, category);
     }
   };
 
@@ -489,6 +600,77 @@ export default function SearchScreen({ navigation }) {
         </View>
       )}
 
+      {/* Permission Modal */}
+      <ErrorModal
+        visible={showPermissionModal}
+        onClose={() => {
+          setShowPermissionModal(false);
+          setPendingPermissionType(null);
+        }}
+        title="İzin Gerekli"
+        message={permissionMessage}
+        actionButtonText="İZİN VER"
+        onActionPress={async () => {
+          setShowPermissionModal(false);
+          let hasPermission = false;
+          
+          if (pendingPermissionType === 'storage') {
+            hasPermission = await requestStoragePermission();
+            if (hasPermission) {
+              // İzin verildi, galeriyi aç
+              launchImageLibrary(
+                {
+                  mediaType: 'photo',
+                  quality: 0.8,
+                  selectionLimit: 1,
+                },
+                (response) => {
+                  if (response.didCancel) {
+                    return;
+                  }
+                  if (response.errorMessage) {
+                    Alert.alert('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
+                    return;
+                  }
+                  if (response.assets && response.assets.length > 0) {
+                    const imageUri = response.assets[0].uri;
+                    setPendingImageUri(imageUri);
+                    setShowCategoryModal(true);
+                  }
+                }
+              );
+            }
+          } else if (pendingPermissionType === 'camera') {
+            hasPermission = await requestCameraPermission();
+            if (hasPermission) {
+              // İzin verildi, kamerayı aç
+              launchCamera(
+                {
+                  mediaType: 'photo',
+                  quality: 0.8,
+                },
+                (response) => {
+                  if (response.didCancel) {
+                    return;
+                  }
+                  if (response.errorMessage) {
+                    Alert.alert('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
+                    return;
+                  }
+                  if (response.assets && response.assets.length > 0) {
+                    const imageUri = response.assets[0].uri;
+                    setPendingImageUri(imageUri);
+                    setShowCategoryModal(true);
+                  }
+                }
+              );
+            }
+          }
+          
+          setPendingPermissionType(null);
+        }}
+      />
+
       {/* Minimalist Image Picker Modal */}
       <Modal
         visible={showImagePickerModal}
@@ -532,6 +714,77 @@ export default function SearchScreen({ navigation }) {
                 <Text style={styles.imagePickerOptionTitle}>Kamera</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategoryModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          setShowCategoryModal(false);
+          setPendingImageUri(null);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.categoryModalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setShowCategoryModal(false);
+            setPendingImageUri(null);
+          }}
+        >
+          <View style={styles.categoryModal} onStartShouldSetResponder={() => true}>
+            <View style={styles.categoryModalHeader}>
+              <Text style={styles.categoryModalTitle}>Kategori Seçin</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCategoryModal(false);
+                  setPendingImageUri(null);
+                }}
+                style={styles.categoryModalCloseButton}
+              >
+                <Ionicons name="close" size={20} color={COLORS.gray500} />
+              </TouchableOpacity>
+            </View>
+            
+            {pendingImageUri && (
+              <View style={styles.categoryModalImagePreview}>
+                <Image source={{ uri: pendingImageUri }} style={styles.categoryModalImage} />
+              </View>
+            )}
+
+            <Text style={styles.categoryModalSubtitle}>
+              Hangi kategoride arama yapmak istersiniz?
+            </Text>
+
+            <ScrollView 
+              style={styles.categoryModalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <TouchableOpacity
+                style={styles.categoryOption}
+                onPress={() => handleCategorySelect(null)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="grid-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.categoryOptionText}>Tüm Kategoriler</Text>
+              </TouchableOpacity>
+              
+              {allCategories.map((category, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.categoryOption}
+                  onPress={() => handleCategorySelect(category)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={getIoniconName(category)} size={20} color={COLORS.primary} />
+                  <Text style={styles.categoryOptionText}>{category}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1126,6 +1379,80 @@ const styles = StyleSheet.create({
   },
   imagePickerOptionTitle: {
     fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  categoryModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  categoryModal: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  categoryModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  categoryModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  categoryModalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryModalImagePreview: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  categoryModalImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: COLORS.gray100,
+  },
+  categoryModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  categoryModalScroll: {
+    maxHeight: 400,
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.gray50,
+    marginBottom: 8,
+    gap: 12,
+  },
+  categoryOptionText: {
+    flex: 1,
+    fontSize: 16,
     fontWeight: '600',
     color: COLORS.textMain,
   },

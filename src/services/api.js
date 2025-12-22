@@ -124,13 +124,16 @@ export const productsAPI = {
   getCategories: () => api.get('/categories'),
   search: (query, filters) => api.get('/products/search', { params: { query, ...filters } }),
   searchByBarcode: (barcode) => api.get('/products/barcode', { params: { barcode } }),
-  searchByImage: (imageUri) => {
+  searchByImage: (imageUri, category = null) => {
     const formData = new FormData();
     formData.append('image', {
       uri: imageUri,
       type: 'image/jpeg',
       name: 'search-image.jpg',
     });
+    if (category) {
+      formData.append('category', category);
+    }
     return api.post('/products/search/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
