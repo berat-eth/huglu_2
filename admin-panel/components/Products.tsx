@@ -1155,7 +1155,22 @@ export default function Products() {
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">{product.name}</p>
+                          <p 
+                            className="font-semibold text-slate-800 dark:text-slate-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            onClick={async () => {
+                              try {
+                                const [detailsRes, varsRes] = await Promise.all([
+                                  productService.getProductById(product.id),
+                                  productService.getProductVariations(product.id)
+                                ])
+                                setShowViewModal({ open: true, product, details: detailsRes?.data || product, variations: varsRes?.data?.variations || [] })
+                              } catch {
+                                setShowViewModal({ open: true, product, details: product, variations: sizesMap[product.id] || [] })
+                              }
+                            }}
+                          >
+                            {product.name}
+                          </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">ID: #{product.id}</p>
                         </div>
                       </div>
@@ -1318,39 +1333,208 @@ export default function Products() {
       {/* View modal - full product data */}
       <AnimatePresence>
         {showViewModal.open && showViewModal.product && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowViewModal({ open: false, product: null, details: null, variations: [] })}>
-            <motion.div initial={{scale:.95,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:.95,opacity:0}} className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-hidden" onClick={(e)=>e.stopPropagation()}>
-              <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Ürün Detayları #{showViewModal.product.id}</h3>
-                <button onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[] })} className="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400">Kapat</button>
-              </div>
-              <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5 overflow-auto">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Temel Bilgiler</h4>
-                  <div className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
-                    <div><span className="text-slate-500 dark:text-slate-400">Ad:</span> {showViewModal.product.name}</div>
-                    <div><span className="text-slate-500 dark:text-slate-400">Marka:</span> {showViewModal.product.brand}</div>
-                    <div><span className="text-slate-500 dark:text-slate-400">Kategori:</span> {showViewModal.product.category}</div>
-                    <div><span className="text-slate-500 dark:text-slate-400">Fiyat:</span> ₺{showViewModal.product.price?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                    <div><span className="text-slate-500 dark:text-slate-400">Stok:</span> {showViewModal.product.stock ?? 0}</div>
-                    <div><span className="text-slate-500 dark:text-slate-400">SKU:</span> {showViewModal.product.sku || '-'}</div>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Bedenler</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {(sizesMap[showViewModal.product.id] || []).map((s, i) => (
-                      <span key={`view-size-${i}`} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs border border-slate-200 dark:border-slate-600">{s}</span>
-                    ))}
-                    {Array.isArray(sizesMap[showViewModal.product.id]) && sizesMap[showViewModal.product.id].length === 0 && (
-                      <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowViewModal({ open: false, product: null, details: null, variations: [] })}>
+            <motion.div 
+              initial={{scale:.95,opacity:0}} 
+              animate={{scale:1,opacity:1}} 
+              exit={{scale:.95,opacity:0}} 
+              className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" 
+              onClick={(e)=>e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center overflow-hidden">
+                    {showViewModal.product.image ? (
+                      <img src={showViewModal.product.image} alt={showViewModal.product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-7 h-7 text-white" />
                     )}
                   </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{showViewModal.product.name}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">ID: #{showViewModal.product.id}</p>
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Tüm Veriler</h4>
-                  <pre className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3 overflow-auto max-h-64 text-slate-800 dark:text-slate-200">{JSON.stringify(showViewModal.details || showViewModal.product, null, 2)}</pre>
+                <button 
+                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[] })} 
+                  className="p-2 rounded-lg hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Temel Bilgiler */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
+                      <Package className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                      Temel Bilgiler
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Ürün Adı:</span>
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 text-right">{showViewModal.product.name}</span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Marka:</span>
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 text-right">{showViewModal.product.brand || '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Kategori:</span>
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 text-right">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs">
+                            {showViewModal.product.category || '-'}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Fiyat:</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                          ₺{showViewModal.product.price?.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) || '0.00'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Stok:</span>
+                        <span className={`text-sm font-semibold ${
+                          (showViewModal.product.stock ?? 0) > 10 ? 'text-green-600 dark:text-green-400' :
+                          (showViewModal.product.stock ?? 0) > 0 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {showViewModal.product.stock ?? 0} adet
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">SKU:</span>
+                        <span className="text-sm font-mono text-slate-800 dark:text-slate-200">{showViewModal.product.sku || '-'}</span>
+                      </div>
+                      {(showViewModal.product as any).taxRate !== undefined && (
+                        <div className="flex justify-between items-start">
+                          <span className="text-sm text-slate-500 dark:text-slate-400">KDV Oranı:</span>
+                          <span className="text-sm font-medium text-slate-800 dark:text-slate-200">%{(showViewModal.product as any).taxRate || 0}</span>
+                        </div>
+                      )}
+                      {(showViewModal.product as any).isActive !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-500 dark:text-slate-400">Durum:</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            (showViewModal.product as any).isActive 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                          }`}>
+                            {(showViewModal.product as any).isActive ? 'Aktif' : 'Pasif'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bedenler ve Varyasyonlar */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
+                      <Activity className="w-4 h-4 mr-2 text-purple-600 dark:text-purple-400" />
+                      Bedenler & Varyasyonlar
+                    </h4>
+                    {(sizesMap[showViewModal.product.id] || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(sizesMap[showViewModal.product.id] || []).map((s, i) => (
+                          <span 
+                            key={`view-size-${i}`} 
+                            className="px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-600 shadow-sm"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Package className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                        <p className="text-sm text-slate-400 dark:text-slate-500">Beden bilgisi bulunmuyor</p>
+                      </div>
+                    )}
+                    
+                    {/* Varyasyonlar varsa göster */}
+                    {showViewModal.variations && showViewModal.variations.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Varyasyonlar:</p>
+                        <div className="space-y-2">
+                          {showViewModal.variations.slice(0, 5).map((variation: any, idx: number) => (
+                            <div key={idx} className="text-xs bg-white dark:bg-slate-700 p-2 rounded border border-slate-200 dark:border-slate-600">
+                              {variation.name || variation.size || `Varyasyon ${idx + 1}`}
+                            </div>
+                          ))}
+                          {showViewModal.variations.length > 5 && (
+                            <p className="text-xs text-slate-400 dark:text-slate-500">+{showViewModal.variations.length - 5} varyasyon daha</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Açıklama */}
+                  {showViewModal.product.description && (
+                    <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+                        <FileText className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                        Açıklama
+                      </h4>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {showViewModal.product.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Görseller */}
+                  {((showViewModal.product as any).images && Array.isArray((showViewModal.product as any).images) && (showViewModal.product as any).images.length > 0) || showViewModal.product.image ? (
+                    <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center">
+                        <Eye className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                        Görseller
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {showViewModal.product.image && (
+                          <div className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                            <img 
+                              src={showViewModal.product.image} 
+                              alt={showViewModal.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        {Array.isArray((showViewModal.product as any).images) && (showViewModal.product as any).images.map((img: string, idx: number) => (
+                          img && img !== showViewModal.product.image && (
+                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                              <img 
+                                src={img} 
+                                alt={`${showViewModal.product.name} - ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                <button
+                  onClick={() => openEdit(showViewModal.product!)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Düzenle
+                </button>
+                <button
+                  onClick={()=>setShowViewModal({ open:false, product:null, details:null, variations:[] })} 
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
+                >
+                  Kapat
+                </button>
               </div>
             </motion.div>
           </div>

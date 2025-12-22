@@ -18188,9 +18188,9 @@ app.get('/api/products/:id', async (req, res) => {
     // Optimize: Sadece gerekli column'lar - Public API için
     // isActive kolonu products tablosunda olmayabilir, bu yüzden seçmiyoruz
     // Eğer isActive kolonu varsa ve pasifse, WHERE clause'da filtreleyebiliriz ama şimdilik tüm ürünleri gösteriyoruz
-    // Görsel kolonlarını kontrol et ve ekle
+    // Görsel kolonlarını kontrol et ve ekle (imageUrl kolonu veritabanında yok, kaldırıldı)
     const [rows] = await poolWrapper.execute(
-      'SELECT id, name, price, image, images, image1, image2, image3, image4, image5, imageUrl, thumbnail, gallery, brand, category, description, stock, sku, rating, reviewCount, lastUpdated FROM products WHERE id = ? AND tenantId = ?',
+      'SELECT id, name, price, image, images, image1, image2, image3, image4, image5, thumbnail, gallery, brand, category, description, stock, sku, rating, reviewCount, lastUpdated FROM products WHERE id = ? AND tenantId = ?',
       [numericId, req.tenant.id]
     );
 
