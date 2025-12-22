@@ -7,11 +7,34 @@ import { motion } from 'framer-motion'
 import { analyticsService } from '@/lib/services/analyticsService'
 import { useTheme } from '@/lib/ThemeContext'
 
+// Helper function to safely get number value
+const getNumber = (value: any, defaultValue: number = 0): number => {
+  try {
+    if (value === null || value === undefined || value === '') return defaultValue
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      return isNaN(num) ? defaultValue : num
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    return isNaN(num) ? defaultValue : num
+  } catch (error) {
+    console.error('getNumber error:', error, 'value:', value)
+    return defaultValue
+  }
+}
+
 export default function UserAnalytics() {
   const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [overview, setOverview] = useState<any>(null)
   const [cohorts, setCohorts] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -19,15 +42,19 @@ export default function UserAnalytics() {
 
   const loadData = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const [overviewData, cohortsData] = await Promise.all([
         analyticsService.getUserOverview(undefined, undefined, 30),
         analyticsService.getCohorts(20)
       ])
 
-      setOverview(overviewData.data)
-      setCohorts(cohortsData.data || [])
-    } catch (error) {
+      // API response formatını kontrol et
+      setOverview(overviewData?.data || overviewData || {})
+      setCohorts(cohortsData?.data || cohortsData || [])
+    } catch (error: any) {
       console.error('Error loading user analytics:', error)
+      setError(error?.message || 'Veriler yüklenirken bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -39,6 +66,23 @@ export default function UserAnalytics() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Hata</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     )
@@ -118,7 +162,7 @@ export default function UserAnalytics() {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Ortalama Session Süresi</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Math.floor(overview.avgSessionDuration || 0)} sn
+                  {Math.floor(getNumber(overview.avgSessionDuration))} sn
                 </p>
               </div>
             </div>

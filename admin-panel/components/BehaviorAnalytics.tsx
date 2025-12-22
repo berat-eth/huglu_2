@@ -7,6 +7,52 @@ import { motion } from 'framer-motion'
 import { analyticsService } from '@/lib/services/analyticsService'
 import { useTheme } from '@/lib/ThemeContext'
 
+// Helper function to safely format numbers
+const formatNumber = (value: any, decimals: number = 2): string => {
+  try {
+    if (value === null || value === undefined || value === '') return '0'
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value.toFixed(decimals)
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      if (isNaN(num)) return '0'
+      return num.toFixed(decimals)
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    if (isNaN(num)) return '0'
+    return num.toFixed(decimals)
+  } catch (error) {
+    console.error('formatNumber error:', error, 'value:', value)
+    return '0'
+  }
+}
+
+// Helper function to safely get number value
+const getNumber = (value: any, defaultValue: number = 0): number => {
+  try {
+    if (value === null || value === undefined || value === '') return defaultValue
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      return isNaN(num) ? defaultValue : num
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    return isNaN(num) ? defaultValue : num
+  } catch (error) {
+    console.error('getNumber error:', error, 'value:', value)
+    return defaultValue
+  }
+}
+
 export default function BehaviorAnalytics() {
   const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
@@ -14,6 +60,7 @@ export default function BehaviorAnalytics() {
   const [screens, setScreens] = useState<any[]>([])
   const [navigation, setNavigation] = useState<any[]>([])
   const [dateRange, setDateRange] = useState({ days: 30 })
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -21,17 +68,21 @@ export default function BehaviorAnalytics() {
 
   const loadData = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const [sessionsData, screensData, navigationData] = await Promise.all([
         analyticsService.getSessions(undefined, undefined, dateRange.days),
         analyticsService.getScreens(undefined, undefined, dateRange.days, 20),
         analyticsService.getNavigation(undefined, undefined, dateRange.days)
       ])
 
-      setSessions(sessionsData.data)
-      setScreens(screensData.data || [])
-      setNavigation(navigationData.data || [])
-    } catch (error) {
+      // API response formatını kontrol et
+      setSessions(sessionsData?.data || sessionsData || {})
+      setScreens(screensData?.data || screensData || [])
+      setNavigation(navigationData?.data || navigationData || [])
+    } catch (error: any) {
       console.error('Error loading behavior analytics:', error)
+      setError(error?.message || 'Veriler yüklenirken bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -48,9 +99,26 @@ export default function BehaviorAnalytics() {
     )
   }
 
-  const conversionRate = sessions?.totalSessions > 0
-    ? ((sessions?.convertedSessions / sessions?.totalSessions) * 100).toFixed(2)
-    : 0
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Hata</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const conversionRate = getNumber(sessions?.totalSessions) > 0
+    ? formatNumber((getNumber(sessions?.convertedSessions) / getNumber(sessions?.totalSessions)) * 100, 2)
+    : '0'
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -80,7 +148,7 @@ export default function BehaviorAnalytics() {
             <div>
               <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Ortalama Session Süresi</p>
               <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                {Math.floor(sessions?.avgDuration || 0)} sn
+                {Math.floor(getNumber(sessions?.avgDuration))} sn
               </p>
             </div>
             <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -92,7 +160,7 @@ export default function BehaviorAnalytics() {
             <div>
               <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">Ortalama Sayfa Görüntüleme</p>
               <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                {sessions?.avgPageViews?.toFixed(1) || 0}
+                {formatNumber(sessions?.avgPageViews, 1)}
               </p>
             </div>
             <Eye className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -194,7 +262,7 @@ export default function BehaviorAnalytics() {
                       {screen.uniqueUsers || 0}
                     </td>
                     <td className="text-right p-3 text-gray-700 dark:text-gray-300">
-                      {screen.avgTimeOnScreen ? `${Math.floor(screen.avgTimeOnScreen)} sn` : 'N/A'}
+                      {screen.avgTimeOnScreen ? `${Math.floor(getNumber(screen.avgTimeOnScreen))} sn` : 'N/A'}
                     </td>
                   </motion.tr>
                 ))

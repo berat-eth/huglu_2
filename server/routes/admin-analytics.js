@@ -156,7 +156,7 @@ function createAdminAnalyticsRoutes(poolWrapper) {
         `SELECT 
           COALESCE(SUM(totalRevenue), 0) as totalRevenue,
           COALESCE(SUM(purchase), 0) as totalOrders,
-          COALESCE(AVG(CASE WHEN purchase > 0 THEN totalRevenue / purchase ELSE NULL END), 0) as avgOrderValue,
+          COALESCE(SUM(totalRevenue) / NULLIF(SUM(purchase), 0), 0) as avgOrderValue,
           COALESCE(SUM(productViews), 0) as productViews,
           COALESCE(SUM(addToCart), 0) as addToCart,
           COALESCE((SUM(addToCart) / NULLIF(SUM(productViews), 0) * 100), 0) as cartConversionRate,

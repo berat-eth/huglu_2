@@ -7,6 +7,52 @@ import { motion } from 'framer-motion'
 import { analyticsService } from '@/lib/services/analyticsService'
 import { useTheme } from '@/lib/ThemeContext'
 
+// Helper function to safely format numbers
+const formatNumber = (value: any, decimals: number = 2): string => {
+  try {
+    if (value === null || value === undefined || value === '') return '0'
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value.toFixed(decimals)
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      if (isNaN(num)) return '0'
+      return num.toFixed(decimals)
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    if (isNaN(num)) return '0'
+    return num.toFixed(decimals)
+  } catch (error) {
+    console.error('formatNumber error:', error, 'value:', value)
+    return '0'
+  }
+}
+
+// Helper function to safely get number value
+const getNumber = (value: any, defaultValue: number = 0): number => {
+  try {
+    if (value === null || value === undefined || value === '') return defaultValue
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      return isNaN(num) ? defaultValue : num
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    return isNaN(num) ? defaultValue : num
+  } catch (error) {
+    console.error('getNumber error:', error, 'value:', value)
+    return defaultValue
+  }
+}
+
 export default function EcommerceAnalytics() {
   const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
@@ -14,6 +60,7 @@ export default function EcommerceAnalytics() {
   const [revenue, setRevenue] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [dateRange, setDateRange] = useState({ days: 30 })
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -22,17 +69,20 @@ export default function EcommerceAnalytics() {
   const loadData = async () => {
     try {
       setLoading(true)
+      setError(null)
       const [overviewData, revenueData, productsData] = await Promise.all([
         analyticsService.getEcommerceOverview(undefined, undefined, dateRange.days),
         analyticsService.getRevenue(undefined, undefined, dateRange.days),
         analyticsService.getProducts(undefined, undefined, dateRange.days, 10)
       ])
 
-      setOverview(overviewData.data)
-      setRevenue(revenueData.data || [])
-      setProducts(productsData.data || [])
-    } catch (error) {
+      // API response formatını kontrol et
+      setOverview(overviewData?.data || overviewData || {})
+      setRevenue(revenueData?.data || revenueData || [])
+      setProducts(productsData?.data || productsData || [])
+    } catch (error: any) {
       console.error('Error loading ecommerce data:', error)
+      setError(error?.message || 'Veriler yüklenirken bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -44,6 +94,23 @@ export default function EcommerceAnalytics() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Hata</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     )
@@ -77,7 +144,7 @@ export default function EcommerceAnalytics() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam Gelir</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.totalRevenue?.toFixed(2) || 0} ₺
+                {formatNumber(overview?.totalRevenue, 2)} ₺
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-green-500" />
@@ -101,7 +168,7 @@ export default function EcommerceAnalytics() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Ortalama Sipariş</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.avgOrderValue?.toFixed(2) || 0} ₺
+                {formatNumber(overview?.avgOrderValue, 2)} ₺
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-purple-500" />
@@ -113,7 +180,7 @@ export default function EcommerceAnalytics() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Dönüşüm Oranı</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.checkoutConversionRate?.toFixed(2) || 0}%
+                {formatNumber(overview?.checkoutConversionRate, 2)}%
               </p>
             </div>
             <Eye className="w-8 h-8 text-red-500" />
@@ -206,15 +273,15 @@ export default function EcommerceAnalytics() {
                       {product.purchases || 0}
                     </td>
                     <td className="text-right p-3 font-semibold text-green-600 dark:text-green-400">
-                      {product.revenue?.toFixed(2) || 0} ₺
+                      {formatNumber(product.revenue, 2)} ₺
                     </td>
                     <td className="text-right p-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        (product.conversionRate || 0) > 5 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                        (product.conversionRate || 0) > 2 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                        getNumber(product.conversionRate) > 5 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                        getNumber(product.conversionRate) > 2 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
                         'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                       }`}>
-                        {product.conversionRate?.toFixed(2) || 0}%
+                        {formatNumber(product.conversionRate, 2)}%
                       </span>
                     </td>
                   </motion.tr>

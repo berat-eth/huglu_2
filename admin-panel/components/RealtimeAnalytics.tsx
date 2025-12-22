@@ -13,6 +13,7 @@ export default function RealtimeAnalytics() {
   const [overview, setOverview] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -22,28 +23,49 @@ export default function RealtimeAnalytics() {
 
   const loadData = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const [overviewData, usersData, eventsData] = await Promise.all([
         analyticsService.getRealtimeOverview(60),
         analyticsService.getRealtimeUsers(100),
         analyticsService.getRealtimeEvents(50)
       ])
 
-      setOverview(overviewData.data)
-      setUsers(usersData.data?.sessions || [])
-      setEvents(eventsData.data || [])
-      setLoading(false)
-    } catch (error) {
+      // API response formatını kontrol et
+      setOverview(overviewData?.data || overviewData || {})
+      setUsers(usersData?.data?.sessions || usersData?.sessions || [])
+      setEvents(eventsData?.data || eventsData || [])
+    } catch (error: any) {
       console.error('Error loading realtime data:', error)
+      setError(error?.message || 'Veriler yüklenirken bir hata oluştu')
+    } finally {
       setLoading(false)
     }
   }
 
-  if (loading) {
+  if (loading && !overview) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !overview) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Hata</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     )

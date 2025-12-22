@@ -9,6 +9,52 @@ import { useTheme } from '@/lib/ThemeContext'
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#0088fe']
 
+// Helper function to safely format numbers
+const formatNumber = (value: any, decimals: number = 2): string => {
+  try {
+    if (value === null || value === undefined || value === '') return '0'
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value.toFixed(decimals)
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      if (isNaN(num)) return '0'
+      return num.toFixed(decimals)
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    if (isNaN(num)) return '0'
+    return num.toFixed(decimals)
+  } catch (error) {
+    console.error('formatNumber error:', error, 'value:', value)
+    return '0'
+  }
+}
+
+// Helper function to safely get number value
+const getNumber = (value: any, defaultValue: number = 0): number => {
+  try {
+    if (value === null || value === undefined || value === '') return defaultValue
+    // Eğer zaten bir sayı ise direkt kullan
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value
+    }
+    // String ise parse et
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      return isNaN(num) ? defaultValue : num
+    }
+    // Diğer durumlarda Number'a çevir
+    const num = Number(value)
+    return isNaN(num) ? defaultValue : num
+  } catch (error) {
+    console.error('getNumber error:', error, 'value:', value)
+    return defaultValue
+  }
+}
+
 export default function AnalyticsDashboard() {
   const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
@@ -17,6 +63,7 @@ export default function AnalyticsDashboard() {
   const [revenueTrend, setRevenueTrend] = useState<any[]>([])
   const [realtimeMetrics, setRealtimeMetrics] = useState<any>(null)
   const [products, setProducts] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -30,17 +77,20 @@ export default function AnalyticsDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
+      setError(null)
       const [overviewData, revenueData, productsData] = await Promise.all([
         analyticsService.getEcommerceOverview(undefined, undefined, dateRange.days),
         analyticsService.getRevenue(undefined, undefined, dateRange.days),
         analyticsService.getProducts(undefined, undefined, dateRange.days, 5)
       ])
 
-      setOverview(overviewData.data)
-      setRevenueTrend(revenueData.data || [])
-      setProducts(productsData.data || [])
-    } catch (error) {
+      // API response formatını kontrol et
+      setOverview(overviewData?.data || overviewData || {})
+      setRevenueTrend(revenueData?.data || revenueData || [])
+      setProducts(productsData?.data || productsData || [])
+    } catch (error: any) {
       console.error('Error loading analytics data:', error)
+      setError(error?.message || 'Veriler yüklenirken bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -66,9 +116,26 @@ export default function AnalyticsDashboard() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Hata</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const topProductsData = products.slice(0, 5).map((p: any) => ({
     name: p.productName?.substring(0, 20) || `Ürün ${p.productId}`,
-    value: p.revenue || 0
+    value: getNumber(p.revenue)
   }))
 
   return (
@@ -112,7 +179,7 @@ export default function AnalyticsDashboard() {
             <div>
               <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">Toplam Gelir</p>
               <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                {overview?.totalRevenue?.toFixed(2) || 0} ₺
+                {formatNumber(overview?.totalRevenue, 2)} ₺
               </p>
               <div className="flex items-center gap-1 mt-2">
                 <ArrowUp className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -158,7 +225,7 @@ export default function AnalyticsDashboard() {
             <div>
               <p className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">Ortalama Sipariş</p>
               <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
-                {overview?.avgOrderValue?.toFixed(2) || 0} ₺
+                {formatNumber(overview?.avgOrderValue, 2)} ₺
               </p>
               <div className="flex items-center gap-1 mt-2">
                 <ArrowDown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -290,13 +357,13 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="text-center">
             <div className="text-5xl font-bold text-blue-500 mb-2">
-              {overview?.cartConversionRate?.toFixed(2) || 0}%
+              {formatNumber(overview?.cartConversionRate, 2)}%
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Ürün Görüntüleme → Sepete Ekleme</p>
             <div className="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(overview?.cartConversionRate || 0, 100)}%` }}
+                style={{ width: `${Math.min(getNumber(overview?.cartConversionRate), 100)}%` }}
               ></div>
             </div>
           </div>
@@ -309,13 +376,13 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="text-center">
             <div className="text-5xl font-bold text-green-500 mb-2">
-              {overview?.checkoutConversionRate?.toFixed(2) || 0}%
+              {formatNumber(overview?.checkoutConversionRate, 2)}%
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Sepete Ekleme → Satın Alma</p>
             <div className="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-green-500 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(overview?.checkoutConversionRate || 0, 100)}%` }}
+                style={{ width: `${Math.min(getNumber(overview?.checkoutConversionRate), 100)}%` }}
               ></div>
             </div>
           </div>
@@ -332,7 +399,7 @@ export default function AnalyticsDashboard() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Ürün Görüntüleme</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.productViews || 0}
+                {getNumber(overview?.productViews)}
               </p>
             </div>
           </div>
@@ -346,7 +413,7 @@ export default function AnalyticsDashboard() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Sepete Ekleme</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.addToCart || 0}
+                {getNumber(overview?.addToCart)}
               </p>
             </div>
           </div>
@@ -360,7 +427,7 @@ export default function AnalyticsDashboard() {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Satın Alma</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {overview?.purchase || 0}
+                {getNumber(overview?.purchase)}
               </p>
             </div>
           </div>
