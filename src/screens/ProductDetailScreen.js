@@ -11,6 +11,7 @@ import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
 import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI } from '../services/api';
+import { getApiUrl } from '../config/api.config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
 import { useAlert } from '../hooks/useAlert';
@@ -120,6 +121,26 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         if (response.data?.success) {
             const data = response.data.data?.product || response.data.data || response.data;
+            
+            // Debug: API'den gelen görsel verilerini logla
+            console.log('🔍 API\'den gelen TÜM ürün verisi:', JSON.stringify(data, null, 2));
+            console.log('🔍 API\'den gelen görsel alanları:', {
+              hasImage: !!data?.image,
+              hasImages: !!data?.images,
+              hasGallery: !!data?.gallery,
+              image: data?.image,
+              images: data?.images,
+              imagesType: typeof data?.images,
+              gallery: data?.gallery,
+              galleryType: typeof data?.gallery,
+              image1: data?.image1,
+              image2: data?.image2,
+              image3: data?.image3,
+              image4: data?.image4,
+              image5: data?.image5,
+              // Tüm görsel alanlarını kontrol et
+              allKeys: Object.keys(data || {}).filter(key => key.toLowerCase().includes('image') || key.toLowerCase().includes('gallery') || key.toLowerCase().includes('photo') || key.toLowerCase().includes('picture')),
+            });
             
             // 2. Varyasyonları ayrı endpoint'ten al
             try {
@@ -1065,25 +1086,54 @@ export default function ProductDetailScreen({ navigation, route }) {
   // Ürün resimlerini hazırla (API'deki tüm alanları destekle)
   const productImages = useMemo(() => {
     const list = [];
+    const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
+    
     const add = (url) => {
       if (url && typeof url === 'string' && url.trim() !== '' && !list.includes(url)) {
         // URL'yi temizle ve normalize et
-        const cleanUrl = url.trim();
-        // Eğer URL http veya https ile başlamıyorsa, placeholder kullan
+        let cleanUrl = url.trim();
+        
+        // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
+        if (cleanUrl.startsWith('/uploads/') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//') && !cleanUrl.startsWith('http'))) {
+          cleanUrl = `${API_BASE_URL}${cleanUrl}`;
+          console.log('🔗 Relative URL düzeltildi:', url, '->', cleanUrl);
+        }
+        
+        // Eğer URL http veya https ile başlıyorsa ekle
         if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
           list.push(cleanUrl);
-        } else {
-          console.warn('Geçersiz görsel URL:', cleanUrl);
+        } else if (cleanUrl && cleanUrl.length > 0) {
+          console.warn('⚠️ Geçersiz görsel URL (http/https yok):', cleanUrl);
         }
       }
     };
 
     console.log('🖼️ Ürün görselleri işleniyor:', {
       images: product?.images,
+      imagesType: typeof product?.images,
+      imagesIsArray: Array.isArray(product?.images),
       gallery: product?.gallery,
+      galleryType: typeof product?.gallery,
       image: product?.image,
       image1: product?.image1,
+      image2: product?.image2,
+      image3: product?.image3,
+      image4: product?.image4,
+      image5: product?.image5,
+      // Tüm görsel alanlarını kontrol et
+      allImageKeys: Object.keys(product || {}).filter(key => 
+        key.toLowerCase().includes('image') || 
+        key.toLowerCase().includes('gallery') || 
+        key.toLowerCase().includes('photo') || 
+        key.toLowerCase().includes('picture') ||
+        key.toLowerCase().includes('img')
+      ),
     });
+
+    // Önce ana görseli ekle (eğer varsa) - ama sadece geçerli bir URL ise
+    if (product?.image && typeof product.image === 'string' && product.image.trim() !== '') {
+      add(product.image);
+    }
 
     // images alanı - string veya array olabilir
     if (product?.images) {
@@ -1092,16 +1142,37 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         // Eğer string ise JSON parse et
         if (typeof product.images === 'string') {
-          imagesArray = JSON.parse(product.images);
-          console.log('📦 images JSON parse edildi:', imagesArray);
+          // Boş string veya null kontrolü
+          if (product.images.trim() !== '' && product.images.trim() !== 'null' && product.images.trim() !== 'undefined') {
+            try {
+              imagesArray = JSON.parse(product.images);
+              console.log('📦 images JSON parse edildi:', imagesArray);
+            } catch (parseError) {
+              // JSON parse başarısız olursa, virgülle ayrılmış string olabilir
+              if (product.images.includes(',')) {
+                imagesArray = product.images.split(',').map(url => url.trim()).filter(url => url);
+                console.log('📦 images virgülle ayrılmış string olarak parse edildi:', imagesArray);
+              } else {
+                // Tek bir URL string'i olabilir
+                imagesArray = [product.images];
+              }
+            }
+          }
         }
         
         // Array ise işle
         if (Array.isArray(imagesArray)) {
           imagesArray.forEach((img) => {
-            const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src);
-            add(url);
+            if (img) {
+              const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src || img?.path);
+              if (url) {
+                add(url);
+              }
+            }
           });
+        } else if (typeof imagesArray === 'string' && imagesArray.startsWith('http')) {
+          // Tek bir URL string'i
+          add(imagesArray);
         }
       } catch (error) {
         console.error('❌ images parse hatası:', error);
@@ -1119,16 +1190,37 @@ export default function ProductDetailScreen({ navigation, route }) {
         
         // Eğer string ise JSON parse et
         if (typeof product.gallery === 'string') {
-          galleryArray = JSON.parse(product.gallery);
-          console.log('📦 gallery JSON parse edildi:', galleryArray);
+          // Boş string veya null kontrolü
+          if (product.gallery.trim() !== '' && product.gallery.trim() !== 'null' && product.gallery.trim() !== 'undefined') {
+            try {
+              galleryArray = JSON.parse(product.gallery);
+              console.log('📦 gallery JSON parse edildi:', galleryArray);
+            } catch (parseError) {
+              // JSON parse başarısız olursa, virgülle ayrılmış string olabilir
+              if (product.gallery.includes(',')) {
+                galleryArray = product.gallery.split(',').map(url => url.trim()).filter(url => url);
+                console.log('📦 gallery virgülle ayrılmış string olarak parse edildi:', galleryArray);
+              } else {
+                // Tek bir URL string'i olabilir
+                galleryArray = [product.gallery];
+              }
+            }
+          }
         }
         
         // Array ise işle
         if (Array.isArray(galleryArray)) {
           galleryArray.forEach((img) => {
-            const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src);
-            add(url);
+            if (img) {
+              const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src || img?.path);
+              if (url) {
+                add(url);
+              }
+            }
           });
+        } else if (typeof galleryArray === 'string' && galleryArray.startsWith('http')) {
+          // Tek bir URL string'i
+          add(galleryArray);
         }
       } catch (error) {
         console.error('❌ gallery parse hatası:', error);
@@ -1139,8 +1231,7 @@ export default function ProductDetailScreen({ navigation, route }) {
       }
     }
 
-    // Tekil alanlar
-    add(product?.image);
+    // Tekil alanlar (image zaten eklendi, diğerlerini ekle)
     add(product?.image1);
     add(product?.image2);
     add(product?.image3);
@@ -1149,7 +1240,38 @@ export default function ProductDetailScreen({ navigation, route }) {
     add(product?.imageUrl);
     add(product?.thumbnail);
 
+    // Ek görsel alanları kontrol et
+    if (product?.additionalImages) {
+      try {
+        let additionalArray = product.additionalImages;
+        if (typeof additionalArray === 'string') {
+          try {
+            additionalArray = JSON.parse(additionalArray);
+          } catch {
+            if (additionalArray.includes(',')) {
+              additionalArray = additionalArray.split(',').map(url => url.trim()).filter(url => url);
+            } else {
+              additionalArray = [additionalArray];
+            }
+          }
+        }
+        if (Array.isArray(additionalArray)) {
+          additionalArray.forEach((img) => {
+            if (img) {
+              const url = typeof img === 'string' ? img : (img?.url || img?.image || img?.src || img?.path);
+              if (url) {
+                add(url);
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('❌ additionalImages parse hatası:', error);
+      }
+    }
+
     console.log('✅ İşlenmiş görsel listesi:', list);
+    console.log('📊 Toplam görsel sayısı:', list.length);
 
     if (list.length === 0) {
       console.warn('⚠️ Ürün görseli bulunamadı, placeholder kullanılıyor');
@@ -1265,34 +1387,40 @@ export default function ProductDetailScreen({ navigation, route }) {
         )}
 
         {/* Image Gallery Thumbnails */}
-        {productImages.length > 1 && (
+        {productImages && productImages.length > 1 && (
           <View style={styles.galleryContainer}>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.galleryContent}
             >
-              {productImages.map((image, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setCurrentImageIndex(index)}
-                  activeOpacity={0.8}
-                >
-                  <View
-                    style={[
-                      styles.thumbnailContainer,
-                      currentImageIndex === index && styles.thumbnailContainerActive,
-                    ]}
+              {productImages.map((image, index) => {
+                if (!image) return null;
+                return (
+                  <TouchableOpacity
+                    key={`thumb-${index}-${image}`}
+                    onPress={() => setCurrentImageIndex(index)}
+                    activeOpacity={0.8}
                   >
-                    <Image
-                      source={{ uri: image }}
-                      style={styles.thumbnail}
-                      resizeMode="cover"
-                      defaultSource={require('../../assets/icon.png')}
-                    />
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View
+                      style={[
+                        styles.thumbnailContainer,
+                        currentImageIndex === index && styles.thumbnailContainerActive,
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: image }}
+                        style={styles.thumbnail}
+                        resizeMode="cover"
+                        defaultSource={require('../../assets/icon.png')}
+                        onError={(error) => {
+                          console.log('❌ Thumbnail yükleme hatası:', image, error.nativeEvent.error);
+                        }}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
@@ -2479,10 +2607,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.backgroundLight,
     paddingVertical: 16,
     paddingHorizontal: 16,
+    marginTop: 8,
+    zIndex: 1,
   },
   galleryContent: {
     gap: 12,
     paddingHorizontal: 8,
+    alignItems: 'center',
   },
   thumbnailContainer: {
     width: 80,
