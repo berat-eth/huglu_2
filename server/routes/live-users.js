@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { poolWrapper } = require('../orm/sequelize');
+// poolWrapper'ı global'dan al (server.js tarafından set edilir)
+const poolWrapper = global.poolWrapper;
+
+if (!poolWrapper) {
+  console.error('❌ poolWrapper bulunamadı! Lütfen server.js\'in poolWrapper\'ı global.poolWrapper olarak set ettiğinden emin olun.');
+}
 
 // In-memory storage for live users (temporary - will be replaced with database)
 let liveUsers = [];

@@ -2912,6 +2912,80 @@ async function createDatabaseSchema(pool) {
       `);
       console.log('✅ user_events table ready');
 
+      // Eksik kolonları kontrol et ve ekle
+      try {
+        const [columns] = await pool.execute(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'user_events'
+            AND COLUMN_NAME IN ('timestamp', 'sessionId', 'deviceId', 'screenName', 'properties')
+        `);
+        const existingColumns = columns.map((c) => c.COLUMN_NAME);
+        
+        // timestamp kolonu yoksa ekle (createdAt yerine)
+        if (!existingColumns.includes('timestamp')) {
+          try {
+            await pool.execute(`
+              ALTER TABLE user_events 
+              ADD COLUMN timestamp DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) AFTER properties
+            `);
+            console.log('✅ Added timestamp column to user_events');
+          } catch (e) {
+            // Eğer createdAt varsa, timestamp'i createdAt'e kopyala
+            if (e.message.includes('Duplicate column')) {
+              await pool.execute(`
+                ALTER TABLE user_events 
+                CHANGE COLUMN createdAt timestamp DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3)
+              `);
+              console.log('✅ Renamed createdAt to timestamp in user_events');
+            }
+          }
+        }
+        
+        // sessionId kolonu yoksa ekle
+        if (!existingColumns.includes('sessionId')) {
+          await pool.execute(`
+            ALTER TABLE user_events 
+            ADD COLUMN sessionId VARCHAR(255) NULL AFTER deviceId
+          `);
+          console.log('✅ Added sessionId column to user_events');
+          // Index ekle
+          await pool.execute(`
+            CREATE INDEX idx_session ON user_events(sessionId)
+          `);
+        }
+        
+        // deviceId kolonu yoksa ekle
+        if (!existingColumns.includes('deviceId')) {
+          await pool.execute(`
+            ALTER TABLE user_events 
+            ADD COLUMN deviceId VARCHAR(255) NULL AFTER userId
+          `);
+          console.log('✅ Added deviceId column to user_events');
+        }
+        
+        // screenName kolonu yoksa ekle
+        if (!existingColumns.includes('screenName')) {
+          await pool.execute(`
+            ALTER TABLE user_events 
+            ADD COLUMN screenName VARCHAR(255) NULL AFTER eventType
+          `);
+          console.log('✅ Added screenName column to user_events');
+        }
+        
+        // properties kolonu yoksa ekle
+        if (!existingColumns.includes('properties')) {
+          await pool.execute(`
+            ALTER TABLE user_events 
+            ADD COLUMN properties JSON NULL AFTER screenName
+          `);
+          console.log('✅ Added properties column to user_events');
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not add columns to user_events:', error.message);
+      }
+
       // Partitioning için kontrol ve ekleme (MySQL 5.7+)
       try {
         const [partitions] = await pool.execute(`

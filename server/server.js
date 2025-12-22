@@ -5483,16 +5483,16 @@ app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
       const [overviewData] = await poolWrapper.execute(`
         SELECT 
           COUNT(DISTINCT ue.userId) as totalUsers,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as activeUsers,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as activeUsers,
           COUNT(DISTINCT us.sessionId) as totalSessions,
           COUNT(ue.id) as totalEvents,
           COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.totalAmount ELSE 0 END), 0) as totalRevenue,
           AVG(us.duration) as avgSessionDuration,
-          COUNT(DISTINCT CASE WHEN ue.eventType = 'screen_view' AND ue.timestamp >= ? THEN ue.userId END) as dau,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'screen_view' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as dau,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
         FROM user_events ue
-        LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+        LEFT JOIN user_sessions_v2 us ON COALESCE(ue.sessionId, '') = us.sessionId AND ue.tenantId = us.tenantId
         LEFT JOIN orders o ON ue.userId = o.userId AND o.tenantId = ue.tenantId AND o.createdAt >= ?
         WHERE ue.tenantId = ?
       `, [startDate, startDate, startDate, tenantId]);
@@ -5504,14 +5504,14 @@ app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
     if (sections.includes('users')) {
       const [usersData] = await poolWrapper.execute(`
         SELECT 
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as newUsers,
-          COUNT(DISTINCT CASE WHEN ue.timestamp < ? AND ue.userId IN (
-            SELECT DISTINCT userId FROM user_events WHERE timestamp >= ? AND tenantId = ?
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as newUsers,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) < ? AND ue.userId IN (
+            SELECT DISTINCT userId FROM user_events WHERE COALESCE(timestamp, createdAt, NOW()) >= ? AND tenantId = ?
           ) THEN ue.userId END) as returningUsers,
           COUNT(DISTINCT ue.userId) as totalUsers,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
-          COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+          COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
         FROM user_events ue
         WHERE ue.tenantId = ?
       `, [startDate, startDate, startDate, tenantId, tenantId]);
@@ -5523,18 +5523,18 @@ app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
     if (sections.includes('behavior')) {
       const [behaviorData] = await poolWrapper.execute(`
         SELECT 
-          ue.screenName,
+          COALESCE(ue.screenName, 'Unknown') as screenName,
           COUNT(*) as views,
           COUNT(DISTINCT ue.userId) as uniqueUsers,
-          AVG(CASE WHEN ue2.eventType = 'screen_exit' THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(ue2.properties, '$.duration')) AS UNSIGNED) ELSE NULL END) as avgDuration
+          AVG(CASE WHEN ue2.eventType = 'screen_exit' THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(ue2.properties, '{}'), '$.duration')) AS UNSIGNED) ELSE NULL END) as avgDuration
         FROM user_events ue
-        LEFT JOIN user_events ue2 ON ue.sessionId = ue2.sessionId 
+        LEFT JOIN user_events ue2 ON COALESCE(ue.sessionId, '') = COALESCE(ue2.sessionId, '') 
           AND ue2.eventType = 'screen_exit' 
-          AND ue2.screenName = ue.screenName
+          AND COALESCE(ue2.screenName, '') = COALESCE(ue.screenName, '')
         WHERE ue.tenantId = ? 
           AND ue.eventType = 'screen_view'
-          AND ue.timestamp >= ?
-        GROUP BY ue.screenName
+          AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
+        GROUP BY COALESCE(ue.screenName, 'Unknown')
         ORDER BY views DESC
         LIMIT 20
       `, [tenantId, startDate]);
@@ -5549,9 +5549,9 @@ app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
           COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' THEN ue.userId END) as productViews,
           COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' THEN ue.userId END) as addToCart,
           COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' THEN ue.userId END) as purchases,
-          COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND ue.timestamp >= ? THEN ue.userId END) as productViewsPeriod,
-          COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND ue.timestamp >= ? THEN ue.userId END) as addToCartPeriod,
-          COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND ue.timestamp >= ? THEN ue.userId END) as purchasesPeriod
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as productViewsPeriod,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as addToCartPeriod,
+          COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as purchasesPeriod
         FROM user_events ue
         WHERE ue.tenantId = ?
       `, [startDate, startDate, startDate, tenantId]);
@@ -5581,7 +5581,7 @@ app.get('/api/admin/analytics/batch', authenticateAdmin, async (req, res) => {
           COUNT(CASE WHEN ue.eventType = 'error' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0) as errorRate,
           COUNT(CASE WHEN ue.eventType = 'error' AND JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.errorMessage')) LIKE '%crash%' THEN 1 END) as crashCount
         FROM user_events ue
-        WHERE ue.tenantId = ? AND ue.timestamp >= ?
+        WHERE ue.tenantId = ? AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
       `, [tenantId, startDate]);
 
       result.performance = performanceData[0] || {};
@@ -5620,14 +5620,14 @@ app.get('/api/admin/analytics/users', authenticateAdmin, async (req, res) => {
 
     const [usersData] = await poolWrapper.execute(`
       SELECT 
-        COUNT(DISTINCT CASE WHEN ue.timestamp >= ? THEN ue.userId END) as newUsers,
-        COUNT(DISTINCT CASE WHEN ue.timestamp < ? AND ue.userId IN (
-          SELECT DISTINCT userId FROM user_events WHERE timestamp >= ? AND tenantId = ?
+        COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as newUsers,
+        COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) < ? AND ue.userId IN (
+          SELECT DISTINCT userId FROM user_events WHERE COALESCE(timestamp, createdAt, NOW()) >= ? AND tenantId = ?
         ) THEN ue.userId END) as returningUsers,
         COUNT(DISTINCT ue.userId) as totalUsers,
-        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
-        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
-        COUNT(DISTINCT CASE WHEN ue.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
+        COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN ue.userId END) as dau,
+        COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN ue.userId END) as wau,
+        COUNT(DISTINCT CASE WHEN COALESCE(ue.timestamp, ue.createdAt, NOW()) >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN ue.userId END) as mau
       FROM user_events ue
       WHERE ue.tenantId = ?
     `, [startDate, startDate, startDate, tenantId, tenantId]);
@@ -5673,7 +5673,7 @@ app.get('/api/admin/analytics/behavior', authenticateAdmin, async (req, res) => 
       FROM user_events ue
       WHERE ue.tenantId = ? 
         AND ue.eventType = 'screen_view'
-        AND ue.timestamp >= ?
+        AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
       GROUP BY ue.screenName
       ORDER BY views DESC
       LIMIT 20
@@ -5712,9 +5712,9 @@ app.get('/api/admin/analytics/funnel', authenticateAdmin, async (req, res) => {
 
     const [funnelData] = await poolWrapper.execute(`
       SELECT 
-        COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND ue.timestamp >= ? THEN ue.userId END) as productViews,
-        COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND ue.timestamp >= ? THEN ue.userId END) as addToCart,
-        COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND ue.timestamp >= ? THEN ue.userId END) as purchases
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'product_view' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as productViews,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'add_to_cart' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as addToCart,
+        COUNT(DISTINCT CASE WHEN ue.eventType = 'purchase' AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ? THEN ue.userId END) as purchases
       FROM user_events ue
       WHERE ue.tenantId = ?
     `, [startDate, startDate, startDate, tenantId]);
@@ -5771,7 +5771,7 @@ app.get('/api/admin/analytics/performance', authenticateAdmin, async (req, res) 
         COUNT(CASE WHEN ue.eventType = 'error' AND JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.errorMessage')) LIKE '%crash%' THEN 1 END) as crashCount,
         AVG(us.duration) as avgSessionDuration
       FROM user_events ue
-      LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+      LEFT JOIN user_sessions_v2 us ON COALESCE(ue.sessionId, '') = us.sessionId AND ue.tenantId = us.tenantId
       WHERE ue.tenantId = ? AND ue.timestamp >= ?
     `, [tenantId, startDate]);
 
@@ -5815,7 +5815,7 @@ app.get('/api/admin/analytics/products', authenticateAdmin, async (req, res) => 
         COUNT(CASE WHEN ue.eventType = 'purchase' THEN 1 END) as purchases
       FROM user_events ue
       WHERE ue.tenantId = ?
-        AND ue.timestamp >= ?
+        AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
         AND (ue.eventType = 'product_view' OR ue.eventType = 'add_to_cart' OR ue.eventType = 'purchase')
         AND JSON_EXTRACT(ue.properties, '$.productId') IS NOT NULL
       GROUP BY productId, productName
@@ -5860,23 +5860,23 @@ app.get('/api/admin/analytics/timeseries', authenticateAdmin, async (req, res) =
     switch (interval) {
       case 'hour':
         dateFormat = '%Y-%m-%d %H:00:00';
-        groupBy = 'DATE_FORMAT(ue.timestamp, "%Y-%m-%d %H:00:00")';
+        groupBy = 'DATE_FORMAT(COALESCE(ue.timestamp, ue.createdAt, NOW()), "%Y-%m-%d %H:00:00")';
         break;
       case 'day':
         dateFormat = '%Y-%m-%d';
-        groupBy = 'DATE(ue.timestamp)';
+        groupBy = 'DATE(COALESCE(ue.timestamp, ue.createdAt, NOW()))';
         break;
       case 'week':
         dateFormat = '%Y-%u';
-        groupBy = 'YEARWEEK(ue.timestamp)';
+        groupBy = 'YEARWEEK(COALESCE(ue.timestamp, ue.createdAt, NOW()))';
         break;
       case 'month':
         dateFormat = '%Y-%m';
-        groupBy = 'DATE_FORMAT(ue.timestamp, "%Y-%m")';
+        groupBy = 'DATE_FORMAT(COALESCE(ue.timestamp, ue.createdAt, NOW()), "%Y-%m")';
         break;
       default:
         dateFormat = '%Y-%m-%d';
-        groupBy = 'DATE(ue.timestamp)';
+        groupBy = 'DATE(COALESCE(ue.timestamp, ue.createdAt, NOW()))';
     }
 
     let selectClause;
@@ -5899,8 +5899,8 @@ app.get('/api/admin/analytics/timeseries', authenticateAdmin, async (req, res) =
         ${groupBy} as date,
         ${selectClause}
       FROM user_events ue
-      ${metric === 'revenue' ? 'LEFT JOIN orders o ON ue.userId = o.userId AND o.tenantId = ue.tenantId AND DATE(o.createdAt) = DATE(ue.timestamp)' : ''}
-      WHERE ue.tenantId = ? AND ue.timestamp >= ?
+      ${metric === 'revenue' ? 'LEFT JOIN orders o ON ue.userId = o.userId AND o.tenantId = ue.tenantId AND DATE(o.createdAt) = DATE(COALESCE(ue.timestamp, ue.createdAt, NOW()))' : ''}
+      WHERE ue.tenantId = ? AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
       GROUP BY ${groupBy}
       ORDER BY date ASC
     `, [tenantId, startDate]);
@@ -5952,7 +5952,7 @@ app.get('/api/admin/analytics/segments', authenticateAdmin, async (req, res) => 
           ue.userId,
           COUNT(*) as eventCount
         FROM user_events ue
-        WHERE ue.tenantId = ? AND ue.timestamp >= ?
+        WHERE ue.tenantId = ? AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
         GROUP BY ue.userId
       ) as userStats
       GROUP BY segment
@@ -5987,7 +5987,7 @@ app.get('/api/admin/analytics/characteristics', authenticateAdmin, async (req, r
         AVG(us.duration) as avgSessionDuration,
         AVG(us.eventCount) as avgEventsPerSession
       FROM user_events ue
-      LEFT JOIN user_sessions_v2 us ON ue.sessionId = us.sessionId AND ue.tenantId = us.tenantId
+      LEFT JOIN user_sessions_v2 us ON COALESCE(ue.sessionId, '') = us.sessionId AND ue.tenantId = us.tenantId
       WHERE ue.tenantId = ?
     `, [tenantId]);
 
@@ -8421,27 +8421,28 @@ app.get('/api/admin/live-views', authenticateAdmin, async (req, res) => {
     }
 
     // Analitik tablosundan product view event'lerini al
+    // timestamp kolonu yoksa createdAt kullan
     const [productViews] = await poolWrapper.execute(`
       SELECT 
         ue.id,
         ue.userId,
-        ue.sessionId,
+        COALESCE(ue.sessionId, '') as sessionId,
         ue.eventType,
-        ue.screenName,
-        ue.properties,
-        ue.timestamp,
+        COALESCE(ue.screenName, '') as screenName,
+        COALESCE(ue.properties, '{}') as properties,
+        COALESCE(ue.timestamp, ue.createdAt, NOW()) as timestamp,
         u.name as userName,
         u.email as userEmail,
-        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productId')) as productId,
-        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.productName')) as productName,
-        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.price')) as price,
-        JSON_UNQUOTE(JSON_EXTRACT(ue.properties, '$.categoryId')) as categoryId
+        JSON_UNQUOTE(JSON_EXTRACT(COALESCE(ue.properties, '{}'), '$.productId')) as productId,
+        JSON_UNQUOTE(JSON_EXTRACT(COALESCE(ue.properties, '{}'), '$.productName')) as productName,
+        JSON_UNQUOTE(JSON_EXTRACT(COALESCE(ue.properties, '{}'), '$.price')) as price,
+        JSON_UNQUOTE(JSON_EXTRACT(COALESCE(ue.properties, '{}'), '$.categoryId')) as categoryId
       FROM user_events ue
       LEFT JOIN users u ON ue.userId = u.id AND u.tenantId = ue.tenantId
       WHERE ue.tenantId = ?
         AND ue.eventType = 'product_view'
-        AND ue.timestamp >= ?
-      ORDER BY ue.timestamp DESC
+        AND COALESCE(ue.timestamp, ue.createdAt, NOW()) >= ?
+      ORDER BY COALESCE(ue.timestamp, ue.createdAt, NOW()) DESC
       LIMIT 500
     `, [tenantId, startTime]);
 
