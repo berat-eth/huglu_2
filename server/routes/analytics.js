@@ -164,19 +164,24 @@ function createAnalyticsRoutes(poolWrapper) {
         });
       }
 
-      await analyticsService.updateSessionActivity(
+      // Heartbeat non-critical operation - hata durumunda bile success döndür
+      const result = await analyticsService.updateSessionActivity(
         context.sessionId,
         context.tenantId
       );
 
+      // Her durumda success döndür (graceful degradation)
+      // Heartbeat başarısız olsa bile uygulama çalışmaya devam etmeli
       res.json({ success: true });
     } catch (error) {
-      console.error('❌ Analytics Route: Error updating session activity:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error updating session activity',
-        error: error.message
-      });
+      // Hata durumunda bile success döndür (heartbeat kritik değil)
+      // Sadece development'ta logla
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('⚠️ Analytics Route: Session heartbeat error (non-critical):', error.message);
+      }
+      
+      // Her durumda success döndür
+      res.json({ success: true });
     }
   });
 

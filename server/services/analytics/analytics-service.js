@@ -240,19 +240,56 @@ class AnalyticsService {
 
   /**
    * Session heartbeat (canlılık kontrolü)
+   * Non-critical operation - hata durumunda sessizce loglar, uygulama çalışmaya devam eder
    */
   async updateSessionActivity(sessionId, tenantId) {
-    try {
-      await this.pool.execute(
-        `UPDATE analytics_sessions SET lastActivity = ? 
-         WHERE id = ? AND tenantId = ? AND isActive = true`,
-        [new Date(), sessionId, tenantId]
-      );
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Analytics Service: Error updating session activity:', error);
-      throw error;
+    const maxRetries = 2;
+    let lastError;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Veritabanı sorgusunu çalıştır
+        await this.pool.execute(
+          `UPDATE analytics_sessions SET lastActivity = ? 
+           WHERE id = ? AND tenantId = ? AND isActive = true`,
+          [new Date(), sessionId, tenantId]
+        );
+        return { success: true };
+      } catch (error) {
+        lastError = error;
+        
+        // ETIMEDOUT veya connection timeout hataları için retry yap
+        const isTimeoutError = error.code === 'ETIMEDOUT' || 
+                              error.code === 'ECONNREFUSED' || 
+                              error.code === 'PROTOCOL_CONNECTION_LOST' ||
+                              error.message?.includes('timeout') ||
+                              error.message?.includes('ETIMEDOUT') ||
+                              error.message?.includes('connect');
+        
+        if (isTimeoutError && attempt < maxRetries - 1) {
+          // Exponential backoff: 200ms, 400ms
+          const delay = 200 * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Diğer hatalar için veya retry limitine ulaşıldıysa, sessizce logla ve devam et
+        // Heartbeat kritik değil, uygulama çalışmaya devam etmeli
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ Analytics Service: Session heartbeat failed (non-critical):', error.message || error.code);
+        }
+        
+        // Hata durumunda bile success döndür (graceful degradation)
+        return { success: false, error: error.message || error.code };
+      }
     }
+    
+    // Tüm retry'lar başarısız olduysa, sessizce logla ve devam et
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('⚠️ Analytics Service: Session heartbeat failed after retries (non-critical):', lastError?.message || lastError?.code);
+    }
+    
+    return { success: false, error: lastError?.message || lastError?.code };
   }
 
   /**

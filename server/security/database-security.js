@@ -49,12 +49,14 @@ class DatabaseSecurity {
       connectionLimit: 10,       // ✅ MySQL max_user_connections=50 limiti için güvenli değer (10)
       queueLimit: 0,             // ✅ Queue limit'i kaldır (0 = unlimited, sadece connection limit kontrol edilir)
       waitForConnections: true,
+      connectTimeout: 15000,     // ✅ Bağlantı kurma timeout'u (15 saniye) - ETIMEDOUT hatası için
       acquireTimeout: 10000,      // ✅ 5 saniye → 10 saniye (queue'da beklerken daha fazla zaman)
       timeout: 30000,             // ✅ 20 saniye → 30 saniye (daha uzun timeout)
       enableKeepAlive: true,       // ✅ Connection keep-alive aktif
       keepAliveInitialDelay: 0,   // ✅ Keep-alive hemen başlasın
       maxIdle: 10,                // ✅ Maksimum idle connection sayısı (10)
       idleTimeout: 600000,        // ✅ Idle connection timeout (10 dakika)
+      reconnect: true,            // ✅ Otomatik yeniden bağlanma
       ssl: sslOptions,
       charset: 'utf8mb4',
       multipleStatements: false,
