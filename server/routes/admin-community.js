@@ -81,9 +81,25 @@ router.get('/posts', async (req, res) => {
       params.push(searchPattern, searchPattern, searchPattern);
     }
 
-    // Get total count for pagination
-    const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(*) as total FROM');
-    const countParams = params.filter((_, index) => index !== params.length - (query.includes('LIMIT') ? 2 : 0));
+    // Get total count for pagination - build separate count query
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM community_posts p
+      WHERE p.tenantId = ?
+    `;
+    const countParams = [tenantId];
+
+    if (category && category !== 'Tümü' && category !== 'All') {
+      countQuery += ' AND p.category = ?';
+      countParams.push(category);
+    }
+
+    if (search) {
+      countQuery += ' AND (p.caption LIKE ? OR EXISTS (SELECT 1 FROM users u WHERE u.id = p.userId AND u.tenantId = p.tenantId AND (u.name LIKE ? OR u.email LIKE ?)))';
+      const searchPattern = `%${search}%`;
+      countParams.push(searchPattern, searchPattern, searchPattern);
+    }
+
     const [countResult] = await poolWrapper.execute(countQuery, countParams);
     const total = countResult[0]?.total || 0;
 
@@ -418,9 +434,25 @@ router.get('/comments', async (req, res) => {
       params.push(searchPattern, searchPattern, searchPattern);
     }
 
-    // Get total count for pagination
-    const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(*) as total FROM');
-    const countParams = params.filter((_, index) => index !== params.length - (query.includes('LIMIT') ? 2 : 0));
+    // Get total count for pagination - build separate count query
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM community_comments c
+      WHERE c.tenantId = ?
+    `;
+    const countParams = [tenantId];
+
+    if (postId) {
+      countQuery += ' AND c.postId = ?';
+      countParams.push(postId);
+    }
+
+    if (search) {
+      countQuery += ' AND (c.comment LIKE ? OR EXISTS (SELECT 1 FROM users u WHERE u.id = c.userId AND u.tenantId = c.tenantId AND (u.name LIKE ? OR u.email LIKE ?)))';
+      const searchPattern = `%${search}%`;
+      countParams.push(searchPattern, searchPattern, searchPattern);
+    }
+
     const [countResult] = await poolWrapper.execute(countQuery, countParams);
     const total = countResult[0]?.total || 0;
 
