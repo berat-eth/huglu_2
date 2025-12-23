@@ -2176,6 +2176,15 @@ try {
   console.warn('⚠️ Admin Analytics routes could not be mounted:', e.message);
 }
 
+// Admin Community Routes
+try {
+  const adminCommunityRoutes = require('./routes/admin-community')(poolWrapper);
+  app.use('/api/admin/community', adminCommunityRoutes);
+  console.log('✅ Admin Community routes mounted at /api/admin/community');
+} catch (e) {
+  console.warn('⚠️ Admin Community routes could not be mounted:', e.message);
+}
+
 
 
 // Helper: generate unique 8-digit user_id

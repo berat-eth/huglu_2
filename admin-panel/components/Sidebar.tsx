@@ -88,6 +88,12 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
         { id: 'crm', label: 'CRM', icon: Briefcase },
       ]
     },
+    {
+      title: 'Topluluk',
+      items: [
+        { id: 'community', label: 'Topluluk Yönetimi', icon: MessageSquare },
+      ]
+    },
     // CRM grubu kaldırıldı
     {
       title: 'Üretim & Lojistik',

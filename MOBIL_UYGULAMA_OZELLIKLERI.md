@@ -595,3 +595,4 @@ Bu dokümanda Huğlu Outdoor mobil uygulamasının tüm özellikleri kategoriler
 **Son Güncelleme Tarihi:** Aralık 2024  
 **Hazırlayan:** AI Assistant
 
+
