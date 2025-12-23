@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import NfcManager from 'react-native-nfc-manager';
+import NfcManager, { NfcTech } from 'react-native-nfc-manager';
 
 /**
  * NFC Temassız Ödeme Servisi
@@ -87,12 +87,12 @@ const readCardAndroid = async () => {
     // Production: Gerçek NFC okuma için ISO-DEP teknolojisi kullanılır
     // Banka API'si ve özel izinler gereklidir
     
-    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function') {
-      throw new Error('NFC Manager kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function' || !NfcTech?.IsoDep) {
+      throw new Error('Cihaz NFC (ISO-DEP) kart okuma desteklemiyor. Lütfen kart bilgilerinizi manuel olarak girin.');
     }
 
     // ISO-DEP teknolojisini iste
-    await NfcManager.requestTechnology(NfcManager.NfcTech.IsoDep);
+    await NfcManager.requestTechnology(NfcTech.IsoDep);
     
     // Tag'i al
     const tag = await NfcManager.getTag();
@@ -130,12 +130,12 @@ const readCardIOS = async () => {
     // Production: iOS'ta NFC okuma için Core NFC framework kullanılır
     // Gerçek implementasyon için banka API'si ve özel izinler gereklidir
     
-    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function') {
-      throw new Error('NFC Manager kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function' || !NfcTech?.IsoDep) {
+      throw new Error('Cihaz NFC (ISO-DEP) kart okuma desteklemiyor. Lütfen kart bilgilerinizi manuel olarak girin.');
     }
 
     // ISO-DEP teknolojisini iste
-    await NfcManager.requestTechnology(NfcManager.NfcTech.IsoDep);
+    await NfcManager.requestTechnology(NfcTech.IsoDep);
     
     // Tag'i al
     const tag = await NfcManager.getTag();
