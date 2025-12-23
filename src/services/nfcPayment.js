@@ -80,69 +80,93 @@ export const readContactlessCard = async () => {
 
 /**
  * Android için kart okuma
+ * Production: Gerçek NFC okuma implementasyonu için banka API entegrasyonu gereklidir
  */
 const readCardAndroid = async () => {
   try {
-    // Gerçek NFC okuma için ISO-DEP teknolojisi kullanılır
-    // Ancak gerçek kredi kartı okuma için banka API'si ve özel izinler gerekir
-    // Şimdilik simüle edilmiş bir okuma yapıyoruz
+    // Production: Gerçek NFC okuma için ISO-DEP teknolojisi kullanılır
+    // Banka API'si ve özel izinler gereklidir
     
-    // Gerçek implementasyon örneği (yorum satırı):
-    // await NfcManager.requestTechnology(NfcManager.NfcTech.IsoDep);
-    // const tag = await NfcManager.getTag();
-    // const cardData = await readCardDataFromTag(tag);
-    
-    // Simüle edilmiş okuma (2 saniye bekle)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Simüle edilmiş kart verileri
-    // Gerçek uygulamada bu veriler NFC'den okunur ve şifrelenir
-    const mockCardData = {
-      cardNumber: '4532 1234 5678 9010',
-      expiryDate: '12/25',
-      cardName: 'TEMASSIZ KART',
-    };
+    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function') {
+      throw new Error('NFC Manager kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    }
 
-    // Gerçek implementasyon için:
-    // 1. NFC'den kart verilerini oku (şifrelenmiş)
-    // 2. Verileri banka API'sine gönder
-    // 3. Token al ve kullan
-    // 4. CVV kullanıcıdan istenir (güvenlik için)
+    // ISO-DEP teknolojisini iste
+    await NfcManager.requestTechnology(NfcManager.NfcTech.IsoDep);
+    
+    // Tag'i al
+    const tag = await NfcManager.getTag();
+    
+    if (!tag) {
+      throw new Error('Kart algılanamadı. Lütfen kartı cihaza yaklaştırın.');
+    }
 
-    return mockCardData;
+    // Production: Gerçek implementasyon için banka API'sine bağlanılmalı
+    // Kart verileri şifrelenmiş olarak okunur ve token'a dönüştürülür
+    // Bu kısım banka entegrasyonu ile tamamlanmalıdır
+    
+    throw new Error('Temassız ödeme şu anda kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    
   } catch (error) {
     console.error('Android kart okuma hatası:', error);
-    throw new Error('Kart okunamadı. Lütfen tekrar deneyin.');
+    
+    // NFC'yi temizle
+    try {
+      await NfcManager.cancelTechnologyRequest();
+    } catch (cleanupError) {
+      console.error('NFC temizleme hatası:', cleanupError);
+    }
+    
+    throw new Error(error.message || 'Kart okunamadı. Lütfen tekrar deneyin veya kart bilgilerinizi manuel olarak girin.');
   }
 };
 
 /**
  * iOS için kart okuma
+ * Production: Gerçek NFC okuma implementasyonu için banka API entegrasyonu gereklidir
  */
 const readCardIOS = async () => {
   try {
-    // iOS'ta NFC okuma için benzer işlemler
-    // Gerçek implementasyon için banka API'si gerekir
+    // Production: iOS'ta NFC okuma için Core NFC framework kullanılır
+    // Gerçek implementasyon için banka API'si ve özel izinler gereklidir
     
-    // Simüle edilmiş okuma (2 saniye bekle)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Simüle edilmiş kart verileri
-    const mockCardData = {
-      cardNumber: '4532 1234 5678 9010',
-      expiryDate: '12/25',
-      cardName: 'TEMASSIZ KART',
-    };
+    if (!NfcManager || typeof NfcManager.requestTechnology !== 'function') {
+      throw new Error('NFC Manager kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    }
 
-    return mockCardData;
+    // ISO-DEP teknolojisini iste
+    await NfcManager.requestTechnology(NfcManager.NfcTech.IsoDep);
+    
+    // Tag'i al
+    const tag = await NfcManager.getTag();
+    
+    if (!tag) {
+      throw new Error('Kart algılanamadı. Lütfen kartı cihaza yaklaştırın.');
+    }
+
+    // Production: Gerçek implementasyon için banka API'sine bağlanılmalı
+    // Kart verileri şifrelenmiş olarak okunur ve token'a dönüştürülür
+    // Bu kısım banka entegrasyonu ile tamamlanmalıdır
+    
+    throw new Error('Temassız ödeme şu anda kullanılamıyor. Lütfen kart bilgilerinizi manuel olarak girin.');
+    
   } catch (error) {
     console.error('iOS kart okuma hatası:', error);
-    throw new Error('Kart okunamadı. Lütfen tekrar deneyin.');
+    
+    // NFC'yi temizle
+    try {
+      await NfcManager.cancelTechnologyRequest();
+    } catch (cleanupError) {
+      console.error('NFC temizleme hatası:', cleanupError);
+    }
+    
+    throw new Error(error.message || 'Kart okunamadı. Lütfen tekrar deneyin veya kart bilgilerinizi manuel olarak girin.');
   }
 };
 
 /**
  * Temassız ödeme için kart bilgilerini doğrula ve işle
+ * Production: Gerçek ödeme işlemi için banka API entegrasyonu gereklidir
  * @param {Object} cardData - Okunan kart verileri
  * @param {number} amount - Ödeme tutarı
  * @returns {Promise<{success: boolean, transactionId?: string}>}
@@ -154,22 +178,17 @@ export const processContactlessPayment = async (cardData, amount) => {
       throw new Error('Kart bilgileri eksik');
     }
 
-    // Gerçek uygulamada burada banka API'sine istek gönderilir
-    // Şimdilik simüle edilmiş başarılı yanıt döndürüyoruz
+    // Production: Gerçek ödeme işlemi için banka API'sine istek gönderilmelidir
+    // Kart bilgileri token'a dönüştürülmeli ve güvenli şekilde işlenmelidir
     
-    console.log('Temassız ödeme işleniyor:', {
-      cardNumber: cardData.cardNumber.replace(/\d(?=\d{4})/g, '*'),
-      amount,
-    });
-
-    // Simüle edilmiş işlem ID
-    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    return {
-      success: true,
-      transactionId,
-      message: 'Temassız ödeme başarılı',
-    };
+    // TODO: Banka API entegrasyonu burada yapılmalıdır
+    // Örnek yapı:
+    // 1. Kart bilgilerini token'a dönüştür (banka API'si ile)
+    // 2. Ödeme işlemini başlat
+    // 3. İşlem sonucunu döndür
+    
+    throw new Error('Temassız ödeme şu anda kullanılamıyor. Lütfen diğer ödeme yöntemlerini kullanın.');
+    
   } catch (error) {
     console.error('Temassız ödeme işleme hatası:', error);
     throw error;

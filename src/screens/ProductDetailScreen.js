@@ -10,7 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
-import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI } from '../services/api';
+import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI, flashDealsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWeightedRandomViewers } from '../utils/liveViewersGenerator';
@@ -79,6 +79,8 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [reviewImageViewerImages, setReviewImageViewerImages] = useState([]);
   const [liveViewers, setLiveViewers] = useState(0);
   const [recommendedSize, setRecommendedSize] = useState(null);
+  const [isFlashDeal, setIsFlashDeal] = useState(false);
+  const [flashDealOldPrice, setFlashDealOldPrice] = useState(null);
 
   // 24 saatte satılan adet (ürün ID'sine göre tutarlı rastgele değer: 1-12 arası)
   const getSalesCount24h = useMemo(() => {
@@ -186,6 +188,64 @@ export default function ProductDetailScreen({ navigation, route }) {
             }
             
             if (data) {
+              // Flash deal kontrolü - önce initialProduct'tan kontrol et
+              if (initialProduct?.isFlashDeal && initialProduct?.oldPrice) {
+                setIsFlashDeal(true);
+                setFlashDealOldPrice(parseFloat(initialProduct.oldPrice));
+                // initialProduct'tan gelen fiyatı kullan
+                if (initialProduct.price) {
+                  data.price = parseFloat(initialProduct.price);
+                }
+                if (initialProduct.oldPrice) {
+                  data.oldPrice = parseFloat(initialProduct.oldPrice);
+                }
+              } else {
+                // Flash deal kontrolü - API'den kontrol et
+                try {
+                  const flashDealsResponse = await flashDealsAPI.getActive();
+                  if (flashDealsResponse.data?.success) {
+                    const flashDealsData = flashDealsResponse.data.data || [];
+                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                    
+                    // Tüm flash deal'lerde bu ürünü ara
+                    let foundFlashDeal = null;
+                    for (const deal of flashDealsData) {
+                      const dealProducts = deal.products || [];
+                      const productInDeal = dealProducts.find(p => (p.id || p._id) === productId);
+                      if (productInDeal) {
+                        foundFlashDeal = deal;
+                        break;
+                      }
+                    }
+                    
+                    if (foundFlashDeal) {
+                      const basePrice = parseFloat(data.price || 0);
+                      const discountValue = parseFloat(foundFlashDeal.discount_value || 0);
+                      let discountedPrice = basePrice;
+                      
+                      if (foundFlashDeal.discount_type === 'percentage') {
+                        discountedPrice = basePrice * (1 - discountValue / 100);
+                      } else {
+                        discountedPrice = basePrice - discountValue;
+                      }
+                      
+                      setIsFlashDeal(true);
+                      setFlashDealOldPrice(basePrice);
+                      // Ürün fiyatını güncelle
+                      data.price = Math.max(0, discountedPrice);
+                      data.oldPrice = basePrice;
+                    } else {
+                      setIsFlashDeal(false);
+                      setFlashDealOldPrice(null);
+                    }
+                  }
+                } catch (flashDealError) {
+                  console.warn('⚠️ Flash deals kontrol edilemedi:', flashDealError.message);
+                  setIsFlashDeal(false);
+                  setFlashDealOldPrice(null);
+                }
+              }
+              
               setProduct(data);
               
               // Kullanıcının favorilerini kontrol et
@@ -225,65 +285,9 @@ export default function ProductDetailScreen({ navigation, route }) {
                   }
                   
                   // Chatbot'tan beden önerisi al (sadece ürünün beden seçenekleri varsa)
-                  try {
-                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
-                    
-                    // Önce ürünün beden seçeneklerini kontrol et
-                    const hasSizeOptions = (() => {
-                      // variationDetails kontrolü
-                      if (data.variationDetails) {
-                        try {
-                          const details = typeof data.variationDetails === 'string' 
-                            ? JSON.parse(data.variationDetails) 
-                            : data.variationDetails;
-                          if (Array.isArray(details) && details.length > 0) {
-                            return details.some(v => {
-                              const variationName = (v.name || '').toLowerCase();
-                              return variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
-                            });
-                          }
-                        } catch (e) {
-                          console.error('variationDetails parse hatası:', e);
-                        }
-                      }
-                      
-                      // variations array kontrolü
-                      if (Array.isArray(data.variations) && data.variations.length > 0) {
-                        return data.variations.some(v => {
-                          const variationName = (v.name || '').toLowerCase();
-                          return variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
-                        });
-                      }
-                      
-                      return false;
-                    })();
-                    
-                    // Eğer ürünün beden seçenekleri varsa, AI önerisini al
-                    if (hasSizeOptions) {
-                      const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
-                      if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
-                        const responseData = chatbotResponse.data.data;
-                        // Önerilen bedeni data'dan al
-                        if (responseData.recommendedSize) {
-                          setRecommendedSize(responseData.recommendedSize);
-                        } else if (responseData.data?.recommendedSize) {
-                          setRecommendedSize(responseData.data.recommendedSize);
-                        } else if (responseData.quickReplies) {
-                          // Quick reply'lerden önerilen bedeni bul
-                          const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
-                          if (sizeReply?.data?.recommendedSize) {
-                            setRecommendedSize(sizeReply.data.recommendedSize);
-                          }
-                        }
-                      }
-                    } else {
-                      // Beden seçeneği yoksa öneriyi temizle
-                      setRecommendedSize(null);
-                    }
-                  } catch (chatbotError) {
-                    console.log('Chatbot beden önerisi alınamadı:', chatbotError);
-                    setRecommendedSize(null);
-                  }
+                  // NOT: AI beden önerisi sizeOptions hazır olduğunda useEffect içinde kontrol edilecek
+                  // Burada sadece temizleme yapıyoruz
+                  setRecommendedSize(null);
                 } else {
                   setIsFavorite(!!data?.isFavorite);
                 }
@@ -1053,7 +1057,10 @@ export default function ProductDetailScreen({ navigation, route }) {
       
       // Renk seçimi kaldırıldı
 
-      const response = await cartAPI.add(userId, pid, quantity, selectedVariations);
+      // Flash deal fiyatını kullan (eğer varsa)
+      const finalPrice = isFlashDeal && priceValue ? priceValue : (product.price || 0);
+
+      const response = await cartAPI.add(userId, pid, quantity, selectedVariations, finalPrice);
 
       if (response.data?.success) {
         // Badge'i güncelle
@@ -1312,6 +1319,52 @@ export default function ProductDetailScreen({ navigation, route }) {
     setCurrentImageIndex(0);
     setSelectedSize(0);
   }, [product?.id, product?._id]);
+
+  // Beden seçenekleri varsa AI beden önerisini al, yoksa temizle
+  useEffect(() => {
+    const fetchBedenOnerisi = async () => {
+      // Eğer beden seçenekleri yoksa, AI önerisini çalıştırma
+      if (sizeOptions.length === 0) {
+        setRecommendedSize(null);
+        return;
+      }
+      
+      // Beden seçenekleri varsa, AI önerisini al
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        if (!userId || !product) {
+          return;
+        }
+        
+        const productId = product.id || product._id;
+        if (!productId) {
+          return;
+        }
+        
+        const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
+        if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
+          const responseData = chatbotResponse.data.data;
+          // Önerilen bedeni data'dan al
+          if (responseData.recommendedSize) {
+            setRecommendedSize(responseData.recommendedSize);
+          } else if (responseData.data?.recommendedSize) {
+            setRecommendedSize(responseData.data.recommendedSize);
+          } else if (responseData.quickReplies) {
+            // Quick reply'lerden önerilen bedeni bul
+            const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
+            if (sizeReply?.data?.recommendedSize) {
+              setRecommendedSize(sizeReply.data.recommendedSize);
+            }
+          }
+        }
+      } catch (chatbotError) {
+        console.log('Chatbot beden önerisi alınamadı:', chatbotError);
+        setRecommendedSize(null);
+      }
+    };
+    
+    fetchBedenOnerisi();
+  }, [sizeOptions.length, product?.id, product?._id]);
   
   // productImages değiştiğinde currentImageIndex'i geçerli tut
   useEffect(() => {
@@ -1349,6 +1402,7 @@ export default function ProductDetailScreen({ navigation, route }) {
   const hasStock = product?.stock === undefined ? true : product.stock > 0;
   const maxQty = product?.stock && product.stock > 0 ? product.stock : 99;
   const priceValue = parseFloat(product?.discountPrice || product?.price || 0);
+  const oldPriceValue = flashDealOldPrice || product?.oldPrice;
 
   return (
     <View style={styles.container}>
@@ -1508,9 +1562,28 @@ export default function ProductDetailScreen({ navigation, route }) {
             )}
             
             <View style={styles.priceRow}>
-              <Text style={styles.price}>
-                {priceValue.toFixed(2)} ₺
-              </Text>
+              <View style={styles.priceContainer}>
+                {isFlashDeal && oldPriceValue && parseFloat(oldPriceValue) > priceValue ? (
+                  <>
+                    <Text style={styles.flashPrice}>
+                      {priceValue.toFixed(2)} ₺
+                    </Text>
+                    <Text style={styles.oldPriceDetail}>
+                      {parseFloat(oldPriceValue).toFixed(2)} ₺
+                    </Text>
+                    <View style={styles.flashDiscountBadgeDetail}>
+                      <Ionicons name="flash" size={12} color={COLORS.white} />
+                      <Text style={styles.flashDiscountTextDetail}>
+                        %{Math.round(((parseFloat(oldPriceValue) - priceValue) / parseFloat(oldPriceValue)) * 100)} İndirim
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.price}>
+                    {priceValue.toFixed(2)} ₺
+                  </Text>
+                )}
+              </View>
               {product.rating && product.rating > 0 && (
                 <View style={styles.ratingContainer}>
                   <Ionicons name="star" size={18} color="#FFA500" />
@@ -2783,10 +2856,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   price: {
     fontSize: 24,
     fontWeight: '700',
     color: COLORS.primary,
+  },
+  flashPrice: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ef4444', // Kırmızı renk flash indirim için
+  },
+  oldPriceDetail: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: COLORS.gray400,
+    textDecorationLine: 'line-through',
+  },
+  flashDiscountBadgeDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff5722',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  flashDiscountTextDetail: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   ratingContainer: {
     flexDirection: 'row',

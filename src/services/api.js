@@ -151,8 +151,8 @@ export const cartAPI = {
   get: (userId) => api.get(`/cart/${userId}`),
   
   // Sepete ürün ekle
-  add: (userId, productId, quantity, selectedVariations) => 
-    api.post('/cart', { userId, productId, quantity, selectedVariations }),
+  add: (userId, productId, quantity, selectedVariations, price) => 
+    api.post('/cart', { userId, productId, quantity, selectedVariations, price }),
   
   // Sepetteki ürün miktarını güncelle
   update: (cartItemId, quantity) => 

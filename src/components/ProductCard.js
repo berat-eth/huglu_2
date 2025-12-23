@@ -14,6 +14,9 @@ export default function ProductCard({ product, onPress, onFavorite }) {
   // Stok sayısını kontrol et (10'dan az ise sınırlı stok)
   const stockQuantity = parseInt(product.stock) || 0;
   const isLimitedStock = !isOutOfStock && stockQuantity > 0 && stockQuantity < 10;
+  
+  // Flash indirim kontrolü
+  const isFlashDeal = product.isFlashDeal || (product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price));
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.95}>
@@ -30,8 +33,15 @@ export default function ProductCard({ product, onPress, onFavorite }) {
             <Text style={styles.outOfStockText}>STOKTA YOK</Text>
           </View>
         )}
-        {/* Diğer Badge'ler (sadece stokta varsa göster) */}
-        {!isOutOfStock && product.badge && (
+        {/* Flash İndirim Badge - Alt kısımda göster */}
+        {!isOutOfStock && isFlashDeal && (
+          <View style={styles.flashDealBadge}>
+            <Ionicons name="flash" size={12} color={COLORS.white} style={styles.flashIcon} />
+            <Text style={styles.flashDealText}>FLASH</Text>
+          </View>
+        )}
+        {/* Diğer Badge'ler (sadece stokta varsa ve flash deal değilse göster) */}
+        {!isOutOfStock && !isFlashDeal && product.badge && (
           <View style={[styles.badge, product.badge === 'NEW' && styles.badgeNew]}>
             <Text style={styles.badgeText}>{product.badge}</Text>
           </View>
@@ -58,16 +68,34 @@ export default function ProductCard({ product, onPress, onFavorite }) {
       <View style={styles.content}>
         <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>
-            {parseFloat(product.price || 0).toFixed(0)}<Text style={styles.priceSymbol}>₺</Text>
-          </Text>
-          {product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price) && (
+          {isFlashDeal && product.oldPrice ? (
+            <>
+              <Text style={styles.flashPrice}>
+                {parseFloat(product.price || 0).toFixed(0)}<Text style={styles.priceSymbol}>₺</Text>
+              </Text>
+              <Text style={styles.oldPrice}>
+                {parseFloat(product.oldPrice).toFixed(0)}₺
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.price}>
+              {parseFloat(product.price || 0).toFixed(0)}<Text style={styles.priceSymbol}>₺</Text>
+            </Text>
+          )}
+          {!isFlashDeal && product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price) && (
             <Text style={styles.oldPrice}>
               {parseFloat(product.oldPrice).toFixed(0)}₺
             </Text>
           )}
         </View>
-        {product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price) && (
+        {isFlashDeal && product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price) && (
+          <View style={styles.flashDiscountBadge}>
+            <Text style={styles.flashDiscountText}>
+              %{Math.round(((parseFloat(product.oldPrice) - parseFloat(product.price)) / parseFloat(product.oldPrice)) * 100)} İndirim
+            </Text>
+          </View>
+        )}
+        {!isFlashDeal && product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price) && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>
               %{Math.round(((parseFloat(product.oldPrice) - parseFloat(product.price)) / parseFloat(product.oldPrice)) * 100)} İndirim
@@ -125,6 +153,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  flashDealBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 87, 34, 0.95)', // Turuncu/kırmızı flash renk
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    zIndex: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  flashIcon: {
+    marginRight: 2,
+  },
+  flashDealText: {
     color: COLORS.white,
     fontSize: 10,
     fontWeight: '700',
@@ -219,6 +277,12 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     lineHeight: 22,
   },
+  flashPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ef4444', // Kırmızı renk flash indirim için
+    lineHeight: 22,
+  },
   priceSymbol: {
     fontSize: 14,
     fontWeight: '700',
@@ -237,6 +301,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   discountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  flashDiscountBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ff5722', // Daha parlak turuncu/kırmızı flash için
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ff8a65',
+  },
+  flashDiscountText: {
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.white,

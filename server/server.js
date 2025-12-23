@@ -20024,8 +20024,8 @@ async function startServer() {
 
   app.post('/api/cart', validateUserIdMatch('body'), async (req, res) => {
     try {
-      const { userId, productId, quantity, variationString, selectedVariations, deviceId } = req.body;
-      console.log(`🛒 Server: Adding to cart - User: ${userId}, Product: ${productId}, Quantity: ${quantity}`);
+      const { userId, productId, quantity, variationString, selectedVariations, deviceId, price } = req.body;
+      console.log(`🛒 Server: Adding to cart - User: ${userId}, Product: ${productId}, Quantity: ${quantity}, Price: ${price}`);
 
       // Validate required fields
       if (!userId || !productId || !quantity) {
@@ -20050,16 +20050,67 @@ async function startServer() {
         }
       }
 
+      // Flash deal kontrolü ve fiyat hesaplama
+      let finalPrice = price;
+      
+      // Eğer frontend'den fiyat gönderilmişse, o fiyatı kullan (zaten indirimli fiyat olmalı)
+      if (finalPrice !== undefined && finalPrice !== null) {
+        finalPrice = parseFloat(finalPrice) || 0;
+        console.log(`💰 Frontend'den gelen fiyat kullanılıyor: ${finalPrice}`);
+      } else {
+        // Eğer fiyat gönderilmediyse, ürünün fiyatını al ve flash deal kontrolü yap
+        const [productRows] = await poolWrapper.execute('SELECT price FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
+        if (productRows.length > 0) {
+          finalPrice = parseFloat(productRows[0].price) || 0;
+        } else {
+          finalPrice = 0;
+        }
+
+        // Flash deal kontrolü - aktif flash deal'lerde bu ürün var mı?
+        try {
+          const [flashDealRows] = await poolWrapper.execute(`
+            SELECT fd.discount_type, fd.discount_value, fd.start_date, fd.end_date
+            FROM flash_deals fd
+            INNER JOIN flash_deal_products fdp ON fd.id = fdp.flash_deal_id
+            WHERE fdp.product_id = ? 
+              AND fd.is_active = 1
+              AND fd.start_date <= NOW()
+              AND fd.end_date >= NOW()
+            LIMIT 1
+          `, [productId]);
+
+          if (flashDealRows.length > 0) {
+            const deal = flashDealRows[0];
+            const basePrice = parseFloat(finalPrice);
+            const discountValue = parseFloat(deal.discount_value || 0);
+            
+            if (deal.discount_type === 'percentage') {
+              finalPrice = basePrice * (1 - discountValue / 100);
+            } else {
+              finalPrice = basePrice - discountValue;
+            }
+            
+            finalPrice = Math.max(0, finalPrice);
+            console.log(`⚡ Flash deal uygulandı - Orijinal: ${basePrice}, İndirimli: ${finalPrice}`);
+          }
+        } catch (flashDealError) {
+          console.warn('⚠️ Flash deal kontrolü başarısız:', flashDealError.message);
+          // Flash deal hatası olsa bile devam et
+        }
+      }
+
       // ⚡ OPTIMIZASYON: Tek sorgu ile INSERT veya UPDATE (2 sorgu → 1 sorgu)
       // UNIQUE constraint gerekli: (tenantId, userId, productId, variationString, deviceId)
       const deviceIdValue = (userId === 1) ? (deviceId || '') : null;
 
+      // Cart tablosuna price kolonu eklenmişse kullan, yoksa eski formatı kullan
       const [result] = await poolWrapper.execute(`
-        INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, price, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE 
           quantity = quantity + VALUES(quantity),
-          selectedVariations = VALUES(selectedVariations)
+          selectedVariations = VALUES(selectedVariations),
+          price = VALUES(price)
       `, [
         tenantId,
         userId,
@@ -20067,8 +20118,30 @@ async function startServer() {
         productId,
         quantity,
         variationString || '',
-        JSON.stringify(selectedVariations || {})
-      ]);
+        JSON.stringify(selectedVariations || {}),
+        finalPrice
+      ]).catch(async (error) => {
+        // Eğer price kolonu yoksa, eski formatı kullan
+        if (error.code === 'ER_BAD_FIELD_ERROR' && error.message.includes('price')) {
+          console.log('⚠️ Cart tablosunda price kolonu yok, eski format kullanılıyor');
+          return await poolWrapper.execute(`
+            INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE 
+              quantity = quantity + VALUES(quantity),
+              selectedVariations = VALUES(selectedVariations)
+          `, [
+            tenantId,
+            userId,
+            deviceIdValue,
+            productId,
+            quantity,
+            variationString || '',
+            JSON.stringify(selectedVariations || {})
+          ]);
+        }
+        throw error;
+      });
 
       const cartItemId = result.insertId || result.affectedRows;
       console.log(`✅ Server: Cart updated for user ${userId}, item ${cartItemId}`);
@@ -20099,10 +20172,7 @@ async function startServer() {
       // Platform Brain: Track cart add (non-blocking)
       try {
         const { trackCartAdd } = require('./middleware/platform-brain-integration');
-        const [productRows] = await poolWrapper.execute('SELECT price FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
-        if (productRows.length > 0) {
-          trackCartAdd(req, productId, quantity, parseFloat(productRows[0].price) || 0);
-        }
+        trackCartAdd(req, productId, quantity, finalPrice);
       } catch (pbError) {
         // Silently fail - Platform Brain should never break existing functionality
         if (process.env.NODE_ENV !== 'production') {

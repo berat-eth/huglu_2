@@ -511,6 +511,8 @@ export default function HomeScreen({ navigation }) {
               ...product,
               oldPrice: basePrice, // Eski fiyat
               price: Math.max(0, discountedPrice), // İndirimli fiyat
+              isFlashDeal: true, // Flash indirim flag'i
+              dealName: deal.name, // Flash deal adı
             };
           });
         });

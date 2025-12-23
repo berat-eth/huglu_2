@@ -122,10 +122,13 @@ export default function FlashDealsScreen({ navigation }) {
         discountType: deal.discount_type,
         discountValue: discountValue,
         originalPrice: basePrice,
+        oldPrice: basePrice, // Eski fiyat (ProductCard için)
+        price: Math.max(0, discountedPrice), // İndirimli fiyat (ProductCard için)
         discountedPrice: Math.max(0, discountedPrice),
         savePercentage: Math.round(savePercentage),
         stock: stock,
-        claimed: claimed
+        claimed: claimed,
+        isFlashDeal: true, // Flash indirim flag'i
       };
     })
   );

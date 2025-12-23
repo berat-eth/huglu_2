@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProductCard from '../components/ProductCard';
 import { COLORS } from '../constants/colors';
-import { productsAPI, wishlistAPI } from '../services/api';
+import { productsAPI, wishlistAPI, flashDealsAPI } from '../services/api';
 import voiceRecognitionService from '../services/voiceRecognition';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 
@@ -153,6 +153,62 @@ export default function ProductListScreen({ navigation, route }) {
 
         page += 1;
         safety += 1;
+      }
+
+      // Flash deal bilgisini ekle
+      try {
+        const flashDealsResponse = await flashDealsAPI.getActive();
+        if (flashDealsResponse.data?.success) {
+          const flashDealsData = flashDealsResponse.data.data || [];
+          
+          // Tüm flash deal ürünlerinin ID'lerini topla
+          const flashDealProductIds = new Set();
+          const flashDealMap = new Map(); // productId -> flashDeal info
+          
+          flashDealsData.forEach(deal => {
+            const products = deal.products || [];
+            products.forEach(product => {
+              const productId = product.id || product._id;
+              if (productId) {
+                flashDealProductIds.add(productId);
+                if (!flashDealMap.has(productId)) {
+                  const basePrice = parseFloat(product.price || 0);
+                  const discountValue = parseFloat(deal.discount_value || 0);
+                  let discountedPrice = basePrice;
+                  
+                  if (deal.discount_type === 'percentage') {
+                    discountedPrice = basePrice * (1 - discountValue / 100);
+                  } else {
+                    discountedPrice = basePrice - discountValue;
+                  }
+                  
+                  flashDealMap.set(productId, {
+                    oldPrice: basePrice,
+                    price: Math.max(0, discountedPrice),
+                    isFlashDeal: true,
+                    dealName: deal.name,
+                  });
+                }
+              }
+            });
+          });
+          
+          // Ürünlere flash deal bilgisini ekle
+          all = all.map(product => {
+            const productId = product.id || product._id;
+            if (flashDealMap.has(productId)) {
+              const flashDealInfo = flashDealMap.get(productId);
+              return {
+                ...product,
+                ...flashDealInfo,
+              };
+            }
+            return product;
+          });
+        }
+      } catch (flashDealError) {
+        console.warn('⚠️ Flash deals yüklenemedi:', flashDealError.message);
+        // Flash deal hatası olsa bile ürünleri göster
       }
 
       setProducts(all);
