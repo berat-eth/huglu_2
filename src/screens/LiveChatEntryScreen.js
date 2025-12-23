@@ -18,7 +18,7 @@ const TOPICS = [
     id: 2,
     title: 'Ürün Danışmanı',
     subtitle: 'Ürün önerisi',
-    icon: 'compass-outline',
+    icon: 'help-circle-outline',
     color: '#11d421',
     bgColor: '#E8F5E9',
     selected: true,

@@ -10,8 +10,6 @@ class Analytics {
     this.sessionId = null;
     this.sessionStartTime = null;
     this.isInitialized = false;
-    this.offlineQueue = [];
-    this.maxQueueSize = 100;
   }
 
   /**
@@ -26,14 +24,6 @@ class Analytics {
         await AsyncStorage.setItem('analytics_device_id', storedDeviceId);
       }
       this.deviceId = storedDeviceId;
-
-      // Offline queue'yu yükle
-      const queue = await AsyncStorage.getItem('analytics_queue');
-      if (queue) {
-        this.offlineQueue = JSON.parse(queue);
-        // Queue'daki eventleri gönder
-        await this.flushQueue();
-      }
 
       this.isInitialized = true;
       console.log('✅ Analytics initialized');
@@ -136,12 +126,8 @@ class Analytics {
       try {
         await api.post(endpoint, payload);
       } catch (error) {
-        // Offline durumda queue'ya ekle
-        if (error.message.includes('Network') || error.message.includes('timeout')) {
-          await this.addToQueue(endpoint, payload);
-        } else {
-          throw error;
-        }
+        // Offline mod kaldırıldı - hataları logla
+        throw error;
       }
     } catch (error) {
       console.error('❌ Error sending event:', error);
@@ -173,64 +159,11 @@ class Analytics {
       try {
         await api.post('/analytics/events', payload);
       } catch (error) {
-        if (error.message.includes('Network') || error.message.includes('timeout')) {
-          // Her event'i ayrı ayrı queue'ya ekle
-          for (const event of events) {
-            await this.addToQueue('/analytics/events', { events: [event] });
-          }
-        } else {
-          throw error;
-        }
+        // Offline mod kaldırıldı - hataları logla
+        throw error;
       }
     } catch (error) {
       console.error('❌ Error sending batch events:', error);
-    }
-  }
-
-  /**
-   * Queue'ya ekle
-   */
-  async addToQueue(endpoint, data) {
-    try {
-      if (this.offlineQueue.length >= this.maxQueueSize) {
-        // En eski event'i sil
-        this.offlineQueue.shift();
-      }
-
-      this.offlineQueue.push({
-        endpoint,
-        data,
-        timestamp: new Date().toISOString()
-      });
-
-      await AsyncStorage.setItem('analytics_queue', JSON.stringify(this.offlineQueue));
-    } catch (error) {
-      console.error('❌ Error adding to queue:', error);
-    }
-  }
-
-  /**
-   * Queue'daki eventleri gönder
-   */
-  async flushQueue() {
-    try {
-      if (this.offlineQueue.length === 0) return;
-
-      const eventsToSend = [...this.offlineQueue];
-      this.offlineQueue = [];
-
-      for (const queuedEvent of eventsToSend) {
-        try {
-          await api.post(queuedEvent.endpoint, queuedEvent.data);
-        } catch (error) {
-          // Başarısız olanları tekrar queue'ya ekle
-          this.offlineQueue.push(queuedEvent);
-        }
-      }
-
-      await AsyncStorage.setItem('analytics_queue', JSON.stringify(this.offlineQueue));
-    } catch (error) {
-      console.error('❌ Error flushing queue:', error);
     }
   }
 

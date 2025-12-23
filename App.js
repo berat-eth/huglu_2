@@ -68,7 +68,6 @@ import CommunityProfileScreen from './src/screens/CommunityProfileScreen';
 import CommunityDiscoverScreen from './src/screens/CommunityDiscoverScreen';
 import CommunityNotificationsScreen from './src/screens/CommunityNotificationsScreen';
 import CommunityRulesScreen from './src/screens/CommunityRulesScreen';
-import CompassScreen from './src/screens/CompassScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -253,7 +252,6 @@ function App() {
         <Stack.Screen name="CommunityProfile" component={CommunityProfileScreen} />
         <Stack.Screen name="CommunityRules" component={CommunityRulesScreen} />
         <Stack.Screen name="CreatePost" component={CreatePostScreen} />
-        <Stack.Screen name="Compass" component={CompassScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />
         <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
         <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />

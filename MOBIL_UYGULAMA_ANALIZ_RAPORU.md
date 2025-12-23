@@ -669,3 +669,4 @@ Stack Navigator (Root)
 **Tarih:** Aralık 2024  
 **Versiyon:** 1.0
 
+

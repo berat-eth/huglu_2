@@ -644,7 +644,7 @@ if (process.env.NODE_ENV !== 'production') {
 const endpointRateLimitMiddleware = require('./middleware/endpoint-rate-limit');
 const { getClientIP } = require('./utils/rate-limiting');
 
-// Endpoint rate limiting middleware - Her endpoint için ayrı rate limit uygular
+                    // Endpoint rate limiting middleware - Her endpoint için ayrı rate limit uygular
 // Bu middleware, request path ve method'a göre uygun rate limiter'ı seçer ve uygular
 app.use('/api', endpointRateLimitMiddleware);
 
@@ -17012,11 +17012,40 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     for (const key of allowed) {
       if (req.body && Object.prototype.hasOwnProperty.call(req.body, key)) {
         fields.push(`${key} = ?`);
+        let value = req.body[key];
+        
         // Boolean değerleri doğru formatta gönder
         if (key === 'isActive' || key === 'excludeFromXml' || key === 'hasVariations') {
-          params.push(!!req.body[key]);
-        } else {
-          params.push(req.body[key]);
+          params.push(!!value);
+        } 
+        // images array ise JSON string'e çevir, zaten string ise olduğu gibi bırak
+        else if (key === 'images') {
+          if (Array.isArray(value)) {
+            params.push(JSON.stringify(value));
+          } else if (typeof value === 'string') {
+            // Zaten string ise olduğu gibi kullan
+            params.push(value);
+          } else if (value === null || value === undefined) {
+            // Null veya undefined ise boş array olarak kaydet
+            params.push(JSON.stringify([]));
+          } else {
+            // Diğer durumlarda stringify yap
+            params.push(JSON.stringify(value));
+          }
+        }
+        // description boş string ise NULL yap
+        else if (key === 'description' && value === '') {
+          params.push(null);
+        }
+        // price, taxRate, stock gibi numeric değerleri parse et
+        else if (key === 'price' || key === 'taxRate') {
+          params.push(value !== null && value !== undefined ? parseFloat(value) : null);
+        }
+        else if (key === 'stock') {
+          params.push(value !== null && value !== undefined ? parseInt(value, 10) : 0);
+        }
+        else {
+          params.push(value);
         }
       }
     }

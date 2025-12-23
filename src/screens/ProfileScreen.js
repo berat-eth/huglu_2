@@ -165,23 +165,6 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Community Rules Button */}
-        <View style={styles.communityRulesSection}>
-          <TouchableOpacity 
-            style={styles.communityRulesButton}
-            onPress={() => navigation.navigate('CommunityRules')}
-          >
-            <View style={styles.communityRulesIconContainer}>
-              <Ionicons name="document-text-outline" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.communityRulesContent}>
-              <Text style={styles.communityRulesTitle}>Topluluk Kuralları</Text>
-              <Text style={styles.communityRulesSubtitle}>Topluluk kurallarını okuyun ve uygulayın</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-          </TouchableOpacity>
-        </View>
-
         {/* Dashboard Grid */}
         <View style={styles.dashboardGrid}>
           <TouchableOpacity 
@@ -238,17 +221,6 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <Text style={styles.dashboardTitle}>Destek</Text>
             <Text style={styles.dashboardSubtitle}>7/24 Yardım</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.dashboardCard} onPress={() => navigation.navigate('Compass')}>
-            <View style={styles.dashboardIcon}>
-              <Ionicons name="compass-outline" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.dashboardTitle}>Pusula</Text>
-            <Text style={styles.dashboardSubtitle}>Yön Bul</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>YENİ</Text>
-            </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -708,46 +680,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.white,
-  },
-  communityRulesSection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  communityRulesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  communityRulesIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(17, 212, 33, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  communityRulesContent: {
-    flex: 1,
-  },
-  communityRulesTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textMain,
-    marginBottom: 4,
-  },
-  communityRulesSubtitle: {
-    fontSize: 13,
-    color: COLORS.gray500,
   },
 });

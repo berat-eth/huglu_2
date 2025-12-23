@@ -163,3 +163,4 @@ class FunnelAnalyzer {
 module.exports = FunnelAnalyzer;
 
 
+
