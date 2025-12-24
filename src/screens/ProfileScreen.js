@@ -191,6 +191,26 @@ export default function ProfileScreen({ navigation }) {
             style={styles.dashboardCard} 
             onPress={() => {
               if (!isLoggedIn) {
+                setLoginRequiredMessage('Mağazadan teslim al siparişlerinizi görmek için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('PickupOrders');
+              }
+            }}
+          >
+            <View style={styles.dashboardIcon}>
+              <Ionicons name="storefront-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.dashboardTitle}>Mağazadan Teslim Al</Text>
+            <Text style={styles.dashboardSubtitle}>
+              {isLoggedIn ? 'Siparişlerim' : 'Giriş Yapın'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.dashboardCard} 
+            onPress={() => {
+              if (!isLoggedIn) {
                 setLoginRequiredMessage('Favorilerinizi görmek için lütfen giriş yapın');
                 setShowLoginRequiredModal(true);
               } else {

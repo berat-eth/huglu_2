@@ -49,6 +49,14 @@ export default function MyAddressesScreen({ navigation }) {
     loadAddresses();
   }, []);
 
+  // AddAddress ekranından dönüldüğünde adresleri yeniden yükle
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadAddresses();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const loadAddresses = async () => {
     try {
       setLoading(true);

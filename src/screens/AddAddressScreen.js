@@ -283,10 +283,6 @@ export default function AddAddressScreen({ navigation, route }) {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          // Callback varsa çağır
-          if (route?.params?.onAddressAdded) {
-            route.params.onAddressAdded();
-          }
           navigation.goBack();
         }}
         title="Başarılı"

@@ -14732,6 +14732,7 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
       `
       SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod,
              o.customerName, o.customerEmail, o.customerPhone, o.cargoSlipPrintedAt,
+             o.deliveryMethod, o.pickupStoreId, o.pickupStoreName,
              u.name as userName, u.email as userEmail, 
              t.name as tenantName
       FROM orders o 
@@ -14773,6 +14774,7 @@ app.get('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
     // Get order details
     const [orders] = await poolWrapper.execute(`
       SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod,
+             o.deliveryMethod, o.pickupStoreId, o.pickupStoreName,
              u.name as userName, u.email as userEmail, 
              t.name as tenantName
       FROM orders o 
@@ -16337,17 +16339,20 @@ app.post('/api/support-tickets', async (req, res) => {
 });
 
 // Order endpoints (with tenant authentication)
-app.get('/api/orders/user/:userId', async (req, res) => {
+app.get('/api/orders/user/:userId', tenantCache, async (req, res) => {
   try {
     const { userId } = req.params;
 
+    const tenantId = req.tenant?.id || 1;
+    
     // Get orders with items
     const [orders] = await poolWrapper.execute(
-      `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod
+      `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod, 
+              o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
        FROM orders o 
        WHERE o.userId = ? AND o.tenantId = ? 
        ORDER BY o.createdAt DESC`,
-      [userId, req.tenant.id]
+      [userId, tenantId]
     );
 
     // Get order items for each order
@@ -16396,7 +16401,7 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
     const [orders] = await poolWrapper.execute(
       `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.updatedAt, o.city, o.district, o.fullAddress, 
               o.shippingAddress, o.paymentMethod, o.customerName, o.customerEmail, o.customerPhone,
-              o.cargoProvider
+              o.cargoProvider, o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
        FROM orders o 
        WHERE o.id = ? AND o.tenantId = ?`,
       [numericId, tenantId]
@@ -16469,6 +16474,9 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
       fullAddress: order.fullAddress,
       shippingAddress: order.shippingAddress,
       paymentMethod: order.paymentMethod,
+      deliveryMethod: order.deliveryMethod || 'shipping',
+      pickupStoreId: order.pickupStoreId,
+      pickupStoreName: order.pickupStoreName,
       customerName: order.customerName,
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
@@ -16559,7 +16567,8 @@ app.post('/api/orders', tenantCache, async (req, res) => {
   try {
     const {
       userId, totalAmount, status, shippingAddress, paymentMethod, items,
-      city, district, fullAddress, customerName, customerEmail, customerPhone
+      city, district, fullAddress, customerName, customerEmail, customerPhone,
+      deliveryMethod, pickupStoreId, pickupStoreName
     } = req.body;
 
     // Validate required fields
@@ -16570,13 +16579,21 @@ app.post('/api/orders', tenantCache, async (req, res) => {
       });
     }
 
-    // Validate shipping address
-    if (!shippingAddress || shippingAddress.trim() === '' || shippingAddress === 'Adres bilgisi bulunamadı') {
-      return res.status(400).json({
-        success: false,
-        message: 'Teslimat adresi gereklidir. Lütfen geçerli bir adres seçin.'
-      });
-    }
+      // Validate shipping address (only for shipping method)
+      if ((!deliveryMethod || deliveryMethod === 'shipping') && (!shippingAddress || shippingAddress.trim() === '' || shippingAddress === 'Adres bilgisi bulunamadı')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Teslimat adresi gereklidir. Lütfen geçerli bir adres seçin.'
+        });
+      }
+
+      // Validate pickup store (for pickup method)
+      if (deliveryMethod === 'pickup' && !pickupStoreId && !pickupStoreName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mağaza seçimi gereklidir. Lütfen bir mağaza seçin.'
+        });
+      }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -16630,8 +16647,16 @@ app.post('/api/orders', tenantCache, async (req, res) => {
       }
 
       // Create order - shippingAddress'i temizle ve doğrula
-      const cleanShippingAddress = shippingAddress.trim() || (fullAddress ? fullAddress.trim() : null);
-      if (!cleanShippingAddress || cleanShippingAddress === 'Adres bilgisi bulunamadı') {
+      let cleanShippingAddress = null;
+      if (deliveryMethod === 'pickup' && pickupStoreName) {
+        // Mağazadan teslim al için mağaza bilgisini shippingAddress olarak kullan
+        cleanShippingAddress = pickupStoreName;
+      } else {
+        cleanShippingAddress = shippingAddress?.trim() || (fullAddress ? fullAddress.trim() : null);
+      }
+
+      // Shipping method için adres kontrolü
+      if ((!deliveryMethod || deliveryMethod === 'shipping') && (!cleanShippingAddress || cleanShippingAddress === 'Adres bilgisi bulunamadı')) {
         await connection.rollback();
         connection.release();
         return res.status(400).json({
@@ -16640,10 +16665,17 @@ app.post('/api/orders', tenantCache, async (req, res) => {
         });
       }
 
+      const finalDeliveryMethod = deliveryMethod || 'shipping';
+
       const [orderResult] = await connection.execute(
-        `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [tenantId, userId, totalAmount, status || 'pending', cleanShippingAddress, paymentMethod, city || null, district || null, fullAddress || cleanShippingAddress, customerName || null, customerEmail || null, customerPhone || null]
+        `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone, deliveryMethod, pickupStoreId, pickupStoreName) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tenantId, userId, totalAmount, status || 'pending', cleanShippingAddress, paymentMethod, 
+          city || null, district || null, fullAddress || cleanShippingAddress, 
+          customerName || null, customerEmail || null, customerPhone || null,
+          finalDeliveryMethod, pickupStoreId || null, pickupStoreName || null
+        ]
       );
 
       const orderId = orderResult.insertId;

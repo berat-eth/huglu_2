@@ -33,6 +33,44 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [deliveryMethod, setDeliveryMethod] = useState('shipping'); // 'shipping' or 'pickup'
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [showStoreModal, setShowStoreModal] = useState(false);
+
+  // Mağaza listesi
+  const STORES = [
+    {
+      id: 1,
+      name: 'Huğlu Merkez Fabrika',
+      address: 'Huğlu, Beyşehir, Konya',
+      city: 'Konya',
+      phone: '+90 332 XXX XX XX',
+      hours: '07:30 - 17:30',
+      status: 'open',
+      statusText: 'Açık',
+    },
+    {
+      id: 2,
+      name: 'Huğlu Outdoor Beyşehir Şubesi',
+      address: 'Beyşehir Merkez, Konya',
+      city: 'Konya',
+      phone: '+90 332 XXX XX XX',
+      hours: '09:00 - 18:30',
+      status: 'open',
+      statusText: 'Açık',
+    },
+    {
+      id: 3,
+      name: 'Huğlu Outdoor Konya',
+      address: 'Konya Merkez',
+      city: 'Konya',
+      phone: '+90 332 XXX XX XX',
+      hours: '09:00 - 21:00',
+      status: 'closed',
+      statusText: 'Kapalı',
+      pickupAvailable: false,
+    },
+  ];
 
   // Route'dan gelen parametreler
   const routeTotal = route?.params?.total;
@@ -47,11 +85,26 @@ export default function OrderConfirmationScreen({ navigation, route }) {
     loadCustomerInfo();
   }, []);
 
+  // Delivery method değiştiğinde kargo ücretini güncelle
+  useEffect(() => {
+    if (deliveryMethod === 'pickup') {
+      setShipping(0);
+      setTotal(subtotal);
+    } else {
+      const FREE_SHIPPING_LIMIT = 600;
+      const newShipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
+      setShipping(newShipping);
+      setTotal(subtotal + newShipping);
+    }
+  }, [deliveryMethod, subtotal]);
+
   // Sayfa her açıldığında adresi ve ödeme yöntemlerini yeniden yükle
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadShippingAddress();
       loadPaymentMethods();
+      // AddAddress ekranından dönüldüğünde adresleri yeniden yükle
+      loadAddresses();
     });
     return unsubscribe;
   }, [navigation]);
@@ -70,25 +123,46 @@ export default function OrderConfirmationScreen({ navigation, route }) {
       // Sipariş verilerini hazırla
       const address = shippingAddress || {};
       
-      // Adres bilgilerini kontrol et
-      if (!address || (!address.fullAddress && !address.address)) {
+      // Teslimat yöntemi kontrolü
+      if (deliveryMethod === 'pickup' && !selectedStore) {
+        setErrorMessage('Lütfen bir mağaza seçin');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // Adres bilgilerini kontrol et (sadece kargo için)
+      if (deliveryMethod === 'shipping' && (!address || (!address.fullAddress && !address.address))) {
         setErrorMessage('Lütfen teslimat adresi seçin');
         setShowErrorModal(true);
         setLoading(false);
         return;
       }
       
-      // Tam adres string'ini oluştur
-      const addressLine = address.fullAddress || address.address || '';
-      const city = address.city || '';
-      const district = address.district || '';
-      const postalCode = address.postalCode || '';
+      // Teslimat adresi veya mağaza bilgisi
+      let fullAddressString = '';
+      let city = '';
+      let district = '';
+      let addressLine = '';
       
-      const fullAddressString = [
-        addressLine,
-        city && district ? `${city}, ${district}` : (city || district),
-        postalCode
-      ].filter(Boolean).join('\n').trim() || addressLine;
+      if (deliveryMethod === 'pickup' && selectedStore) {
+        // Mağazadan teslim al
+        fullAddressString = `${selectedStore.name}\n${selectedStore.address}\n${selectedStore.city}`;
+        city = selectedStore.city;
+        addressLine = selectedStore.address;
+      } else if (deliveryMethod === 'shipping' && address) {
+        // Kargo ile teslimat
+        addressLine = address.fullAddress || address.address || '';
+        city = address.city || '';
+        district = address.district || '';
+        const postalCode = address.postalCode || '';
+        
+        fullAddressString = [
+          addressLine,
+          city && district ? `${city}, ${district}` : (city || district),
+          postalCode
+        ].filter(Boolean).join('\n').trim() || addressLine;
+      }
       
       // Seçilen ödeme yöntemini belirle
       let finalPaymentMethod = paymentMethod || 'card';
@@ -108,12 +182,19 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         status: 'pending',
         shippingAddress: fullAddressString,
         paymentMethod: finalPaymentMethod,
+        deliveryMethod: deliveryMethod, // 'shipping' or 'pickup'
+        pickupStoreId: deliveryMethod === 'pickup' ? selectedStore?.id : null,
+        pickupStoreName: deliveryMethod === 'pickup' ? selectedStore?.name : null,
         city: city,
         district: district,
         fullAddress: addressLine,
-        customerName: customerInfo.name || address.fullName || address.customerName || '',
-        customerEmail: customerInfo.email || address.email || '',
-        customerPhone: customerInfo.phone || address.phone || '',
+        customerName: deliveryMethod === 'pickup' 
+          ? (customerInfo.name || selectedStore?.name || '')
+          : (customerInfo.name || address?.fullName || address?.customerName || ''),
+        customerEmail: customerInfo.email || address?.email || '',
+        customerPhone: deliveryMethod === 'pickup'
+          ? (customerInfo.phone || selectedStore?.phone || '')
+          : (customerInfo.phone || address?.phone || ''),
         items: cartItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -283,19 +364,24 @@ export default function OrderConfirmationScreen({ navigation, route }) {
             subtotal: routeSubtotal,
             shipping: routeShipping
           });
-          setTotal(routeTotal);
-          setSubtotal(routeSubtotal);
-          setShipping(routeShipping || 0);
+          const calculatedSubtotal = routeSubtotal;
+          const calculatedShipping = deliveryMethod === 'pickup' ? 0 : (routeShipping || 0);
+          const calculatedTotal = calculatedSubtotal + calculatedShipping;
+          
+          setSubtotal(calculatedSubtotal);
+          setShipping(calculatedShipping);
+          setTotal(calculatedTotal);
         } else {
           const FREE_SHIPPING_LIMIT = 600;
           const calculatedSubtotal = formattedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          const calculatedShipping = calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
+          const calculatedShipping = deliveryMethod === 'pickup' ? 0 : (calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : 30);
           const calculatedTotal = calculatedSubtotal + calculatedShipping;
           
           console.log('Hesaplanan değerler:', {
             subtotal: calculatedSubtotal,
             shipping: calculatedShipping,
-            total: calculatedTotal
+            total: calculatedTotal,
+            deliveryMethod
           });
           
           setSubtotal(calculatedSubtotal);
@@ -395,12 +481,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
 
   const handleAddNewAddress = () => {
     setShowAddressModal(false);
-    navigation.navigate('AddAddress', {
-      onAddressAdded: async () => {
-        await loadAddresses();
-        await loadShippingAddress();
-      }
-    });
+    navigation.navigate('AddAddress');
   };
 
   const handleChangePayment = async () => {
@@ -569,41 +650,138 @@ export default function OrderConfirmationScreen({ navigation, route }) {
               <Ionicons name="car-outline" size={20} color={COLORS.gray400} />
               <Text style={styles.infoHeaderTitle}>TESLİMAT</Text>
             </View>
-            <TouchableOpacity onPress={() => handleChangeAddress()}>
+            <TouchableOpacity onPress={() => {
+              if (deliveryMethod === 'shipping') {
+                handleChangeAddress();
+              } else {
+                setShowStoreModal(true);
+              }
+            }}>
               <Text style={styles.changeButton}>Değiştir</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.infoContent}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="location-outline" size={20} color={COLORS.primary} />
-            </View>
-            <View style={styles.infoDetails}>
-              <Text style={styles.infoName}>
-                {shippingAddress?.fullName || shippingAddress?.customerName || customerInfo.name || 'Adres bilgisi yükleniyor...'}
+          
+          {/* Delivery Method Selection */}
+          <View style={styles.deliveryMethodContainer}>
+            <TouchableOpacity
+              style={[
+                styles.deliveryMethodOption,
+                deliveryMethod === 'shipping' && styles.deliveryMethodOptionSelected
+              ]}
+              onPress={() => setDeliveryMethod('shipping')}
+            >
+              <Ionicons 
+                name="car-outline" 
+                size={20} 
+                color={deliveryMethod === 'shipping' ? COLORS.primary : COLORS.gray400} 
+              />
+              <Text style={[
+                styles.deliveryMethodText,
+                deliveryMethod === 'shipping' && styles.deliveryMethodTextSelected
+              ]}>
+                Kargo ile Teslimat
               </Text>
-              <Text style={styles.infoAddress}>
-                {shippingAddress?.fullAddress || shippingAddress?.address || 'Adres bilgisi bulunamadı'}
-                {shippingAddress && (
-                  <>
-                    {'\n'}
-                    {shippingAddress.city || ''}
-                    {shippingAddress.district ? `, ${shippingAddress.district}` : ''}
-                    {shippingAddress.postalCode ? ` ${shippingAddress.postalCode}` : ''}
-                  </>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.deliveryMethodOption,
+                deliveryMethod === 'pickup' && styles.deliveryMethodOptionSelected
+              ]}
+              onPress={() => {
+                setDeliveryMethod('pickup');
+                if (!selectedStore) {
+                  setShowStoreModal(true);
+                }
+              }}
+            >
+              <Ionicons 
+                name="storefront-outline" 
+                size={20} 
+                color={deliveryMethod === 'pickup' ? COLORS.primary : COLORS.gray400} 
+              />
+              <Text style={[
+                styles.deliveryMethodText,
+                deliveryMethod === 'pickup' && styles.deliveryMethodTextSelected
+              ]}>
+                Mağazadan Teslim Al
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {deliveryMethod === 'shipping' ? (
+            <View style={styles.infoContent}>
+              <View style={styles.infoIcon}>
+                <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={styles.infoDetails}>
+                <Text style={styles.infoName}>
+                  {shippingAddress?.fullName || shippingAddress?.customerName || customerInfo.name || 'Adres bilgisi yükleniyor...'}
+                </Text>
+                <Text style={styles.infoAddress}>
+                  {shippingAddress?.fullAddress || shippingAddress?.address || 'Adres bilgisi bulunamadı'}
+                  {shippingAddress && (
+                    <>
+                      {'\n'}
+                      {shippingAddress.city || ''}
+                      {shippingAddress.district ? `, ${shippingAddress.district}` : ''}
+                      {shippingAddress.postalCode ? ` ${shippingAddress.postalCode}` : ''}
+                    </>
+                  )}
+                </Text>
+                {shippingAddress?.phone && (
+                  <View style={styles.infoPhone}>
+                    <Ionicons name="call-outline" size={12} color={COLORS.gray500} />
+                    <Text style={styles.infoPhoneText}>{shippingAddress.phone}</Text>
+                  </View>
                 )}
-              </Text>
-              {shippingAddress?.phone && (
-                <View style={styles.infoPhone}>
-                  <Ionicons name="call-outline" size={12} color={COLORS.gray500} />
-                  <Text style={styles.infoPhoneText}>{shippingAddress.phone}</Text>
+                <View style={styles.shippingBadge}>
+                  <Ionicons name="time-outline" size={14} color={COLORS.success} />
+                  <Text style={styles.shippingText}>Standart Kargo (3-5 Gün)</Text>
                 </View>
-              )}
-              <View style={styles.shippingBadge}>
-                <Ionicons name="time-outline" size={14} color={COLORS.success} />
-                <Text style={styles.shippingText}>Standart Kargo (3-5 Gün)</Text>
               </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.infoContent}>
+              <View style={styles.infoIcon}>
+                <Ionicons name="storefront-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={styles.infoDetails}>
+                {selectedStore ? (
+                  <>
+                    <Text style={styles.infoName}>{selectedStore.name}</Text>
+                    <Text style={styles.infoAddress}>
+                      {selectedStore.address}
+                      {'\n'}
+                      {selectedStore.city}
+                    </Text>
+                    {selectedStore.phone && (
+                      <View style={styles.infoPhone}>
+                        <Ionicons name="call-outline" size={12} color={COLORS.gray500} />
+                        <Text style={styles.infoPhoneText}>{selectedStore.phone}</Text>
+                      </View>
+                    )}
+                    <View style={styles.shippingBadge}>
+                      <Ionicons name="time-outline" size={14} color={COLORS.success} />
+                      <Text style={styles.shippingText}>
+                        {selectedStore.hours} • {selectedStore.statusText}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.infoName}>Mağaza Seçilmedi</Text>
+                    <Text style={styles.infoAddress}>Lütfen bir mağaza seçin</Text>
+                    <TouchableOpacity
+                      style={styles.selectStoreButton}
+                      onPress={() => setShowStoreModal(true)}
+                    >
+                      <Text style={styles.selectStoreButtonText}>Mağaza Seç</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.infoCard}>
@@ -655,8 +833,12 @@ export default function OrderConfirmationScreen({ navigation, route }) {
             <Text style={styles.summaryValue}>₺{subtotal.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Kargo</Text>
-            {shipping === 0 ? (
+            <Text style={styles.summaryLabel}>
+              {deliveryMethod === 'pickup' ? 'Mağazadan Teslim Al' : 'Kargo'}
+            </Text>
+            {deliveryMethod === 'pickup' ? (
+              <Text style={[styles.summaryValue, { color: COLORS.primary }]}>Ücretsiz</Text>
+            ) : shipping === 0 ? (
               <Text style={[styles.summaryValue, { color: COLORS.primary }]}>Ücretsiz</Text>
             ) : (
               <Text style={styles.summaryValue}>₺{shipping.toFixed(2)}</Text>
@@ -830,6 +1012,96 @@ export default function OrderConfirmationScreen({ navigation, route }) {
                 <Text style={styles.addAddressButtonText}>Yeni Adres Ekle</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Store Selection Modal */}
+      <Modal
+        visible={showStoreModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStoreModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowStoreModal(false)}
+          />
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mağaza Seç</Text>
+              <TouchableOpacity 
+                onPress={() => setShowStoreModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textMain} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={false}
+            >
+              {STORES.filter(store => store.status === 'open' && store.pickupAvailable !== false).map((store) => (
+                <TouchableOpacity
+                  key={store.id}
+                  style={[
+                    styles.storeOptionCard,
+                    selectedStore?.id === store.id && styles.storeOptionCardSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedStore(store);
+                    setShowStoreModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.storeOptionContent}>
+                    <View style={styles.storeOptionHeader}>
+                      <View style={styles.storeOptionIcon}>
+                        <Ionicons 
+                          name="storefront-outline" 
+                          size={20} 
+                          color={selectedStore?.id === store.id ? COLORS.primary : COLORS.gray400} 
+                        />
+                      </View>
+                      <View style={styles.storeOptionInfo}>
+                        <View style={styles.storeOptionTitleRow}>
+                          <Text style={styles.storeOptionTitle}>
+                            {store.name}
+                          </Text>
+                          {selectedStore?.id === store.id && (
+                            <View style={styles.selectedBadge}>
+                              <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                              <Text style={styles.selectedBadgeText}>Seçili</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.storeOptionAddress}>
+                          {store.address}
+                        </Text>
+                        <Text style={styles.storeOptionLocation}>
+                          {store.city}
+                        </Text>
+                        {store.phone && (
+                          <View style={styles.storeOptionPhone}>
+                            <Ionicons name="call-outline" size={12} color={COLORS.gray500} />
+                            <Text style={styles.storeOptionPhoneText}>{store.phone}</Text>
+                          </View>
+                        )}
+                        <View style={styles.storeOptionHours}>
+                          <Ionicons name="time-outline" size={12} color={COLORS.gray500} />
+                          <Text style={styles.storeOptionHoursText}>
+                            {store.hours} • {store.statusText}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1606,5 +1878,129 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray500,
     marginTop: 2,
+  },
+  // Delivery Method Styles
+  deliveryMethodContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  deliveryMethodOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    backgroundColor: COLORS.white,
+  },
+  deliveryMethodOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  deliveryMethodText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gray600,
+  },
+  deliveryMethodTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  selectStoreButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  selectStoreButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  // Store Selection Modal Styles
+  storeOptionCard: {
+    margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  storeOptionCardSelected: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  storeOptionContent: {
+    flex: 1,
+  },
+  storeOptionHeader: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  storeOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storeOptionInfo: {
+    flex: 1,
+  },
+  storeOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  storeOptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  storeOptionAddress: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  storeOptionLocation: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: 4,
+  },
+  storeOptionPhone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  storeOptionPhoneText: {
+    fontSize: 12,
+    color: COLORS.gray500,
+  },
+  storeOptionHours: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray100,
+  },
+  storeOptionHoursText: {
+    fontSize: 12,
+    color: COLORS.gray500,
   },
 });

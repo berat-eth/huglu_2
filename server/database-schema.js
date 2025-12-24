@@ -634,7 +634,7 @@ async function createDatabaseSchema(pool) {
     FROM INFORMATION_SCHEMA.COLUMNS 
     WHERE TABLE_SCHEMA = DATABASE() 
     AND TABLE_NAME = 'orders'
-    AND COLUMN_NAME IN ('city', 'district', 'fullAddress', 'updatedAt', 'customerName', 'customerEmail', 'customerPhone', 'paymentStatus', 'paymentId', 'paymentProvider', 'paidAt', 'paymentMeta')
+    AND COLUMN_NAME IN ('city', 'district', 'fullAddress', 'updatedAt', 'customerName', 'customerEmail', 'customerPhone', 'paymentStatus', 'paymentId', 'paymentProvider', 'paidAt', 'paymentMeta', 'deliveryMethod', 'pickupStoreId', 'pickupStoreName')
   `);
 
       const existingColumns = columns.map(col => col.COLUMN_NAME);
@@ -723,6 +723,32 @@ async function createDatabaseSchema(pool) {
       if (!existingChannelColumns.includes('cargoSlipPrintedAt')) {
           await pool.execute('ALTER TABLE orders ADD COLUMN cargoSlipPrintedAt TIMESTAMP NULL');
           console.log('✅ Added cargoSlipPrintedAt column to orders table');
+      }
+
+      // Check for delivery method columns
+      const [deliveryColumns] = await pool.execute(`
+    SELECT COLUMN_NAME 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'orders'
+    AND COLUMN_NAME IN ('deliveryMethod', 'pickupStoreId', 'pickupStoreName')
+  `);
+
+      const existingDeliveryColumns = deliveryColumns.map(col => col.COLUMN_NAME);
+
+      if (!existingDeliveryColumns.includes('deliveryMethod')) {
+          await pool.execute('ALTER TABLE orders ADD COLUMN deliveryMethod ENUM("shipping", "pickup") DEFAULT "shipping"');
+          console.log('✅ Added deliveryMethod column to orders table');
+      }
+
+      if (!existingDeliveryColumns.includes('pickupStoreId')) {
+          await pool.execute('ALTER TABLE orders ADD COLUMN pickupStoreId INT NULL');
+          console.log('✅ Added pickupStoreId column to orders table');
+      }
+
+      if (!existingDeliveryColumns.includes('pickupStoreName')) {
+          await pool.execute('ALTER TABLE orders ADD COLUMN pickupStoreName VARCHAR(255) NULL');
+          console.log('✅ Added pickupStoreName column to orders table');
       }
 
       console.log('✅ Orders table ready');

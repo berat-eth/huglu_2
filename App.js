@@ -25,6 +25,7 @@ import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WishlistScreen from './src/screens/WishlistScreen';
 import OrderTrackingScreen from './src/screens/OrderTrackingScreen';
+import PickupOrdersScreen from './src/screens/PickupOrdersScreen';
 import OrderDetailScreen from './src/screens/OrderDetailScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -256,6 +257,7 @@ function App() {
         <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
         <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+        <Stack.Screen name="PickupOrders" component={PickupOrdersScreen} />
         <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />

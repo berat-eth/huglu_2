@@ -46,18 +46,88 @@ export default function CartScreen({ navigation }) {
           return;
         }
 
-        const formattedItems = cartData.map(item => ({
-          id: item.id || item.cartItemId,
-          productId: item.productId,
-          name: item.productName || item.name,
-          price: parseFloat(item.price || 0),
-          originalPrice: item.originalPrice ? parseFloat(item.originalPrice) : null,
-          quantity: item.quantity || 1,
-          image: item.productImage || item.image,
-          size: item.selectedVariations?.size || 'Standart',
-          color: item.selectedVariations?.color || 'Varsayılan',
-          selectedVariations: item.selectedVariations || {},
-        }));
+        // Helper function to extract size from selectedVariations
+        const extractSize = (selectedVariations) => {
+          if (!selectedVariations) return 'Standart';
+          
+          // Parse if string
+          let variations = selectedVariations;
+          if (typeof selectedVariations === 'string') {
+            try {
+              variations = JSON.parse(selectedVariations);
+            } catch (e) {
+              console.warn('selectedVariations parse hatası:', e);
+              return 'Standart';
+            }
+          }
+          
+          if (!variations || typeof variations !== 'object') return 'Standart';
+          
+          // Eski format: selectedVariations.size
+          if (variations.size) {
+            return variations.size;
+          }
+          
+          // Yeni format: selectedVariations[variationId].value
+          // Tüm key'leri kontrol et (variationId'ler)
+          for (const key in variations) {
+            if (variations[key] && typeof variations[key] === 'object' && variations[key].value) {
+              return variations[key].value;
+            }
+          }
+          
+          return 'Standart';
+        };
+
+        // Helper function to extract color from selectedVariations
+        const extractColor = (selectedVariations) => {
+          if (!selectedVariations) return 'Varsayılan';
+          
+          // Parse if string
+          let variations = selectedVariations;
+          if (typeof selectedVariations === 'string') {
+            try {
+              variations = JSON.parse(selectedVariations);
+            } catch (e) {
+              return 'Varsayılan';
+            }
+          }
+          
+          if (!variations || typeof variations !== 'object') return 'Varsayılan';
+          
+          // Eski format: selectedVariations.color
+          if (variations.color) {
+            return variations.color;
+          }
+          
+          return 'Varsayılan';
+        };
+
+        const formattedItems = cartData.map(item => {
+          // Parse selectedVariations if it's a string
+          let parsedVariations = item.selectedVariations;
+          if (typeof item.selectedVariations === 'string') {
+            try {
+              parsedVariations = JSON.parse(item.selectedVariations);
+            } catch (e) {
+              console.warn('selectedVariations parse hatası:', e);
+              parsedVariations = {};
+            }
+          }
+          
+          return {
+            id: item.id || item.cartItemId,
+            productId: item.productId,
+            name: item.productName || item.name,
+            price: parseFloat(item.price || 0),
+            originalPrice: item.originalPrice ? parseFloat(item.originalPrice) : null,
+            quantity: item.quantity || 1,
+            image: item.productImage || item.image,
+            size: extractSize(item.selectedVariations),
+            color: extractColor(item.selectedVariations),
+            selectedVariations: parsedVariations || {},
+          };
+        });
         
         console.log('Formatlanmış sepet:', formattedItems);
         setCartItems(formattedItems);
