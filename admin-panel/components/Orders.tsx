@@ -603,6 +603,12 @@ export default function Orders() {
                           {order.paymentMethod || (order as any).payment || 'Belirtilmemiş'}
                         </span>
                       </div>
+                      {(order as any).deliveryMethod === 'pickup' && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Package className="w-3 h-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">Mağazadan Teslim Al</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-bold text-slate-800 dark:text-slate-200">₺{order.totalAmount.toLocaleString()}</span>
@@ -910,7 +916,17 @@ export default function Orders() {
                     <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Teslimat Adresi</p>
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">{selectedOrderForAction.shippingAddress}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {(selectedOrderForAction as any).deliveryMethod === 'pickup' 
+                      ? `🏪 Mağazadan Teslim Al: ${(selectedOrderForAction as any).pickupStoreName || 'Mağaza'}`
+                      : selectedOrderForAction.shippingAddress}
+                  </p>
+                  {(selectedOrderForAction as any).deliveryMethod === 'pickup' && (selectedOrderForAction as any).pickupStoreName && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Package className="w-4 h-4 text-green-600" />
+                      <span className="text-xs text-green-600 font-medium">Mağaza: {(selectedOrderForAction as any).pickupStoreName}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex space-x-3">
@@ -1291,7 +1307,17 @@ export default function Orders() {
                       <p className="text-sm font-semibold text-slate-700">Teslimat Adresi</p>
                     </div>
                     <div className="flex items-start space-x-2">
-                      <p className="flex-1 text-sm text-slate-600">{viewingOrder.shippingAddress}</p>
+                      <p className="flex-1 text-sm text-slate-600">
+                        {(viewingOrder as any).deliveryMethod === 'pickup' 
+                          ? `🏪 Mağazadan Teslim Al: ${(viewingOrder as any).pickupStoreName || 'Mağaza'}`
+                          : viewingOrder.shippingAddress}
+                      </p>
+                      {(viewingOrder as any).deliveryMethod === 'pickup' && (viewingOrder as any).pickupStoreName && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          <span className="text-xs text-slate-500">Mağaza: {(viewingOrder as any).pickupStoreName}</span>
+                        </div>
+                      )}
                       <button
                         onClick={() => copyToClipboard(String(viewingOrder.shippingAddress || ''))}
                         className="p-1.5 border border-blue-300 rounded-lg hover:bg-blue-100"
