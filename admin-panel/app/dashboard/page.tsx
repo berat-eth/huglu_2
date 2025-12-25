@@ -154,14 +154,14 @@ export default function DashboardPage() {
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
           <AnimatePresence>
             {showHealthModal && (
-              <div className="fixed inset-0 z-[9999]">
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center">
                 <div className="absolute inset-0 bg-black/40" onClick={() => setShowHealthModal(false)}></div>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[98%] sm:w-[95%] md:w-[90%] max-w-xl bg-white dark:bg-dark-card rounded-lg sm:rounded-xl shadow-xl border border-slate-200 dark:border-dark-border overflow-hidden max-h-[90vh] overflow-y-auto"
+                  className="relative w-[98%] sm:w-[95%] md:w-[90%] max-w-xl bg-white dark:bg-dark-card rounded-lg sm:rounded-xl shadow-xl border border-slate-200 dark:border-dark-border overflow-hidden max-h-[90vh] overflow-y-auto"
                 >
                   <div className="flex items-center justify-between p-2.5 sm:p-3 md:p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-dark-card sticky top-0 z-10">
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
