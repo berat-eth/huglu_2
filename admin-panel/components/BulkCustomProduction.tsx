@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Crown, Plus, MessageSquare, Search, Filter, Send, Globe, Building2, Eye, User, Mail, Phone, Package, RefreshCw, CheckCircle, XCircle, FileText, Download, Printer } from 'lucide-react'
+import { Crown, Plus, MessageSquare, Search, Filter, Send, Globe, Building2, Eye, User, Mail, Phone, Package, RefreshCw, CheckCircle, XCircle, FileText, Download, Printer, ShoppingCart, Clock, Truck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
 
 export default function BulkCustomProduction() {
   // Active tab: 'b2b' or 'website'
   const [activeTab, setActiveTab] = useState<'b2b' | 'website'>('b2b')
+  // Website sub-tab: 'custom-production' or 'web-orders'
+  const [websiteSubTab, setWebsiteSubTab] = useState<'custom-production' | 'web-orders'>('custom-production')
 
   // Requests & items
   const [requests, setRequests] = useState<any[]>([])
@@ -31,6 +33,15 @@ export default function BulkCustomProduction() {
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [quoteAmount, setQuoteAmount] = useState<string>('')
   const [quoteNotes, setQuoteNotes] = useState<string>('')
+
+  // Web orders (web siparişleri)
+  const [webOrders, setWebOrders] = useState<any[]>([])
+  const [webOrdersLoading, setWebOrdersLoading] = useState(false)
+  const [webOrdersError, setWebOrdersError] = useState<string | null>(null)
+  const [selectedWebOrder, setSelectedWebOrder] = useState<any | null>(null)
+  const [showWebOrderDetailModal, setShowWebOrderDetailModal] = useState(false)
+  const [webOrderSearchQuery, setWebOrderSearchQuery] = useState('')
+  const [webOrderStatusFilter, setWebOrderStatusFilter] = useState<string>('all')
 
   // Messages
   const [messages, setMessages] = useState<any[]>([])
@@ -322,9 +333,28 @@ export default function BulkCustomProduction() {
     } finally { setMessagesLoading(false) }
   }
 
+  const loadWebOrders = async () => {
+    try {
+      setWebOrdersLoading(true)
+      setWebOrdersError(null)
+      const res = await api.get<any>('/admin/web-orders')
+      if ((res as any)?.success && Array.isArray((res as any).data)) {
+        setWebOrders((res as any).data)
+      } else {
+        setWebOrders([])
+      }
+    } catch (e: any) {
+      setWebOrdersError(e?.message || 'Web siparişleri getirilemedi')
+      setWebOrders([])
+    } finally {
+      setWebOrdersLoading(false)
+    }
+  }
+
   useEffect(()=>{ 
     loadRequests()
     loadWebsiteRequests()
+    loadWebOrders()
   }, [])
   useEffect(()=>{
     if (typeof selectedId === 'number') {
@@ -368,7 +398,13 @@ export default function BulkCustomProduction() {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => { loadRequests(); if (activeTab === 'website') loadWebsiteRequests(); }} 
+            onClick={() => { 
+              loadRequests()
+              if (activeTab === 'website') {
+                loadWebsiteRequests()
+                loadWebOrders()
+              }
+            }} 
             className="px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2"
           >
             <RefreshCw className="w-4 h-4" />
@@ -524,8 +560,58 @@ export default function BulkCustomProduction() {
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            {/* Website Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Website Sub-tabs */}
+            <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setWebsiteSubTab('custom-production')}
+                className={`px-6 py-3 font-semibold transition-colors border-b-2 ${
+                  websiteSubTab === 'custom-production'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Package className="w-5 h-5" />
+                  <span>Özel Üretim Talepleri</span>
+                  {websiteStats.total > 0 && (
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
+                      {websiteStats.total}
+                    </span>
+                  )}
+                </div>
+              </button>
+              <button
+                onClick={() => setWebsiteSubTab('web-orders')}
+                className={`px-6 py-3 font-semibold transition-colors border-b-2 ${
+                  websiteSubTab === 'web-orders'
+                    ? 'border-green-500 text-green-600 dark:text-green-400'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Web Siparişleri</span>
+                  {webOrders.length > 0 && (
+                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-bold">
+                      {webOrders.length}
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* Content based on sub-tab */}
+            <AnimatePresence mode="wait">
+              {websiteSubTab === 'custom-production' && (
+                <motion.div
+                  key="custom-production"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Website Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-5 border border-slate-200 dark:border-slate-700">
                 <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Toplam Talep</p>
                 <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{websiteStats.total}</p>
@@ -1208,6 +1294,138 @@ export default function BulkCustomProduction() {
                   </button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Web Order Detail Modal */}
+      <AnimatePresence>
+        {showWebOrderDetailModal && selectedWebOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowWebOrderDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700"
+            >
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Web Sipariş Detayı</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Sipariş #{selectedWebOrder.id}</p>
+                </div>
+                <button
+                  onClick={() => setShowWebOrderDetailModal(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <XCircle className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Order Info */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Müşteri</p>
+                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{(selectedWebOrder as any).userName || (selectedWebOrder as any).customerName || '-'}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{(selectedWebOrder as any).userEmail || (selectedWebOrder as any).customerEmail || '-'}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Durum</p>
+                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{translateStatus(selectedWebOrder.status)}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Toplam</p>
+                    <p className="text-lg font-semibold text-green-700 dark:text-green-400">₺{Number(selectedWebOrder.totalAmount || 0).toLocaleString('tr-TR')}</p>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                {selectedWebOrder.items && Array.isArray(selectedWebOrder.items) && selectedWebOrder.items.length > 0 && (
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sipariş Ürünleri</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Ürün</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Adet</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Birim Fiyat</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Toplam</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          {selectedWebOrder.items.map((item: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center space-x-3">
+                                  {item.productImage && (
+                                    <img src={item.productImage} alt={item.productName} className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700" />
+                                  )}
+                                  <div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{item.productName || `Ürün #${item.productId || idx + 1}`}</p>
+                                    {item.variant && (
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.variant}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.quantity || 0}</td>
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">₺{Number(item.price || 0).toLocaleString('tr-TR')}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400">
+                                ₺{Number((item.price || 0) * (item.quantity || 0)).toLocaleString('tr-TR')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Shipping Address */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Teslimat Bilgileri</p>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {(selectedWebOrder as any).deliveryMethod === 'pickup' 
+                      ? `🏪 Mağazadan Teslim Al: ${(selectedWebOrder as any).pickupStoreName || 'Mağaza'}`
+                      : selectedWebOrder.shippingAddress || (selectedWebOrder as any).fullAddress || '-'}
+                  </p>
+                  {(selectedWebOrder as any).city && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {(selectedWebOrder as any).city} {(selectedWebOrder as any).district ? `- ${(selectedWebOrder as any).district}` : ''}
+                    </p>
+                  )}
+                </div>
+
+                {/* Payment Info */}
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ödeme Bilgileri</p>
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span className="text-slate-700 dark:text-slate-300">{selectedWebOrder.paymentMethod || 'Belirtilmemiş'}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowWebOrderDetailModal(false)}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-shadow font-medium"
+                >
+                  Kapat
+                </button>
               </div>
             </motion.div>
           </motion.div>

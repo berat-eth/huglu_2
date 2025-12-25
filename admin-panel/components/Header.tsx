@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Mail, User, List, Shield, X, Package, Users, ShoppingCart, Sun, Moon, Menu } from 'lucide-react'
+import { Search, Bell, Mail, User, List, Shield, X, Package, Users, ShoppingCart, Sun, Moon, Menu, HelpCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { formatDDMMYYYY } from '@/lib/date'
@@ -370,6 +370,23 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
             <Shield className="w-3 h-3 sm:w-4 sm:h-4" /> 
             <span className="hidden sm:inline">Sistem Durumu</span>
             <span className="sm:hidden">Sistem</span>
+          </motion.button>
+
+          {/* Ürün Soruları kısayolu */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'product-questions' } }))
+              }
+            }}
+            className="px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm inline-flex items-center gap-1 sm:gap-2"
+            title="Ürün Soruları"
+          >
+            <HelpCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
+            <span className="hidden sm:inline">Ürün Soruları</span>
+            <span className="sm:hidden">Sorular</span>
           </motion.button>
 
           {/* Dark Mode Toggle */}

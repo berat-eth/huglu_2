@@ -314,7 +314,7 @@ export default function MobilUygulamaPage() {
                   {[
                     {
                       version: 'v3.0.0',
-                      date: '10 Kasım 2025',
+                      date: '25 Aralık 2025',
                       badge: 'Büyük Güncelleme',
                       badgeColor: 'from-orange-500 to-red-600',
                       updates: [

@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingUp, Package, ShoppingCart, Users, ArrowUp, ArrowDown, DollarSign, Eye, AlertTriangle, CheckCircle, Clock, Star, Truck, CreditCard, RefreshCw, Activity, Target, Zap, TrendingDown, UserPlus, MessageSquare, Heart, BarChart3, Calendar, Filter, Download, Bell, X, Shield, Mail, Send, Smartphone, MousePointer, MapPin, Navigation, Brain, Store } from 'lucide-react'
+import { TrendingUp, Package, ShoppingCart, Users, ArrowUp, ArrowDown, DollarSign, Eye, AlertTriangle, CheckCircle, Clock, Star, Truck, CreditCard, RefreshCw, Activity, Target, Zap, TrendingDown, UserPlus, MessageSquare, Heart, BarChart3, Calendar, Filter, Download, Bell, X, Shield, Mail, Send, Smartphone, MousePointer, MapPin, Navigation, Brain, Store, HelpCircle } from 'lucide-react'
 import { Line, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState, useMemo } from 'react'
@@ -110,6 +110,11 @@ export default function Dashboard() {
   const [ticimaxPendingCount, setTicimaxPendingCount] = useState<number>(0)
   const [ticimaxCompletedCount, setTicimaxCompletedCount] = useState<number>(0)
 
+  // Ürün soruları istatistikleri
+  const [productQuestionsTotal, setProductQuestionsTotal] = useState<number>(0)
+  const [productQuestionsAnswered, setProductQuestionsAnswered] = useState<number>(0)
+  const [productQuestionsUnanswered, setProductQuestionsUnanswered] = useState<number>(0)
+
   // Chart height'ı responsive yap
   useEffect(() => {
     const updateChartHeight = () => {
@@ -125,7 +130,7 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [productsRes, adminOrders, adminCategories, categoryStats, customRequests, snortRes, trendyolOrders, hepsiburadaOrders, ticimaxOrders] = await Promise.all([
+        const [productsRes, adminOrders, adminCategories, categoryStats, customRequests, snortRes, trendyolOrders, hepsiburadaOrders, ticimaxOrders, productQuestionsRes] = await Promise.all([
           productService.getProducts(1, 50),
           api.get<any>('/admin/orders'),
           api.get<any>('/admin/categories'),
@@ -134,7 +139,8 @@ export default function Dashboard() {
           api.get<any>('/admin/snort/logs').catch(()=>({ success:true, data: [] })),
           api.get<any>('/admin/marketplace-orders', { provider: 'trendyol' }).catch(()=>({ success:true, data: [], total: 0, totalAmount: 0 })),
           api.get<any>('/admin/hepsiburada-orders').catch(()=>({ success:true, data: [], total: 0, totalAmount: 0 })),
-          api.get<any>('/admin/ticimax-orders').catch(()=>({ success:true, data: [], total: 0, totalAmount: 0 }))
+          api.get<any>('/admin/ticimax-orders').catch(()=>({ success:true, data: [], total: 0, totalAmount: 0 })),
+          api.get<any>('/admin/product-questions').catch(()=>({ success:true, data: [] }))
         ])
         // Snort IDS status
         try {
@@ -636,6 +642,28 @@ export default function Dashboard() {
           setTicimaxCompletedCount(0)
         }
 
+        // Ürün soruları istatistikleri
+        try {
+          if ((productQuestionsRes as any)?.success && (productQuestionsRes as any).data) {
+            const questions = (productQuestionsRes as any).data as any[]
+            const total = questions.length
+            const answered = questions.filter((q: any) => q.answer && q.answer.trim()).length
+            const unanswered = total - answered
+            
+            setProductQuestionsTotal(total)
+            setProductQuestionsAnswered(answered)
+            setProductQuestionsUnanswered(unanswered)
+          } else {
+            setProductQuestionsTotal(0)
+            setProductQuestionsAnswered(0)
+            setProductQuestionsUnanswered(0)
+          }
+        } catch {
+          setProductQuestionsTotal(0)
+          setProductQuestionsAnswered(0)
+          setProductQuestionsUnanswered(0)
+        }
+
         // Gerçek Zamanlı Aktivite - Gerçek verilerden oluştur
         try {
           const activities: any[] = []
@@ -1012,6 +1040,85 @@ export default function Dashboard() {
             </motion.div>
           )
         })}
+      </div>
+
+      {/* Ürün Soruları İstatistikleri */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Ürün Soruları</h3>
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'product-questions' } }))
+            }
+          }}
+          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          Tümünü Gör →
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6 cursor-pointer hover:shadow-xl transition-all duration-300"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'product-questions' } }))
+            }
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">Toplam Soru</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{productQuestionsTotal.toLocaleString()}</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+              <HelpCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6 cursor-pointer hover:shadow-xl transition-all duration-300"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'product-questions' } }))
+            }
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">Cevaplanan</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">{productQuestionsAnswered.toLocaleString()}</p>
+            </div>
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.2 }}
+          className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6 cursor-pointer hover:shadow-xl transition-all duration-300"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'product-questions' } }))
+            }
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">Cevaplanmayan</p>
+              <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{productQuestionsUnanswered.toLocaleString()}</p>
+            </div>
+            <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center">
+              <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Trendyol İstatistikleri */}

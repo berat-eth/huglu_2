@@ -3696,6 +3696,11 @@ app.get('/api/orders/returnable', async (req, res) => {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
+    // Platform tespiti: User-Agent header'ından mobil uygulama kontrolü
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobileApp = userAgent.includes('HugluMobileApp');
+    const channel = isMobileApp ? 'mobile' : 'web';
+
     const [orders] = await poolWrapper.execute(`
       SELECT 
         o.id as orderId,
@@ -3713,9 +3718,9 @@ app.get('/api/orders/returnable', async (req, res) => {
       FROM orders o
       JOIN order_items oi ON o.id = oi.orderId
       LEFT JOIN return_requests rr ON oi.id = rr.orderItemId AND rr.status NOT IN ('rejected', 'cancelled')
-      WHERE o.userId = ? AND o.tenantId = ? AND o.status IN ('delivered', 'completed')
+      WHERE o.userId = ? AND o.tenantId = ? AND o.channel = ? AND o.status IN ('delivered', 'completed')
       ORDER BY o.createdAt DESC, oi.id
-    `, [userId, req.tenant.id]);
+    `, [userId, req.tenant.id, channel]);
 
     // Group by order
     const ordersMap = {};
@@ -14881,6 +14886,144 @@ app.post('/api/admin/orders/:id/shipping-label', authenticateAdmin, async (req, 
   }
 });
 
+// ==================== ADMIN WEB ORDERS ENDPOINTS ====================
+// These endpoints are specifically for web orders (channel = 'web') in admin panel
+
+// Admin - Get web orders list
+app.get('/api/admin/web-orders', authenticateAdmin, async (req, res) => {
+  try {
+    const tenantId = req.tenant?.id || 1;
+    const { page = 1, limit = 20, status = '', dateFrom = '', dateTo = '', q = '' } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Veritabanında cargoSlipPrintedAt sütununun var olup olmadığını kontrol et
+    try {
+      const [columns] = await poolWrapper.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'orders' 
+        AND COLUMN_NAME = 'cargoSlipPrintedAt'
+      `);
+      
+      if (columns.length === 0) {
+        // cargoSlipPrintedAt sütunu yoksa ekle
+        console.log('⚠️ cargoSlipPrintedAt sütunu bulunamadı, ekleniyor...');
+        await poolWrapper.execute(`
+          ALTER TABLE orders 
+          ADD COLUMN cargoSlipPrintedAt TIMESTAMP NULL AFTER updatedAt
+        `);
+        console.log('✅ cargoSlipPrintedAt sütunu eklendi');
+      }
+    } catch (alterError) {
+      console.error('⚠️ cargoSlipPrintedAt sütunu kontrolü/ekleme hatası:', alterError);
+      // Hata olsa bile devam et
+    }
+
+    // Build filters - only web orders (channel = 'web')
+    const whereClauses = ['o.tenantId = ?', "o.channel = 'web'"];
+    const params = [tenantId];
+    if (status) {
+      whereClauses.push('o.status = ?');
+      params.push(String(status));
+    }
+    if (dateFrom) {
+      whereClauses.push('o.createdAt >= ?');
+      params.push(new Date(dateFrom));
+    }
+    if (dateTo) {
+      whereClauses.push('o.createdAt <= ?');
+      params.push(new Date(dateTo + ' 23:59:59'));
+    }
+    if (q) {
+      whereClauses.push('(u.name LIKE ? OR u.email LIKE ?)');
+      params.push(`%${q}%`, `%${q}%`);
+    }
+    const whereSql = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    // Get web orders with product details
+    const [orders] = await poolWrapper.execute(
+      `
+      SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod,
+             o.customerName, o.customerEmail, o.customerPhone, o.cargoSlipPrintedAt,
+             o.deliveryMethod, o.pickupStoreId, o.pickupStoreName,
+             u.name as userName, u.email as userEmail, 
+             t.name as tenantName
+      FROM orders o 
+      LEFT JOIN users u ON o.userId = u.id
+      LEFT JOIN tenants t ON o.tenantId = t.id
+      ${whereSql}
+      ORDER BY o.createdAt DESC 
+      LIMIT ? OFFSET ?
+      `,
+      [...params, parseInt(limit), parseInt(offset)]
+    );
+
+    // Get order items for each order
+    for (let order of orders) {
+      const [orderItems] = await poolWrapper.execute(`
+        SELECT oi.quantity, oi.price, 
+               p.name as productName, p.image as productImage
+        FROM order_items oi
+        LEFT JOIN products p ON oi.productId = p.id
+        WHERE oi.orderId = ?
+      `, [order.id]);
+
+      order.items = orderItems;
+      order.itemCount = orderItems.length;
+    }
+
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.error('❌ Error getting web orders:', error);
+    res.status(500).json({ success: false, message: 'Error getting web orders' });
+  }
+});
+
+// Admin - Get single web order details
+app.get('/api/admin/web-orders/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenant?.id || 1;
+
+    // Get web order details - only channel = 'web'
+    const [orders] = await poolWrapper.execute(`
+      SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod,
+             o.deliveryMethod, o.pickupStoreId, o.pickupStoreName,
+             o.customerName, o.customerEmail, o.customerPhone,
+             u.name as userName, u.email as userEmail, 
+             t.name as tenantName
+      FROM orders o 
+      LEFT JOIN users u ON o.userId = u.id
+      LEFT JOIN tenants t ON o.tenantId = t.id
+      WHERE o.id = ? AND o.tenantId = ? AND o.channel = 'web'
+    `, [id, tenantId]);
+
+    if (orders.length === 0) {
+      return res.status(404).json({ success: false, message: 'Web order not found' });
+    }
+
+    const order = orders[0];
+
+    // Get order items
+    const [orderItems] = await poolWrapper.execute(`
+      SELECT oi.quantity, oi.price, 
+             p.name as productName, p.image as productImage
+      FROM order_items oi
+      LEFT JOIN products p ON oi.productId = p.id
+      WHERE oi.orderId = ?
+    `, [id]);
+
+    order.items = orderItems;
+    order.itemCount = orderItems.length;
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    console.error('❌ Error getting web order details:', error);
+    res.status(500).json({ success: false, message: 'Error getting web order details' });
+  }
+});
+
 // Tenant Management endpoints
 app.post('/api/tenants', async (req, res) => {
   try {
@@ -16345,14 +16488,19 @@ app.get('/api/orders/user/:userId', tenantCache, async (req, res) => {
 
     const tenantId = req.tenant?.id || 1;
     
-    // Get orders with items
+    // Platform tespiti: User-Agent header'ından mobil uygulama kontrolü
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobileApp = userAgent.includes('HugluMobileApp');
+    const channel = isMobileApp ? 'mobile' : 'web';
+    
+    // Get orders with items - sadece ilgili platformun siparişlerini getir
     const [orders] = await poolWrapper.execute(
       `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod, 
               o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
        FROM orders o 
-       WHERE o.userId = ? AND o.tenantId = ? 
+       WHERE o.userId = ? AND o.tenantId = ? AND o.channel = ?
        ORDER BY o.createdAt DESC`,
-      [userId, tenantId]
+      [userId, tenantId, channel]
     );
 
     // Get order items for each order
@@ -16395,7 +16543,12 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid order id' });
     }
 
-    // Get order details with tenant check
+    // Platform tespiti: User-Agent header'ından mobil uygulama kontrolü
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobileApp = userAgent.includes('HugluMobileApp');
+    const channel = isMobileApp ? 'mobile' : 'web';
+
+    // Get order details with tenant check and channel filter
     // Note: trackingNumber, carrier, deliveryStatus, estimatedDelivery, latestUpdate columns may not exist
     // Using COALESCE and NULL to handle missing columns gracefully
     const [orders] = await poolWrapper.execute(
@@ -16403,12 +16556,12 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
               o.shippingAddress, o.paymentMethod, o.customerName, o.customerEmail, o.customerPhone,
               o.cargoProvider, o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
        FROM orders o 
-       WHERE o.id = ? AND o.tenantId = ?`,
-      [numericId, tenantId]
+       WHERE o.id = ? AND o.tenantId = ? AND o.channel = ?`,
+      [numericId, tenantId, channel]
     );
 
     if (orders.length === 0) {
-      console.log(`❌ [GET /api/orders/${id}] Order not found for tenant ${tenantId}`);
+      console.log(`❌ [GET /api/orders/${id}] Order not found for tenant ${tenantId} and channel ${channel}`);
       return res.status(404).json({ 
         success: false, 
         message: `Sipariş #${id} bulunamadı. Lütfen siparişlerim sayfasından geçerli bir sipariş seçin.` 
@@ -16667,14 +16820,19 @@ app.post('/api/orders', tenantCache, async (req, res) => {
 
       const finalDeliveryMethod = deliveryMethod || 'shipping';
 
+      // Platform tespiti: User-Agent header'ından mobil uygulama kontrolü
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobileApp = userAgent.includes('HugluMobileApp');
+      const channel = isMobileApp ? 'mobile' : 'web';
+
       const [orderResult] = await connection.execute(
-        `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone, deliveryMethod, pickupStoreId, pickupStoreName) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone, deliveryMethod, pickupStoreId, pickupStoreName, channel) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tenantId, userId, totalAmount, status || 'pending', cleanShippingAddress, paymentMethod, 
           city || null, district || null, fullAddress || cleanShippingAddress, 
           customerName || null, customerEmail || null, customerPhone || null,
-          finalDeliveryMethod, pickupStoreId || null, pickupStoreName || null
+          finalDeliveryMethod, pickupStoreId || null, pickupStoreName || null, channel
         ]
       );
 
@@ -16818,14 +16976,454 @@ app.put('/api/orders/:id/status', requireUserOwnership('order', 'params'), async
   }
 });
 
+// ==================== WEB ORDERS ENDPOINTS ====================
+// These endpoints are specifically for web orders (channel = 'web')
+// Mobile app should not use these endpoints
+
+// Create web order
+app.post('/api/web/orders', tenantCache, async (req, res) => {
+  try {
+    const {
+      userId, totalAmount, status, shippingAddress, paymentMethod, items,
+      city, district, fullAddress, customerName, customerEmail, customerPhone,
+      deliveryMethod, pickupStoreId, pickupStoreName
+    } = req.body;
+
+    // Validate required fields
+    if (!userId || !totalAmount || !paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: userId, totalAmount, or paymentMethod'
+      });
+    }
+
+    // Validate shipping address (only for shipping method)
+    if ((!deliveryMethod || deliveryMethod === 'shipping') && (!shippingAddress || shippingAddress.trim() === '' || shippingAddress === 'Adres bilgisi bulunamadı')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teslimat adresi gereklidir. Lütfen geçerli bir adres seçin.'
+      });
+    }
+
+    // Validate pickup store (for pickup method)
+    if (deliveryMethod === 'pickup' && !pickupStoreId && !pickupStoreName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mağaza seçimi gereklidir. Lütfen bir mağaza seçin.'
+      });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order must contain at least one item'
+      });
+    }
+
+    // Begin transaction
+    const connection = await poolWrapper.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Tenant ID'yi güvenli şekilde al
+      const tenantId = req.tenant?.id || req.headers['x-tenant-id'] || 1;
+      
+      // Cüzdan ödemesi kontrolü (EFT havale için cüzdan bakiyesi düşülmez)
+      if (paymentMethod === 'wallet') {
+        // Cüzdan bakiyesini kontrol et
+        const [walletRows] = await connection.execute(
+          'SELECT balance FROM user_wallets WHERE userId = ? AND tenantId = ?',
+          [userId, tenantId]
+        );
+
+        const currentBalance = walletRows.length > 0 ? walletRows[0].balance : 0;
+
+        if (currentBalance < totalAmount) {
+          await connection.rollback();
+          connection.release();
+          return res.status(400).json({
+            success: false,
+            message: 'Cüzdan bakiyeniz yetersiz',
+            data: { currentBalance, requiredAmount: totalAmount }
+          });
+        }
+
+        // Cüzdan bakiyesinden düş
+        await connection.execute(
+          'UPDATE user_wallets SET balance = balance - ?, updatedAt = NOW() WHERE userId = ? AND tenantId = ?',
+          [totalAmount, userId, tenantId]
+        );
+
+        // Cüzdan işlem kaydı oluştur
+        await connection.execute(
+          `INSERT INTO wallet_transactions (userId, tenantId, type, amount, description, createdAt) 
+           VALUES (?, ?, 'debit', ?, ?, NOW())`,
+          [userId, tenantId, totalAmount, `Alışveriş ödemesi - Sipariş #${Date.now()}`]
+        );
+
+        console.log(`💰 Wallet payment processed: ${totalAmount} TL deducted from user ${userId}`);
+      }
+
+      // Create order - shippingAddress'i temizle ve doğrula
+      let cleanShippingAddress = null;
+      if (deliveryMethod === 'pickup' && pickupStoreName) {
+        // Mağazadan teslim al için mağaza bilgisini shippingAddress olarak kullan
+        cleanShippingAddress = pickupStoreName;
+      } else {
+        cleanShippingAddress = shippingAddress?.trim() || (fullAddress ? fullAddress.trim() : null);
+      }
+
+      // Shipping method için adres kontrolü
+      if ((!deliveryMethod || deliveryMethod === 'shipping') && (!cleanShippingAddress || cleanShippingAddress === 'Adres bilgisi bulunamadı')) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Teslimat adresi boş olamaz. Lütfen geçerli bir adres seçin.'
+        });
+      }
+
+      const finalDeliveryMethod = deliveryMethod || 'shipping';
+
+      // Web orders always have channel = 'web'
+      const channel = 'web';
+
+      const [orderResult] = await connection.execute(
+        `INSERT INTO orders (tenantId, userId, totalAmount, status, shippingAddress, paymentMethod, city, district, fullAddress, customerName, customerEmail, customerPhone, deliveryMethod, pickupStoreId, pickupStoreName, channel) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tenantId, userId, totalAmount, status || 'pending', cleanShippingAddress, paymentMethod, 
+          city || null, district || null, fullAddress || cleanShippingAddress, 
+          customerName || null, customerEmail || null, customerPhone || null,
+          finalDeliveryMethod, pickupStoreId || null, pickupStoreName || null, channel
+        ]
+      );
+
+      const orderId = orderResult.insertId;
+
+      // Create order items
+      for (const item of items) {
+        if (!item.productId || !item.quantity || !item.price) {
+          throw new Error(`Invalid item data: productId=${item.productId}, quantity=${item.quantity}, price=${item.price}`);
+        }
+
+        // Ürün bilgilerini al (eğer gönderilmemişse)
+        let productName = item.productName || null;
+        let productDescription = item.productDescription || null;
+        let productCategory = item.productCategory || null;
+        let productBrand = item.productBrand || null;
+        let productImage = item.productImage || null;
+
+        // Eğer ürün bilgileri eksikse, veritabanından çek
+        if (!productName || !productImage) {
+          try {
+            const [productRows] = await connection.execute(
+              'SELECT name, description, category, brand, image FROM products WHERE id = ? AND tenantId = ? LIMIT 1',
+              [item.productId, tenantId]
+            );
+            if (productRows.length > 0) {
+              const product = productRows[0];
+              productName = productName || product.name || null;
+              productDescription = productDescription || product.description || null;
+              productCategory = productCategory || product.category || null;
+              productBrand = productBrand || product.brand || null;
+              productImage = productImage || product.image || null;
+            }
+          } catch (productError) {
+            console.warn(`⚠️ Product ${item.productId} bilgileri alınamadı:`, productError.message);
+            // Devam et, NULL değerlerle ekle
+          }
+        }
+
+        // Varyasyon bilgisi (variationString ve selectedVariations)
+        const variationString = item.variationString || '';
+        let selectedVariations = null;
+        if (item.selectedVariations) {
+          try {
+            // Eğer string ise parse et, object ise stringify et
+            if (typeof item.selectedVariations === 'string') {
+              selectedVariations = item.selectedVariations;
+            } else {
+              selectedVariations = JSON.stringify(item.selectedVariations);
+            }
+          } catch (variationError) {
+            console.warn('⚠️ selectedVariations parse hatası:', variationError.message);
+            selectedVariations = null;
+          }
+        }
+
+        await connection.execute(
+          `INSERT INTO order_items (tenantId, orderId, productId, quantity, price, productName, productDescription, productCategory, productBrand, productImage, variationString, selectedVariations) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [tenantId, orderId, item.productId, item.quantity, item.price,
+          productName, productDescription, productCategory, productBrand, productImage,
+            variationString, selectedVariations]
+        );
+
+        // Update product stock
+        await connection.execute(
+          `UPDATE products SET stock = GREATEST(0, stock - ?) WHERE id = ? AND tenantId = ?`,
+          [item.quantity, item.productId, tenantId]
+        );
+      }
+
+      // Add EXP for purchase
+      const baseExp = 50; // Base EXP for purchase
+      const orderExp = Math.floor(totalAmount * 0.1); // 10% of order total
+      const totalExp = baseExp + orderExp;
+
+      await connection.execute(
+        'INSERT INTO user_exp_transactions (userId, tenantId, source, amount, description, orderId) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, 'purchase', totalExp, `Alışveriş: ${totalAmount} TL`, orderId]
+      );
+
+      // Commit transaction
+      await connection.commit();
+      connection.release();
+
+      console.log(`✅ Web order created successfully: ${orderId} with ${items.length} items, ${totalExp} EXP added`);
+      
+      // Platform Brain: Track order creation (non-blocking)
+      try {
+        const { trackOrderCreate } = require('./middleware/platform-brain-integration');
+        trackOrderCreate(req, orderId, {
+          totalAmount,
+          itemCount: items.length,
+          paymentMethod
+        });
+      } catch (pbError) {
+        // Silently fail - Platform Brain should never break existing functionality
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ Platform Brain: Order creation tracking failed (non-critical):', pbError.message);
+        }
+      }
+      
+      res.json({ success: true, data: { orderId, expGained: totalExp } });
+
+    } catch (error) {
+      // Rollback transaction
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('❌ Error creating web order:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body
+    });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error creating order',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Get web orders for a user
+app.get('/api/web/orders/user/:userId', tenantCache, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tenantId = req.tenant?.id || 1;
+    
+    // Web orders always have channel = 'web'
+    const channel = 'web';
+    
+    // Get orders with items - sadece web siparişlerini getir
+    const [orders] = await poolWrapper.execute(
+      `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.city, o.district, o.fullAddress, o.shippingAddress, o.paymentMethod, 
+              o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
+       FROM orders o 
+       WHERE o.userId = ? AND o.tenantId = ? AND o.channel = ?
+       ORDER BY o.createdAt DESC`,
+      [userId, tenantId, channel]
+    );
+
+    // Get order items for each order
+    for (let order of orders) {
+      const [orderItems] = await poolWrapper.execute(`
+        SELECT oi.quantity, oi.price, 
+               p.name as productName, p.image as productImage
+        FROM order_items oi
+        LEFT JOIN products p ON oi.productId = p.id
+        WHERE oi.orderId = ?
+      `, [order.id]);
+
+      order.items = orderItems;
+    }
+
+    console.log(`✅ Found ${orders.length} web orders for user ${userId}`);
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.error('❌ Error getting web user orders:', error);
+    res.status(500).json({ success: false, message: 'Error getting orders' });
+  }
+});
+
+// Get single web order by ID
+app.get('/api/web/orders/:id', tenantCache, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenant?.id || req.headers['x-tenant-id'] || 1;
+    
+    console.log(`🌐 [GET /api/web/orders/${id}] Request received:`, {
+      orderId: id,
+      tenantId: tenantId || 'missing',
+    });
+
+    // Validate order ID
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      console.log(`❌ [GET /api/web/orders/${id}] Invalid order id: ${numericId}`);
+      return res.status(400).json({ success: false, message: 'Invalid order id' });
+    }
+
+    // Web orders always have channel = 'web'
+    const channel = 'web';
+
+    // Get order details with tenant check and channel filter
+    const [orders] = await poolWrapper.execute(
+      `SELECT o.id, o.totalAmount, o.status, o.createdAt, o.updatedAt, o.city, o.district, o.fullAddress, 
+              o.shippingAddress, o.paymentMethod, o.customerName, o.customerEmail, o.customerPhone,
+              o.cargoProvider, o.deliveryMethod, o.pickupStoreId, o.pickupStoreName
+       FROM orders o 
+       WHERE o.id = ? AND o.tenantId = ? AND o.channel = ?`,
+      [numericId, tenantId, channel]
+    );
+
+    if (orders.length === 0) {
+      console.log(`❌ [GET /api/web/orders/${id}] Web order not found for tenant ${tenantId}`);
+      return res.status(404).json({ 
+        success: false, 
+        message: `Sipariş #${id} bulunamadı. Lütfen siparişlerim sayfasından geçerli bir sipariş seçin.` 
+      });
+    }
+
+    const order = orders[0];
+
+    // Get order items with product details
+    const [orderItems] = await poolWrapper.execute(`
+      SELECT oi.id, oi.quantity, oi.price, oi.productId, oi.productName, oi.productDescription, 
+             oi.productCategory, oi.productBrand, oi.productImage, oi.variationString, oi.selectedVariations,
+             p.name as productNameFallback, p.image as productImageFallback, p.description as productDescriptionFallback,
+             p.category as productCategoryFallback, p.brand as productBrandFallback
+      FROM order_items oi
+      LEFT JOIN products p ON oi.productId = p.id AND p.tenantId = ?
+      WHERE oi.orderId = ? AND oi.tenantId = ?
+      ORDER BY oi.id ASC
+    `, [tenantId, numericId, tenantId]);
+
+    // Format order items
+    order.items = orderItems.map(item => {
+      // Parse selectedVariations if it's a string
+      let selectedVariations = null;
+      if (item.selectedVariations) {
+        try {
+          if (typeof item.selectedVariations === 'string') {
+            selectedVariations = JSON.parse(item.selectedVariations);
+          } else {
+            selectedVariations = item.selectedVariations;
+          }
+        } catch (e) {
+          console.warn(`⚠️ Failed to parse selectedVariations for order item ${item.id}:`, e.message);
+        }
+      }
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.productName || item.productNameFallback || 'Ürün',
+        description: item.productDescription || item.productDescriptionFallback || null,
+        category: item.productCategory || item.productCategoryFallback || null,
+        brand: item.productBrand || item.productBrandFallback || null,
+        image: item.productImage || item.productImageFallback || null,
+        imageUrl: item.productImage || item.productImageFallback || null,
+        variant: item.variationString || null,
+        selectedVariations: selectedVariations,
+      };
+    });
+
+    // Format order response
+    const orderResponse = {
+      id: order.id,
+      orderNumber: order.id,
+      totalAmount: order.totalAmount,
+      status: order.status,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      city: order.city,
+      district: order.district,
+      fullAddress: order.fullAddress,
+      shippingAddress: order.shippingAddress,
+      paymentMethod: order.paymentMethod,
+      deliveryMethod: order.deliveryMethod || 'shipping',
+      pickupStoreId: order.pickupStoreId,
+      pickupStoreName: order.pickupStoreName,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      trackingNumber: null,
+      carrier: order.cargoProvider || 'DHL E-commerce',
+      deliveryStatus: order.status || 'Kargoda',
+      statusText: order.status || 'Kargoda',
+      estimatedDelivery: null,
+      estimatedDeliveryDate: null,
+      latestUpdate: order.updatedAt || order.createdAt,
+      lastUpdate: order.updatedAt || order.createdAt,
+      items: order.items,
+      timeline: [
+        {
+          id: 1,
+          title: 'Sipariş Alındı',
+          status: 'completed',
+          date: order.createdAt,
+        },
+        {
+          id: 2,
+          title: order.status === 'completed' || order.status === 'delivered' ? 'Teslim Edildi' : 'Kargoda',
+          status: order.status === 'completed' || order.status === 'delivered' ? 'completed' : 'active',
+          date: order.updatedAt || order.createdAt,
+        },
+      ],
+    };
+
+    console.log(`✅ [GET /api/web/orders/${numericId}] Web order found with ${order.items.length} items`);
+    res.json({ success: true, order: orderResponse, data: orderResponse });
+  } catch (error) {
+    console.error(`❌ [GET /api/web/orders/${numericId}] Error getting web order details:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Sipariş detayları yüklenirken bir hata oluştu. Lütfen tekrar deneyin.' 
+    });
+  }
+});
+
 app.put('/api/orders/:id/cancel', requireUserOwnership('order', 'params'), async (req, res) => {
   try {
     const { id } = req.params;
+    const tenantId = req.tenant?.id || 1;
 
-    await poolWrapper.execute(
-      'UPDATE orders SET status = ? WHERE id = ?',
-      ['cancelled', id]
+    // Platform tespiti: User-Agent header'ından mobil uygulama kontrolü
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobileApp = userAgent.includes('HugluMobileApp');
+    const channel = isMobileApp ? 'mobile' : 'web';
+
+    // Channel kontrolü ile siparişi iptal et
+    const [result] = await poolWrapper.execute(
+      'UPDATE orders SET status = ? WHERE id = ? AND tenantId = ? AND channel = ?',
+      ['cancelled', id, tenantId, channel]
     );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Sipariş bulunamadı veya bu platformdan erişilemiyor.' 
+      });
+    }
 
     res.json({ success: true, message: 'Order cancelled' });
   } catch (error) {

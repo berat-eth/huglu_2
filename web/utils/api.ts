@@ -202,11 +202,11 @@ export const userApi = {
   },
 };
 
-// Orders API methods
+// Orders API methods - Web specific endpoints
 export const ordersApi = {
   getUserOrders: async (userId: number): Promise<ApiResponse<Order[]>> => {
     const client = new ApiClient(API_BASE_URL);
-    return client.get<ApiResponse<Order[]>>(`/orders/user/${userId}`, { requiresAuth: true });
+    return client.get<ApiResponse<Order[]>>(`/web/orders/user/${userId}`, { requiresAuth: true });
   },
 
   createOrder: async (orderData: {
@@ -224,7 +224,7 @@ export const ordersApi = {
     customerPhone?: string;
   }): Promise<ApiResponse<Order>> => {
     const client = new ApiClient(API_BASE_URL);
-    return client.post<ApiResponse<Order>>('/orders', orderData, { requiresAuth: true });
+    return client.post<ApiResponse<Order>>('/web/orders', orderData, { requiresAuth: true });
   },
 };
 
