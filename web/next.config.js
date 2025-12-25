@@ -20,11 +20,11 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'api.plaxsy.com',
+        hostname: 'api.huglutekstil.com',
       },
       {
         protocol: 'http',
-        hostname: 'api.plaxsy.com',
+        hostname: 'api.huglutekstil.com',
       },
       {
         protocol: 'https',

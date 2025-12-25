@@ -80,7 +80,7 @@ export class OllamaService {
 
       // Sadece uzak sunucu üzerinden kontrol et (yerel Ollama'ya gerek yok)
       try {
-        const response = await fetch('https://api.plaxsy.com/api/ollama/health', {
+        const response = await fetch('https://api.huglutekstil.com/api/ollama/health', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ export class OllamaService {
         try {
           console.log(`🔄 Ollama deneme ${attempt}/${MAX_RETRIES}...`);
           
-          const response = await fetch('https://api.plaxsy.com/api/ollama/generate', {
+          const response = await fetch('https://api.huglutekstil.com/api/ollama/generate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

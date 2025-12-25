@@ -664,7 +664,7 @@ export default function Campaigns() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`https://api.plaxsy.com/api/campaigns?page=${page}&limit=50`, { headers:{ Accept:'application/json' } })
+        const res = await fetch(`https://api.huglutekstil.com/api/campaigns?page=${page}&limit=50`, { headers:{ Accept:'application/json' } })
         const data = await res.json()
         if (alive && data?.success && Array.isArray(data.data)) setCampaigns(data.data)
       } catch (e:any) {
@@ -688,7 +688,7 @@ export default function Campaigns() {
       if (!productQuery || productQuery.length < 2) { setProductsSearch([]); return }
       try {
         setSearching('products')
-        const res = await fetch(`https://api.plaxsy.com/api/products/search?q=${encodeURIComponent(productQuery)}&limit=10`, { headers:{ Accept:'application/json' } })
+        const res = await fetch(`https://api.huglutekstil.com/api/products/search?q=${encodeURIComponent(productQuery)}&limit=10`, { headers:{ Accept:'application/json' } })
         const data = await res.json()
         if (alive && data?.success) setProductsSearch(data.data || [])
       } catch { /* ignore */ } finally { if (alive) setSearching('none') }
@@ -704,7 +704,7 @@ export default function Campaigns() {
       if (!categoryQuery || categoryQuery.length < 2) { setCategoriesSearch([]); return }
       try {
         setSearching('categories')
-        const res = await fetch(`https://api.plaxsy.com/api/categories/search?q=${encodeURIComponent(categoryQuery)}&limit=10`, { headers:{ Accept:'application/json' } })
+        const res = await fetch(`https://api.huglutekstil.com/api/categories/search?q=${encodeURIComponent(categoryQuery)}&limit=10`, { headers:{ Accept:'application/json' } })
         const data = await res.json()
         if (alive && data?.success) setCategoriesSearch(data.data || [])
       } catch { /* ignore */ } finally { if (alive) setSearching('none') }
@@ -1057,7 +1057,7 @@ export default function Campaigns() {
               ]
               try {
                 for (const p of presets) {
-                  await fetch('https://api.plaxsy.com/api/campaigns', {
+                  await fetch('https://api.huglutekstil.com/api/campaigns', {
                     method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' },
                     body: JSON.stringify({ 
                       name: p.name, 

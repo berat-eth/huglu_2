@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Backend'e veriyi gönder
     // API_BASE_URL zaten /api ile bitiyor, backend endpoint /api/quote-requests
     // Bu yüzden API_BASE_URL'den /api'yi çıkarıp tekrar /api/quote-requests ekliyoruz
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.plaxsy.com/api'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api'
     const backendBaseUrl = baseUrl.replace(/\/api$/, '') // /api'yi kaldır
     const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
     

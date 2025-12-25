@@ -373,7 +373,7 @@ export default function ProductionPlanning() {
 
     try {
       // API çağrısı yap
-      const response = await fetch('https://api.plaxsy.com/api/admin/production-orders', {
+      const response = await fetch('https://api.huglutekstil.com/api/admin/production-orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
