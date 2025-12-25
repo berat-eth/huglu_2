@@ -798,6 +798,206 @@ export default function BulkCustomProduction() {
                 </div>
               )}
             </div>
+                </motion.div>
+              )}
+
+              {websiteSubTab === 'web-orders' && (
+                <motion.div
+                  key="web-orders"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Web Orders Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-5 border border-slate-200 dark:border-slate-700">
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Toplam Sipariş</p>
+                      <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{webOrders.length}</p>
+                    </div>
+                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-5 border border-slate-200 dark:border-slate-700">
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Beklemede</p>
+                      <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{webOrders.filter((o: any) => o.status === 'pending').length}</p>
+                    </div>
+                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-5 border border-slate-200 dark:border-slate-700">
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">İşlenen</p>
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{webOrders.filter((o: any) => o.status === 'processing').length}</p>
+                    </div>
+                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm p-5 border border-slate-200 dark:border-slate-700">
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">Tamamlanan</p>
+                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">{webOrders.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length}</p>
+                    </div>
+                  </div>
+
+                  {/* Web Orders Filters */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Sipariş no, müşteri adı, email ara..."
+                          value={webOrderSearchQuery}
+                          onChange={(e) => setWebOrderSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Filter className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                        <select
+                          value={webOrderStatusFilter}
+                          onChange={(e) => setWebOrderStatusFilter(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 dark:text-slate-100 appearance-none"
+                        >
+                          <option value="all">Tüm Durumlar</option>
+                          <option value="pending">Beklemede</option>
+                          <option value="processing">İşleniyor</option>
+                          <option value="shipped">Kargoya Verildi</option>
+                          <option value="completed">Tamamlandı</option>
+                          <option value="delivered">Teslim Edildi</option>
+                          <option value="cancelled">İptal</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Web Orders Table */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    {webOrdersLoading && (
+                      <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                        Yükleniyor...
+                      </div>
+                    )}
+                    {webOrdersError && (
+                      <div className="p-4 m-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                        {webOrdersError}
+                      </div>
+                    )}
+                    {!webOrdersLoading && !webOrdersError && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Sipariş No</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Müşteri</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Tarih</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Ürün</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Tutar</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Durum</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">İşlem</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {webOrders
+                              .filter((order: any) => {
+                                const searchLower = webOrderSearchQuery.toLowerCase()
+                                const matchesSearch = 
+                                  String(order.id).includes(searchLower) ||
+                                  ((order as any).userName || '').toLowerCase().includes(searchLower) ||
+                                  ((order as any).userEmail || '').toLowerCase().includes(searchLower) ||
+                                  ((order as any).customerName || '').toLowerCase().includes(searchLower) ||
+                                  ((order as any).customerEmail || '').toLowerCase().includes(searchLower)
+                                const matchesStatus = webOrderStatusFilter === 'all' || order.status === webOrderStatusFilter
+                                return matchesSearch && matchesStatus
+                              })
+                              .map((order: any, index: number) => {
+                                const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+                                  pending: { label: 'Ödeme Bekleniyor', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
+                                  processing: { label: 'Paketleniyor', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Package },
+                                  shipped: { label: 'Kargoya Verildi', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Truck },
+                                  completed: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+                                  delivered: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+                                  cancelled: { label: 'İptal', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+                                }
+                                const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-slate-100 text-slate-700 border-slate-200', icon: Package }
+                                const StatusIcon = statusInfo.icon
+                                return (
+                                  <motion.tr
+                                    key={order.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.03 }}
+                                    className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                  >
+                                    <td className="px-6 py-4">
+                                      <span className="font-semibold text-slate-800 dark:text-slate-200">#{order.id}</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                          {((order as any).userName || (order as any).customerName || 'U').charAt(0)}
+                                        </div>
+                                        <div>
+                                          <span className="text-slate-700 dark:text-slate-300 font-medium">{(order as any).userName || (order as any).customerName || '—'}</span>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">{(order as any).userEmail || (order as any).customerEmail || ''}</p>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">{order.createdAt || '-'}</td>
+                                    <td className="px-6 py-4">
+                                      <span className="text-slate-600 dark:text-slate-400 text-sm">{(order as any).itemCount ?? (order.items?.length || 0)} ürün</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">₺{order.totalAmount.toLocaleString()}</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border ${statusInfo.color}`}>
+                                        <StatusIcon className="w-3 h-3" />
+                                        <span className="text-xs font-medium">{statusInfo.label}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            const res = await api.get<any>(`/admin/web-orders/${order.id}`)
+                                            if ((res as any)?.success && (res as any).data) {
+                                              setSelectedWebOrder((res as any).data)
+                                            } else {
+                                              setSelectedWebOrder(order)
+                                            }
+                                            setShowWebOrderDetailModal(true)
+                                          } catch (e) {
+                                            console.error('Web order details fetch error:', e)
+                                            setSelectedWebOrder(order)
+                                            setShowWebOrderDetailModal(true)
+                                          }
+                                        }}
+                                        className="p-2 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                                        title="Detayları Görüntüle"
+                                      >
+                                        <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                      </button>
+                                    </td>
+                                  </motion.tr>
+                                )
+                              })}
+                            {webOrders.filter((order: any) => {
+                              const searchLower = webOrderSearchQuery.toLowerCase()
+                              const matchesSearch = 
+                                String(order.id).includes(searchLower) ||
+                                ((order as any).userName || '').toLowerCase().includes(searchLower) ||
+                                ((order as any).userEmail || '').toLowerCase().includes(searchLower) ||
+                                ((order as any).customerName || '').toLowerCase().includes(searchLower) ||
+                                ((order as any).customerEmail || '').toLowerCase().includes(searchLower)
+                              const matchesStatus = webOrderStatusFilter === 'all' || order.status === webOrderStatusFilter
+                              return matchesSearch && matchesStatus
+                            }).length === 0 && !webOrdersLoading && !webOrdersError && (
+                              <tr>
+                                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                  {webOrderSearchQuery || webOrderStatusFilter !== 'all' ? 'Filtre kriterlerine uygun sipariş bulunamadı' : 'Henüz web siparişi bulunmuyor'}
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
