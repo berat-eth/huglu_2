@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 
     const { limit = 20 } = req.query;
     const [stories] = await poolWrapper.execute(`
-      SELECT id, title, imageUrl, clickAction, \`order\`, expiresAt, createdAt, updatedAt
+      SELECT id, title, imageUrl as image_url, imageUrl, clickAction, \`order\`, expiresAt, createdAt, updatedAt
       FROM stories 
       WHERE isActive = true 
       AND (expiresAt IS NULL OR expiresAt > NOW())

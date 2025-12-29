@@ -440,8 +440,15 @@ export default function HomeScreen({ navigation }) {
       
       if (response.data.success) {
         const storiesData = response.data.data || [];
-        setStories(storiesData);
         console.log('✅ Stories yüklendi:', storiesData.length, 'hikaye');
+        console.log('📸 Story image URLs:', storiesData.map(s => ({ 
+          id: s.id, 
+          title: s.title, 
+          imageUrl: s.imageUrl, 
+          image_url: s.image_url,
+          image: s.image 
+        })));
+        setStories(storiesData);
       } else {
         console.warn('⚠️ Stories response not successful:', response.data);
         setStories([]);
@@ -560,8 +567,15 @@ export default function HomeScreen({ navigation }) {
       console.log('📦 Sliders response:', response.status, response.data);
       
       if (response.data.success) {
-        setSliders(response.data.data || []);
-        console.log('✅ Sliders yüklendi:', response.data.data?.length || 0);
+        const slidersData = response.data.data || [];
+        console.log('✅ Sliders yüklendi:', slidersData.length);
+        console.log('🖼️ Slider image URLs:', slidersData.map(s => ({ 
+          id: s.id, 
+          title: s.title, 
+          imageUrl: s.imageUrl, 
+          image: s.image 
+        })));
+        setSliders(slidersData);
       } else {
         console.warn('⚠️ Sliders response not successful:', response.data);
       }
@@ -655,13 +669,18 @@ export default function HomeScreen({ navigation }) {
     return matchesCategory;
   });
 
-  const heroSlides = (sliders || []).map((slider) => ({
-    id: slider.id,
-    title: slider.title,
-    description: slider.description,
-    image: slider.imageUrl || slider.image,
-    cta: slider.buttonText || 'İncele',
-  }));
+  const heroSlides = (sliders || []).map((slider) => {
+    const imageUrl = slider.imageUrl || slider.image;
+    console.log(`🔍 Slider ${slider.id} (${slider.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA' : imageUrl) : 'NULL'}`);
+    
+    return {
+      id: slider.id,
+      title: slider.title,
+      description: slider.description,
+      image: imageUrl,
+      cta: slider.buttonText || 'İncele',
+    };
+  });
 
   const displayedProducts =
     (newProducts && newProducts.length > 0
@@ -691,33 +710,55 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
       >
-        {/* Story Modal */}
-        <Modal visible={storyVisible} transparent animationType="fade" onRequestClose={() => setStoryVisible(false)}>
-          <View style={styles.storyModalBackdrop}>
-            <View style={styles.storyModalCard}>
-              {activeStory?.image_url || activeStory?.imageUrl ? (
-                <Image
-                  source={{ uri: activeStory.image_url || activeStory.imageUrl }}
-                  style={styles.storyModalImage}
-                  resizeMode="cover"
-                />
-              ) : null}
-              <View style={styles.storyModalContent}>
-                <Text style={styles.storyModalTitle}>{activeStory?.title}</Text>
-                {!!activeStory?.description && (
-                  <Text style={styles.storyModalDesc}>{activeStory.description}</Text>
-                )}
-                <View style={styles.storyModalActions}>
-                  <TouchableOpacity style={styles.storyModalButton} onPress={() => setStoryVisible(false)}>
-                    <Text style={styles.storyModalButtonText}>Kapat</Text>
-                  </TouchableOpacity>
-                  {activeStory?.link_url && (
-                    <TouchableOpacity style={[styles.storyModalButton, styles.storyModalPrimary]} onPress={handleStoryLink}>
-                      <Text style={[styles.storyModalButtonText, styles.storyModalPrimaryText]}>Detay</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+        {/* Story Modal - Full Screen */}
+        <Modal visible={storyVisible} transparent={false} animationType="slide" onRequestClose={() => setStoryVisible(false)}>
+          <View style={styles.storyModalFullScreen}>
+            {/* Close Button */}
+            <TouchableOpacity style={styles.storyModalCloseButton} onPress={() => setStoryVisible(false)}>
+              <Text style={styles.storyModalCloseText}>✕</Text>
+            </TouchableOpacity>
+            
+            {/* Story Image */}
+            {activeStory?.imageUrl || activeStory?.image_url || activeStory?.image ? (
+              <Image
+                source={{ 
+                  uri: (activeStory.imageUrl || activeStory.image_url || activeStory.image).startsWith('data:') 
+                    ? null // Base64 görselleri için null, placeholder component gösterilecek
+                    : activeStory.imageUrl || activeStory.image_url || activeStory.image 
+                }}
+                style={styles.storyModalFullImage}
+                onError={(error) => {
+                  console.warn('Story modal image load error:', error.nativeEvent.error);
+                }}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.storyModalPlaceholder}>
+                <Text style={styles.storyModalPlaceholderText}>📷</Text>
+                <Text style={styles.storyModalPlaceholderSubText}>Görsel Yüklenemedi</Text>
               </View>
+            )}
+            
+            {/* Base64 veya hatalı görseller için placeholder */}
+            {(activeStory?.imageUrl || activeStory?.image_url || activeStory?.image) && 
+             (activeStory.imageUrl || activeStory.image_url || activeStory.image).startsWith('data:') && (
+              <View style={styles.storyModalPlaceholder}>
+                <Text style={styles.storyModalPlaceholderText}>📷</Text>
+                <Text style={styles.storyModalPlaceholderSubText}>Görsel Formatı Desteklenmiyor</Text>
+              </View>
+            )}
+            
+            {/* Story Content Overlay */}
+            <View style={styles.storyModalOverlay}>
+              <Text style={styles.storyModalFullTitle}>{activeStory?.title}</Text>
+              {!!activeStory?.description && (
+                <Text style={styles.storyModalFullDesc}>{activeStory.description}</Text>
+              )}
+              {activeStory?.link_url && (
+                <TouchableOpacity style={styles.storyModalFullButton} onPress={handleStoryLink}>
+                  <Text style={styles.storyModalFullButtonText}>Detay</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>
@@ -777,7 +818,29 @@ export default function HomeScreen({ navigation }) {
           >
             {heroSlides.map((slide) => (
               <View key={slide.id} style={[styles.heroCard, { width: HERO_WIDTH, height: HERO_HEIGHT }]}>
-                <Image source={{ uri: slide.image }} style={styles.heroImage} resizeMode="cover" />
+                {slide.image && !slide.image.startsWith('data:') ? (
+                  <Image 
+                    source={{ 
+                      uri: slide.image,
+                      cache: 'force-cache' // Görsel cache'leme
+                    }} 
+                    style={styles.heroImage} 
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.warn(`Hero slider image load error for slide ${slide.id}:`, error.nativeEvent.error);
+                    }}
+                    onLoad={() => {
+                      console.log(`✅ Hero slider image loaded successfully for slide ${slide.id}`);
+                    }}
+                  />
+                ) : (
+                  <View style={styles.heroImagePlaceholder}>
+                    <Text style={styles.heroImagePlaceholderText}>🖼️</Text>
+                    <Text style={styles.heroImagePlaceholderSubText}>
+                      {slide.image && slide.image.startsWith('data:') ? 'Base64 Görsel' : 'Görsel Yüklenemedi'}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.heroOverlay} />
                 <View style={styles.heroContent}>
                   <View style={styles.heroBadgeRow}>
@@ -1133,6 +1196,24 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'absolute',
   },
+  heroImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+  },
+  heroImagePlaceholderText: {
+    fontSize: 48,
+    opacity: 0.3,
+    marginBottom: 8,
+  },
+  heroImagePlaceholderSubText: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    fontWeight: '600',
+  },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
@@ -1482,5 +1563,84 @@ const styles = StyleSheet.create({
   },
   storyModalPrimaryText: {
     color: COLORS.textMain,
+  },
+  // Full Screen Story Modal Styles
+  storyModalFullScreen: {
+    flex: 1,
+    backgroundColor: COLORS.black,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyModalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyModalCloseText: {
+    color: COLORS.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  storyModalFullImage: {
+    width: '100%',
+    height: '100%',
+  },
+  storyModalPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+  },
+  storyModalPlaceholderText: {
+    fontSize: 48,
+    opacity: 0.3,
+    marginBottom: 8,
+  },
+  storyModalPlaceholderSubText: {
+    fontSize: 16,
+    color: COLORS.gray600,
+    fontWeight: '600',
+  },
+  storyModalOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 20,
+    alignItems: 'center',
+  },
+  storyModalFullTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  storyModalFullDesc: {
+    fontSize: 16,
+    color: COLORS.white,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+    opacity: 0.9,
+  },
+  storyModalFullButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  storyModalFullButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

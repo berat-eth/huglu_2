@@ -890,6 +890,9 @@ const invoiceUpload = multer({
 // Statik dosya servisi (yüklenen dosyaları erişilebilir yap)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Public klasörü için static serving (resized images için)
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
 // ✅ OPTIMIZASYON: Tenant cache middleware with enhanced Redis helpers
 const tenantCache = require('./middleware/tenantCache');
 const { getJson, setJsonEx, delKey, withLock, sha256, getOrSet, CACHE_TTL } = require('./redis');

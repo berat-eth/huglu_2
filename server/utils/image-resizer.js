@@ -43,30 +43,27 @@ async function resizeImageFromUrl(imageUrl, targetWidth, targetHeight, outputDir
       .jpeg({ quality: 85 }) // JPEG formatında kaydet
       .toBuffer();
 
-    // Eğer outputDir verilmişse dosyaya kaydet
-    if (outputDir) {
-      // Dizin yoksa oluştur
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-
-      // Dosya adı oluştur
-      const hash = crypto.createHash('md5').update(imageUrl).digest('hex').substring(0, 8);
-      const fileName = `${prefix}_${hash}_${targetWidth}x${targetHeight}.jpg`;
-      const filePath = path.join(outputDir, fileName);
-
-      // Dosyayı kaydet
-      fs.writeFileSync(filePath, resizedBuffer);
-      
-      // URL döndür (public klasörü için)
-      const publicUrl = `/uploads/${fileName}`;
-      return publicUrl;
+    // Varsayılan output directory'yi belirle
+    const defaultOutputDir = outputDir || path.join(__dirname, '../public/uploads');
+    
+    // Dizin yoksa oluştur
+    if (!fs.existsSync(defaultOutputDir)) {
+      fs.mkdirSync(defaultOutputDir, { recursive: true });
     }
 
-    // Eğer outputDir verilmemişse base64 veya data URL döndür
-    // Alternatif olarak, görseli bir CDN veya storage servisine yükleyebilirsiniz
-    const base64 = resizedBuffer.toString('base64');
-    return `data:image/jpeg;base64,${base64}`;
+    // Dosya adı oluştur
+    const hash = crypto.createHash('md5').update(imageUrl).digest('hex').substring(0, 8);
+    const fileName = `${prefix}_${hash}_${targetWidth}x${targetHeight}.jpg`;
+    const filePath = path.join(defaultOutputDir, fileName);
+
+    // Dosyayı kaydet
+    fs.writeFileSync(filePath, resizedBuffer);
+    
+    // URL döndür (public klasörü için)
+    const publicUrl = `/uploads/${fileName}`;
+    console.log(`✅ Görsel kaydedildi: ${publicUrl}`);
+    return publicUrl;
+
   } catch (error) {
     console.error('Görsel resize hatası:', error);
     // Hata durumunda orijinal URL'i döndür
@@ -120,7 +117,8 @@ async function resizeImageFromBase64(imageData, targetWidth, targetHeight) {
  * Slider görselleri için ideal boyut: 1920x1080 (16:9)
  */
 async function resizeSliderImage(imageUrl) {
-  return await resizeImageFromUrl(imageUrl, 1920, 1080, null, 'slider');
+  const outputDir = path.join(__dirname, '../public/uploads/sliders');
+  return await resizeImageFromUrl(imageUrl, 1920, 1080, outputDir, 'slider');
 }
 
 /**
@@ -128,7 +126,8 @@ async function resizeSliderImage(imageUrl) {
  * Varsayılan olarak dikey format kullanılıyor
  */
 async function resizeStoryImage(imageUrl) {
-  return await resizeImageFromUrl(imageUrl, 1080, 1920, null, 'story');
+  const outputDir = path.join(__dirname, '../public/uploads/stories');
+  return await resizeImageFromUrl(imageUrl, 1080, 1920, outputDir, 'story');
 }
 
 module.exports = {

@@ -1662,30 +1662,88 @@ export default function ProductDetailScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* Specs */}
-          <View style={styles.specsContainer}>
-            <View style={styles.specCard}>
-              <View style={styles.specIcon}>
-                <Ionicons name="scale-outline" size={20} color={COLORS.primary} />
-              </View>
-              <Text style={styles.specLabel}>Ağırlık</Text>
-              <Text style={styles.specValue}>1.2 kg</Text>
-            </View>
-            <View style={styles.specCard}>
-              <View style={styles.specIcon}>
-                <Ionicons name="water-outline" size={20} color={COLORS.primary} />
-              </View>
-              <Text style={styles.specLabel}>Su Geçirmez</Text>
-              <Text style={styles.specValue}>IPX5</Text>
-            </View>
-            <View style={styles.specCard}>
-              <View style={styles.specIcon}>
-                <Ionicons name="layers-outline" size={20} color={COLORS.primary} />
-              </View>
-              <Text style={styles.specLabel}>Malzeme</Text>
-              <Text style={styles.specValue}>Naylon</Text>
-            </View>
-          </View>
+          {/* Specs - Tekstil kategorisi için özel alanlar */}
+          {(() => {
+            const isTextileCategory = product?.category && 
+              (product.category.toLowerCase().includes('tişört') ||
+               product.category.toLowerCase().includes('t-shirt') ||
+               product.category.toLowerCase().includes('gömlek') ||
+               product.category.toLowerCase().includes('tekstil') ||
+               product.category.toLowerCase().includes('kumaş') ||
+               product.category.toLowerCase().includes('fabric') ||
+               product.category.toLowerCase().includes('sweatshirt') ||
+               product.category.toLowerCase().includes('hoodie') ||
+               product.category.toLowerCase().includes('kazak') ||
+               product.category.toLowerCase().includes('hırka') ||
+               product.category.toLowerCase().includes('bluz') ||
+               product.category.toLowerCase().includes('elbise') ||
+               product.category.toLowerCase().includes('pantolon') ||
+               product.category.toLowerCase().includes('şort') ||
+               product.category.toLowerCase().includes('etek') ||
+               product.category.toLowerCase().includes('ceket') ||
+               product.category.toLowerCase().includes('mont'));
+
+            if (isTextileCategory) {
+              return (
+                <View style={styles.specsContainer}>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="shirt-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Kumaş Türü</Text>
+                    <Text style={styles.specValue}>%100 Pamuk</Text>
+                  </View>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="water-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Yıkama</Text>
+                    <Text style={styles.specValue}>30°C</Text>
+                  </View>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="resize-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Kesim</Text>
+                    <Text style={styles.specValue}>Regular Fit</Text>
+                  </View>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="leaf-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Özellik</Text>
+                    <Text style={styles.specValue}>Nefes Alır</Text>
+                  </View>
+                </View>
+              );
+            } else {
+              return (
+                <View style={styles.specsContainer}>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="scale-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Ağırlık</Text>
+                    <Text style={styles.specValue}>1.2 kg</Text>
+                  </View>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="water-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Su Geçirmez</Text>
+                    <Text style={styles.specValue}>IPX5</Text>
+                  </View>
+                  <View style={styles.specCard}>
+                    <View style={styles.specIcon}>
+                      <Ionicons name="layers-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.specLabel}>Malzeme</Text>
+                    <Text style={styles.specValue}>Naylon</Text>
+                  </View>
+                </View>
+              );
+            }
+          })()}
 
           {/* Description */}
           {product.description && (
@@ -3060,12 +3118,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   specLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: COLORS.gray500,
     marginBottom: 4,
   },
   specValue: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.textMain,
   },
