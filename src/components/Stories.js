@@ -8,25 +8,12 @@ export default function Stories({ stories, onStoryPress }) {
 
   if (!stories || stories.length === 0) return null;
 
-  // Debug: Story verilerini logla
-  console.log('📸 Stories component - story data:', stories.map(s => ({
-    id: s.id,
-    title: s.title,
-    imageUrl: s.imageUrl,
-    image_url: s.image_url,
-    image: s.image
-  })));
-
   const handleImageError = (storyId) => {
-    console.warn(`❌ Story image error for ID: ${storyId}`);
     setImageErrors(prev => ({ ...prev, [storyId]: true }));
   };
 
   const getImageSource = (story) => {
     let imageUrl = story.imageUrl || story.image_url || story.image;
-    
-    // Debug: Her story için URL kontrolü
-    console.log(`🔍 Story ${story.id} (${story.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA (REJECTED)' : imageUrl) : 'NULL'}`);
     
     // Görsel URL kontrolü - Base64 görselleri reddet
     if (!imageUrl || 
@@ -42,15 +29,20 @@ export default function Stories({ stories, onStoryPress }) {
     imageUrl = imageUrl.trim();
     
     // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
-    const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
+    // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
+    let API_BASE_URL = getApiUrl();
+    if (API_BASE_URL.endsWith('/api')) {
+      API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
+    } else if (API_BASE_URL.endsWith('/api/')) {
+      API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
+    }
+    
     if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
       imageUrl = `${API_BASE_URL}${imageUrl}`;
-      console.log('🔗 Story relative URL düzeltildi:', story.imageUrl || story.image_url || story.image, '->', imageUrl);
     }
     
     // Eğer URL hala http veya https ile başlamıyorsa geçersiz say
     if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      console.warn('⚠️ Story geçersiz görsel URL (http/https yok):', imageUrl);
       return null;
     }
     
@@ -83,9 +75,6 @@ export default function Stories({ stories, onStoryPress }) {
                     style={styles.storyImage}
                     resizeMode="cover"
                     onError={() => handleImageError(story.id)}
-                    onLoad={() => {
-                      console.log(`✅ Story image loaded successfully for story ${story.id}`);
-                    }}
                     defaultSource={require('../../assets/icon.png')}
                   />
                 ) : (

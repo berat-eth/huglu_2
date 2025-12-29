@@ -435,32 +435,15 @@ export default function HomeScreen({ navigation }) {
 
   const loadStories = async () => {
     try {
-      console.log('🔄 Loading Stories...');
       const response = await storiesAPI.getActive();
-      console.log('📦 Stories response:', response.status, response.data);
       
       if (response.data.success) {
         const storiesData = response.data.data || [];
-        console.log('✅ Stories yüklendi:', storiesData.length, 'hikaye');
-        console.log('📸 Story image URLs:', storiesData.map(s => ({ 
-          id: s.id, 
-          title: s.title, 
-          imageUrl: s.imageUrl, 
-          image_url: s.image_url,
-          image: s.image 
-        })));
         setStories(storiesData);
       } else {
-        console.warn('⚠️ Stories response not successful:', response.data);
         setStories([]);
       }
     } catch (error) {
-      console.error('❌ Stories yüklenemedi:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status
-      });
       setStories([]);
     }
   };
@@ -563,30 +546,14 @@ export default function HomeScreen({ navigation }) {
 
   const loadSliders = async () => {
     try {
-      console.log('🔄 Loading Sliders...');
       const response = await slidersAPI.getAll();
-      console.log('📦 Sliders response:', response.status, response.data);
       
       if (response.data.success) {
         const slidersData = response.data.data || [];
-        console.log('✅ Sliders yüklendi:', slidersData.length);
-        console.log('🖼️ Slider image URLs:', slidersData.map(s => ({ 
-          id: s.id, 
-          title: s.title, 
-          imageUrl: s.imageUrl, 
-          image: s.image 
-        })));
         setSliders(slidersData);
-      } else {
-        console.warn('⚠️ Sliders response not successful:', response.data);
       }
     } catch (error) {
-      console.error('❌ Slider yüklenemedi:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+      // Hata durumunda sessizce devam et
     }
   };
 
@@ -672,30 +639,55 @@ export default function HomeScreen({ navigation }) {
 
   const heroSlides = (sliders || []).map((slider) => {
     let imageUrl = slider.imageUrl || slider.image;
-    console.log(`🔍 Slider ${slider.id} (${slider.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA (REJECTED)' : imageUrl) : 'NULL'}`);
+    
+    // Eğer imageUrl yoksa veya geçersizse null döndür
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+      return {
+        id: slider.id,
+        title: slider.title,
+        description: slider.description,
+        image: null,
+        cta: slider.buttonText || 'İncele',
+      };
+    }
+    
+    imageUrl = imageUrl.trim();
+    
+    // Test slider gibi tam URL'ler için - olduğu gibi kullan (hiçbir işlem yapma)
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return {
+        id: slider.id,
+        title: slider.title,
+        description: slider.description,
+        image: imageUrl,
+        cta: slider.buttonText || 'İncele',
+      };
+    }
+    
+    // Base64 görselleri reddet
+    if (imageUrl.startsWith('data:')) {
+      return {
+        id: slider.id,
+        title: slider.title,
+        description: slider.description,
+        image: null,
+        cta: slider.buttonText || 'İncele',
+      };
+    }
     
     // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
-    if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
-      imageUrl = imageUrl.trim();
-      const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
-      
-      if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
-        imageUrl = `${API_BASE_URL}${imageUrl}`;
-        console.log('🔗 Slider relative URL düzeltildi:', slider.imageUrl || slider.image, '->', imageUrl);
+    if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//'))) {
+      // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
+      let API_BASE_URL = getApiUrl();
+      if (API_BASE_URL.endsWith('/api')) {
+        API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
+      } else if (API_BASE_URL.endsWith('/api/')) {
+        API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
       }
       
-      // Base64 görselleri reddet
-      if (imageUrl.startsWith('data:')) {
-        console.warn('⚠️ Slider Base64 görsel reddedildi:', slider.id);
-        imageUrl = null;
-      }
-      
-      // Eğer URL hala http veya https ile başlamıyorsa geçersiz say
-      if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-        console.warn('⚠️ Slider geçersiz görsel URL (http/https yok):', imageUrl);
-        imageUrl = null;
-      }
+      imageUrl = `${API_BASE_URL}${imageUrl}`;
     } else {
+      // Geçersiz URL formatı
       imageUrl = null;
     }
     
@@ -751,11 +743,17 @@ export default function HomeScreen({ navigation }) {
               // Relative URL kontrolü
               if (storyImageUrl && typeof storyImageUrl === 'string' && storyImageUrl.trim() !== '') {
                 storyImageUrl = storyImageUrl.trim();
-                const API_BASE_URL = getApiUrl().replace('/api', '');
+                
+                // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
+                let API_BASE_URL = getApiUrl();
+                if (API_BASE_URL.endsWith('/api')) {
+                  API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
+                } else if (API_BASE_URL.endsWith('/api/')) {
+                  API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
+                }
                 
                 if (storyImageUrl.startsWith('/uploads/') || (storyImageUrl.startsWith('/') && !storyImageUrl.startsWith('//') && !storyImageUrl.startsWith('http'))) {
                   storyImageUrl = `${API_BASE_URL}${storyImageUrl}`;
-                  console.log('🔗 Story modal relative URL düzeltildi:', activeStory?.imageUrl || activeStory?.image_url || activeStory?.image, '->', storyImageUrl);
                 }
                 
                 // Base64 görselleri reddet
@@ -774,9 +772,6 @@ export default function HomeScreen({ navigation }) {
                     <Image
                       source={{ uri: storyImageUrl }}
                       style={styles.storyModalFullImage}
-                      onError={(error) => {
-                        console.warn('Story modal image load error:', error.nativeEvent.error);
-                      }}
                       resizeMode="contain"
                     />
                   );
@@ -870,12 +865,6 @@ export default function HomeScreen({ navigation }) {
                     }} 
                     style={styles.heroImage} 
                     resizeMode="cover"
-                    onError={(error) => {
-                      console.warn(`Hero slider image load error for slide ${slide.id}:`, error.nativeEvent.error);
-                    }}
-                    onLoad={() => {
-                      console.log(`✅ Hero slider image loaded successfully for slide ${slide.id}`);
-                    }}
                     defaultSource={require('../../assets/icon.png')}
                   />
                 ) : (
