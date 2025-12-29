@@ -129,3 +129,4 @@ chmod -R 755 server/data/archives/
 - Arşiv dosyaları kalıcı olarak saklanır (manuel silinmedikçe)
 - Her gün için ayrı bir JSON dosyası oluşturulur
 
+

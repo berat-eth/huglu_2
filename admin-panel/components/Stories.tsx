@@ -396,6 +396,9 @@ export default function Stories() {
                                         className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 dark:text-slate-100"
                                         placeholder="https://example.com/image.jpg"
                                     />
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        💡 Görsel URL'i direkt olarak kullanılacaktır. Sunucuya kaydedilmeyecektir.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Thumbnail URL</label>

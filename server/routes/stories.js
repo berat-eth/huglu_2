@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateAdmin } = require('../middleware/auth');
-const { resizeStoryImage } = require('../utils/image-resizer');
 
 // poolWrapper'ı global'dan almak için
 let poolWrapper = null;
@@ -130,18 +129,8 @@ router.post('/', authenticateAdmin, async (req, res) => {
       });
     }
 
-    // Görseli otomatik olarak story boyutuna getir (1080x1920)
-    let processedImageUrl = imageUrl;
-    try {
-      if (imageUrl && imageUrl.startsWith('http')) {
-        console.log('🖼️ Story görseli boyutlandırılıyor:', imageUrl);
-        processedImageUrl = await resizeStoryImage(imageUrl);
-        console.log('✅ Story görseli boyutlandırıldı:', processedImageUrl);
-      }
-    } catch (error) {
-      console.error('⚠️ Görsel boyutlandırma hatası, orijinal görsel kullanılıyor:', error.message);
-      // Hata durumunda orijinal URL'i kullan
-    }
+    // Görseli direkt olarak kullan (sunucuya kaydetme)
+    const processedImageUrl = imageUrl;
 
     // Order belirlenmesi - eğer verilmemişse en yüksek order + 1
     let finalOrder = order;
@@ -241,20 +230,9 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
       updateValues.push(description);
     }
     if (imageUrl !== undefined) {
-      // Görseli otomatik olarak story boyutuna getir (1080x1920)
-      let processedImageUrl = imageUrl;
-      try {
-        if (imageUrl && imageUrl.startsWith('http')) {
-          console.log('🖼️ Story görseli güncellenirken boyutlandırılıyor:', imageUrl);
-          processedImageUrl = await resizeStoryImage(imageUrl);
-          console.log('✅ Story görseli boyutlandırıldı:', processedImageUrl);
-        }
-      } catch (error) {
-        console.error('⚠️ Görsel boyutlandırma hatası, orijinal görsel kullanılıyor:', error.message);
-        processedImageUrl = imageUrl; // Hata durumunda orijinal URL'i kullan
-      }
+      // Görseli direkt olarak kullan (sunucuya kaydetme)
       updateFields.push('imageUrl = ?');
-      updateValues.push(processedImageUrl);
+      updateValues.push(imageUrl);
     }
     if (thumbnailUrl !== undefined) {
       updateFields.push('thumbnailUrl = ?');

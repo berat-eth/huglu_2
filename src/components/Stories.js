@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { COLORS } from '../constants/colors';
+import { getApiUrl } from '../config/api.config';
 
 export default function Stories({ stories, onStoryPress }) {
   const [imageErrors, setImageErrors] = useState({});
@@ -22,19 +23,35 @@ export default function Stories({ stories, onStoryPress }) {
   };
 
   const getImageSource = (story) => {
-    const imageUrl = story.imageUrl || story.image_url || story.image;
+    let imageUrl = story.imageUrl || story.image_url || story.image;
     
     // Debug: Her story için URL kontrolü
-    console.log(`🔍 Story ${story.id} (${story.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA' : imageUrl) : 'NULL'}`);
+    console.log(`🔍 Story ${story.id} (${story.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA (REJECTED)' : imageUrl) : 'NULL'}`);
     
-    // Görsel URL kontrolü
+    // Görsel URL kontrolü - Base64 görselleri reddet
     if (!imageUrl || 
-        imageUrl.startsWith('data:') || 
+        imageUrl.startsWith('data:') || // Base64 görselleri reddet
         imageErrors[story.id] ||
         imageUrl.trim() === '' ||
         imageUrl === 'null' ||
         imageUrl === 'undefined') {
       return null; // Placeholder gösterilecek
+    }
+    
+    // URL'yi temizle ve normalize et
+    imageUrl = imageUrl.trim();
+    
+    // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
+    const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
+    if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
+      imageUrl = `${API_BASE_URL}${imageUrl}`;
+      console.log('🔗 Story relative URL düzeltildi:', story.imageUrl || story.image_url || story.image, '->', imageUrl);
+    }
+    
+    // Eğer URL hala http veya https ile başlamıyorsa geçersiz say
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      console.warn('⚠️ Story geçersiz görsel URL (http/https yok):', imageUrl);
+      return null;
     }
     
     return { uri: imageUrl };
@@ -64,10 +81,12 @@ export default function Stories({ stories, onStoryPress }) {
                       cache: 'force-cache'
                     }}
                     style={styles.storyImage}
+                    resizeMode="cover"
                     onError={() => handleImageError(story.id)}
                     onLoad={() => {
                       console.log(`✅ Story image loaded successfully for story ${story.id}`);
                     }}
+                    defaultSource={require('../../assets/icon.png')}
                   />
                 ) : (
                   <View style={styles.storyImagePlaceholder}>

@@ -14,6 +14,7 @@ import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
 import { updateCartBadge } from '../utils/cartBadge';
 import { useAlert } from '../hooks/useAlert';
+import { getApiUrl } from '../config/api.config';
 export default function HomeScreen({ navigation }) {
   const alert = useAlert();
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
@@ -670,8 +671,33 @@ export default function HomeScreen({ navigation }) {
   });
 
   const heroSlides = (sliders || []).map((slider) => {
-    const imageUrl = slider.imageUrl || slider.image;
-    console.log(`🔍 Slider ${slider.id} (${slider.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA' : imageUrl) : 'NULL'}`);
+    let imageUrl = slider.imageUrl || slider.image;
+    console.log(`🔍 Slider ${slider.id} (${slider.title}) - imageUrl: ${imageUrl ? (imageUrl.startsWith('data:') ? 'BASE64_DATA (REJECTED)' : imageUrl) : 'NULL'}`);
+    
+    // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
+    if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+      imageUrl = imageUrl.trim();
+      const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
+      
+      if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
+        imageUrl = `${API_BASE_URL}${imageUrl}`;
+        console.log('🔗 Slider relative URL düzeltildi:', slider.imageUrl || slider.image, '->', imageUrl);
+      }
+      
+      // Base64 görselleri reddet
+      if (imageUrl.startsWith('data:')) {
+        console.warn('⚠️ Slider Base64 görsel reddedildi:', slider.id);
+        imageUrl = null;
+      }
+      
+      // Eğer URL hala http veya https ile başlamıyorsa geçersiz say
+      if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        console.warn('⚠️ Slider geçersiz görsel URL (http/https yok):', imageUrl);
+        imageUrl = null;
+      }
+    } else {
+      imageUrl = null;
+    }
     
     return {
       id: slider.id,
@@ -719,34 +745,52 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
             
             {/* Story Image */}
-            {activeStory?.imageUrl || activeStory?.image_url || activeStory?.image ? (
-              <Image
-                source={{ 
-                  uri: (activeStory.imageUrl || activeStory.image_url || activeStory.image).startsWith('data:') 
-                    ? null // Base64 görselleri için null, placeholder component gösterilecek
-                    : activeStory.imageUrl || activeStory.image_url || activeStory.image 
-                }}
-                style={styles.storyModalFullImage}
-                onError={(error) => {
-                  console.warn('Story modal image load error:', error.nativeEvent.error);
-                }}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.storyModalPlaceholder}>
-                <Text style={styles.storyModalPlaceholderText}>📷</Text>
-                <Text style={styles.storyModalPlaceholderSubText}>Görsel Yüklenemedi</Text>
-              </View>
-            )}
-            
-            {/* Base64 veya hatalı görseller için placeholder */}
-            {(activeStory?.imageUrl || activeStory?.image_url || activeStory?.image) && 
-             (activeStory.imageUrl || activeStory.image_url || activeStory.image).startsWith('data:') && (
-              <View style={styles.storyModalPlaceholder}>
-                <Text style={styles.storyModalPlaceholderText}>📷</Text>
-                <Text style={styles.storyModalPlaceholderSubText}>Görsel Formatı Desteklenmiyor</Text>
-              </View>
-            )}
+            {(() => {
+              let storyImageUrl = activeStory?.imageUrl || activeStory?.image_url || activeStory?.image;
+              
+              // Relative URL kontrolü
+              if (storyImageUrl && typeof storyImageUrl === 'string' && storyImageUrl.trim() !== '') {
+                storyImageUrl = storyImageUrl.trim();
+                const API_BASE_URL = getApiUrl().replace('/api', '');
+                
+                if (storyImageUrl.startsWith('/uploads/') || (storyImageUrl.startsWith('/') && !storyImageUrl.startsWith('//') && !storyImageUrl.startsWith('http'))) {
+                  storyImageUrl = `${API_BASE_URL}${storyImageUrl}`;
+                  console.log('🔗 Story modal relative URL düzeltildi:', activeStory?.imageUrl || activeStory?.image_url || activeStory?.image, '->', storyImageUrl);
+                }
+                
+                // Base64 görselleri reddet
+                if (storyImageUrl.startsWith('data:')) {
+                  return (
+                    <View style={styles.storyModalPlaceholder}>
+                      <Text style={styles.storyModalPlaceholderText}>📷</Text>
+                      <Text style={styles.storyModalPlaceholderSubText}>Görsel Formatı Desteklenmiyor</Text>
+                    </View>
+                  );
+                }
+                
+                // Eğer URL http veya https ile başlıyorsa göster
+                if (storyImageUrl.startsWith('http://') || storyImageUrl.startsWith('https://')) {
+                  return (
+                    <Image
+                      source={{ uri: storyImageUrl }}
+                      style={styles.storyModalFullImage}
+                      onError={(error) => {
+                        console.warn('Story modal image load error:', error.nativeEvent.error);
+                      }}
+                      resizeMode="contain"
+                    />
+                  );
+                }
+              }
+              
+              // Placeholder göster
+              return (
+                <View style={styles.storyModalPlaceholder}>
+                  <Text style={styles.storyModalPlaceholderText}>📷</Text>
+                  <Text style={styles.storyModalPlaceholderSubText}>Görsel Yüklenemedi</Text>
+                </View>
+              );
+            })()}
             
             {/* Story Content Overlay */}
             <View style={styles.storyModalOverlay}>
@@ -818,7 +862,7 @@ export default function HomeScreen({ navigation }) {
           >
             {heroSlides.map((slide) => (
               <View key={slide.id} style={[styles.heroCard, { width: HERO_WIDTH, height: HERO_HEIGHT }]}>
-                {slide.image && !slide.image.startsWith('data:') ? (
+                {slide.image && slide.image.startsWith('http') ? ( // Sadece HTTP/HTTPS URL'leri kabul et
                   <Image 
                     source={{ 
                       uri: slide.image,
@@ -832,12 +876,13 @@ export default function HomeScreen({ navigation }) {
                     onLoad={() => {
                       console.log(`✅ Hero slider image loaded successfully for slide ${slide.id}`);
                     }}
+                    defaultSource={require('../../assets/icon.png')}
                   />
                 ) : (
                   <View style={styles.heroImagePlaceholder}>
                     <Text style={styles.heroImagePlaceholderText}>🖼️</Text>
                     <Text style={styles.heroImagePlaceholderSubText}>
-                      {slide.image && slide.image.startsWith('data:') ? 'Base64 Görsel' : 'Görsel Yüklenemedi'}
+                      {!slide.image ? 'Görsel Yok' : 'Geçersiz Görsel URL'}
                     </Text>
                   </View>
                 )}
@@ -1195,6 +1240,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'absolute',
+    borderRadius: 16,
   },
   heroImagePlaceholder: {
     width: '100%',
