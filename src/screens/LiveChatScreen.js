@@ -65,28 +65,47 @@ export default function LiveChatScreen({ navigation, route }) {
   };
 
   const loadMessages = async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.warn('[LiveChat] loadMessages: userId yok');
+      return;
+    }
 
     try {
       setLoading(true);
       
       // Eğer conversationDate varsa, o tarihteki mesajları filtrele
       const conversationDate = route?.params?.conversationDate;
-      const response = await liveSupportAPI.getHistory(userId);
+      console.log('[LiveChat] Mesajlar yükleniyor...', { userId, conversationDate });
       
-      if (response && response.success && response.data) {
+      const response = await liveSupportAPI.getHistory(userId);
+      console.log('[LiveChat] API yanıtı:', {
+        status: response?.status,
+        success: response?.data?.success,
+        dataLength: response?.data?.data?.length,
+        fullResponse: response?.data
+      });
+      
+      // Axios response formatı: response.data içinde gerçek data var
+      const responseData = response?.data || response;
+      const messagesData = responseData?.data || responseData;
+      
+      if (responseData && (responseData.success === true || response?.status >= 200 && response?.status < 300) && messagesData) {
+        console.log('[LiveChat] Mesajlar bulundu:', messagesData.length, 'mesaj');
+        
         // Backend'den gelen mesajları formatla
-        let filteredMessages = response.data;
+        let filteredMessages = Array.isArray(messagesData) ? messagesData : [];
         
         // Eğer belirli bir tarih seçildiyse, o tarihteki mesajları filtrele
         if (conversationDate) {
           const targetDate = new Date(conversationDate).toISOString().split('T')[0];
-          filteredMessages = response.data.filter(msg => {
+          filteredMessages = filteredMessages.filter(msg => {
             if (!msg.timestamp) return false;
             const msgDate = new Date(msg.timestamp).toISOString().split('T')[0];
             return msgDate === targetDate;
           });
         }
+        
+        console.log('[LiveChat] Filtrelenmiş mesajlar:', filteredMessages.length);
         
         // Mesajları formatla ve duplicate kontrolü yap
         const messageMap = new Map();
@@ -98,7 +117,7 @@ export default function LiveChatScreen({ navigation, route }) {
           const messageKey = `${msg.id || index}-${msg.timestamp || Date.now()}`;
           
           if (!messageMap.has(messageKey)) {
-            messageMap.set(messageKey, {
+            const formattedMsg = {
               id: msg.id || Date.now() + index,
               text: msg.message || '',
               isUser: isUser,
@@ -107,6 +126,14 @@ export default function LiveChatScreen({ navigation, route }) {
                 ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
                 : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
               timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
+            };
+            messageMap.set(messageKey, formattedMsg);
+            console.log('[LiveChat] Mesaj eklendi:', {
+              id: formattedMsg.id,
+              text: formattedMsg.text.substring(0, 30),
+              isUser,
+              isAdmin,
+              intent: msg.intent
             });
           }
         });
@@ -115,17 +142,31 @@ export default function LiveChatScreen({ navigation, route }) {
         const formattedMessages = Array.from(messageMap.values());
         formattedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
+        console.log('[LiveChat] Formatlanmış mesajlar:', formattedMessages.length, 'mesaj');
+        console.log('[LiveChat] Mesaj örnekleri:', formattedMessages.slice(0, 3));
+
         setMessages(formattedMessages);
         
         // Scroll to bottom
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
+      } else {
+        console.warn('[LiveChat] Mesajlar bulunamadı veya format hatalı:', {
+          responseData,
+          messagesData,
+          response
+        });
       }
     } catch (error) {
       console.error('[LiveChat] Mesaj geçmişi yükleme hatası:', error);
       if (__DEV__) {
-        console.error('[LiveChat] Hata detayları:', error);
+        console.error('[LiveChat] Hata detayları:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          stack: error?.stack
+        });
       }
       // İlk yüklemede hata varsa hoş geldin mesajı göster
       if (messages.length === 0) {
@@ -143,30 +184,68 @@ export default function LiveChatScreen({ navigation, route }) {
   };
 
   const sendInitialMessage = async (messageText) => {
-    if (!messageText.trim() || !userId || sending) return;
+    if (!messageText.trim() || !userId || sending) {
+      console.warn('[LiveChat] sendInitialMessage: Validasyon hatası', { messageText: messageText?.trim(), userId, sending });
+      return;
+    }
 
+    console.log('[LiveChat] İlk mesaj gönderiliyor:', { userId, messageText });
     setSending(true);
 
     try {
       const response = await liveSupportAPI.sendMessage(userId, messageText);
+      console.log('[LiveChat] İlk mesaj API yanıtı:', {
+        status: response?.status,
+        data: response?.data,
+        success: response?.data?.success
+      });
       
-      if (response && response.success) {
+      const responseData = response?.data || response;
+      const isSuccess = responseData?.success === true || (response?.status >= 200 && response?.status < 300);
+      
+      if (isSuccess) {
         // Mesaj başarıyla gönderildi, geçmişi yenile
         setTimeout(() => {
           loadMessages();
         }, 500);
+      } else {
+        console.error('[LiveChat] İlk mesaj başarısız:', response);
       }
     } catch (error) {
-      console.error('İlk mesaj gönderme hatası:', error);
+      console.error('[LiveChat] İlk mesaj gönderme hatası:', error);
+      if (__DEV__) {
+        console.error('[LiveChat] İlk mesaj hata detayları:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status
+        });
+      }
     } finally {
       setSending(false);
     }
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !userId || sending) return;
+    // Validasyon kontrolleri
+    if (!message.trim()) {
+      console.warn('[LiveChat] Mesaj boş');
+      return;
+    }
+    
+    if (!userId) {
+      console.error('[LiveChat] userId bulunamadı');
+      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen uygulamayı yeniden başlatın.');
+      return;
+    }
+    
+    if (sending) {
+      console.warn('[LiveChat] Mesaj zaten gönderiliyor');
+      return;
+    }
 
     const messageText = message.trim();
+    console.log('[LiveChat] Mesaj gönderiliyor:', { userId, messageLength: messageText.length });
+    
     setMessage('');
     setSending(true);
 
@@ -188,27 +267,61 @@ export default function LiveChatScreen({ navigation, route }) {
     }, 100);
 
     try {
+      console.log('[LiveChat] API çağrısı yapılıyor...', { userId, messageText });
       const response = await liveSupportAPI.sendMessage(userId, messageText);
+      console.log('[LiveChat] API yanıtı:', {
+        status: response?.status,
+        statusText: response?.statusText,
+        data: response?.data,
+        success: response?.data?.success
+      });
       
-      if (response && response.success) {
+      // Axios response objesi döner, data içinde success var
+      const responseData = response?.data || response;
+      const isSuccess = responseData?.success === true || (response?.status >= 200 && response?.status < 300);
+      
+      if (isSuccess) {
+        console.log('[LiveChat] Mesaj başarıyla gönderildi');
         // Mesaj başarıyla gönderildi, hemen geçmişi yenile
         // Optimistic update zaten yapıldı, şimdi backend'den gerçek mesajı al
         setTimeout(() => {
           loadMessages();
         }, 300); // 300ms sonra yenile (mesajın kaydedilmesi için yeterli süre)
       } else {
+        console.error('[LiveChat] API başarısız yanıt:', {
+          status: response?.status,
+          data: responseData,
+          fullResponse: response
+        });
         // Hata durumunda mesajı geri al
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-        Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+        const errorMsg = responseData?.message || response?.statusText || 'Mesaj gönderilemedi. Lütfen tekrar deneyin.';
+        Alert.alert('Hata', errorMsg);
       }
     } catch (error) {
       console.error('[LiveChat] Mesaj gönderme hatası:', error);
       if (__DEV__) {
-        console.error('[LiveChat] Hata detayları:', error);
+        console.error('[LiveChat] Hata detayları:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          stack: error?.stack
+        });
       }
       // Hata durumunda mesajı geri al
       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-      Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen internet bağlantınızı kontrol edin.');
+      
+      // Daha açıklayıcı hata mesajı
+      let errorMessage = 'Mesaj gönderilemedi.';
+      if (error?.response?.status === 404) {
+        errorMessage = 'Kullanıcı bulunamadı. Lütfen uygulamayı yeniden başlatın.';
+      } else if (error?.response?.status === 400) {
+        errorMessage = 'Geçersiz mesaj. Lütfen tekrar deneyin.';
+      } else if (error?.message?.includes('Network')) {
+        errorMessage = 'İnternet bağlantınızı kontrol edin.';
+      }
+      
+      Alert.alert('Hata', errorMessage);
     } finally {
       setSending(false);
     }
@@ -272,49 +385,66 @@ export default function LiveChatScreen({ navigation, route }) {
             )}
 
             {/* Messages */}
-            {messages.map((msg) => (
-              <View
-                key={msg.id}
-                style={[
-                  styles.messageRow,
-                  msg.isUser ? styles.messageRowUser : styles.messageRowAgent,
-                ]}
-              >
-                {!msg.isUser && (
-                  <View style={styles.messageAvatar}>
-                    <Ionicons 
-                      name={msg.isAdmin ? "person" : "headset"} 
-                      size={16} 
-                      color={msg.isAdmin ? COLORS.primary : COLORS.success} 
-                    />
+            {messages.length > 0 ? (
+              messages.map((msg, index) => {
+                if (!msg || !msg.text) {
+                  console.warn('[LiveChat] Geçersiz mesaj:', msg);
+                  return null;
+                }
+                
+                return (
+                  <View
+                    key={msg.id || `msg-${index}`}
+                    style={[
+                      styles.messageRow,
+                      msg.isUser ? styles.messageRowUser : styles.messageRowAgent,
+                    ]}
+                  >
+                    {!msg.isUser && (
+                      <View style={styles.messageAvatar}>
+                        <Ionicons 
+                          name={msg.isAdmin ? "person" : "headset"} 
+                          size={16} 
+                          color={msg.isAdmin ? COLORS.primary : COLORS.success} 
+                        />
+                      </View>
+                    )}
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        msg.isUser ? styles.messageBubbleUser : styles.messageBubbleAgent,
+                        msg.isAdmin && styles.messageBubbleAdmin,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.messageText,
+                          msg.isUser ? styles.messageTextUser : styles.messageTextAgent,
+                        ]}
+                      >
+                        {msg.text}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.messageTime,
+                          msg.isUser ? styles.messageTimeUser : styles.messageTimeAgent,
+                        ]}
+                      >
+                        {msg.time || '00:00'}
+                      </Text>
+                    </View>
                   </View>
-                )}
-                <View
-                  style={[
-                    styles.messageBubble,
-                    msg.isUser ? styles.messageBubbleUser : styles.messageBubbleAgent,
-                    msg.isAdmin && styles.messageBubbleAdmin,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      msg.isUser ? styles.messageTextUser : styles.messageTextAgent,
-                    ]}
-                  >
-                    {msg.text}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.messageTime,
-                      msg.isUser ? styles.messageTimeUser : styles.messageTimeAgent,
-                    ]}
-                  >
-                    {msg.time}
-                  </Text>
+                );
+              })
+            ) : (
+              !loading && (
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray400} />
+                  <Text style={styles.emptyStateText}>Henüz mesaj yok</Text>
+                  <Text style={styles.emptyStateSubtext}>İlk mesajınızı göndererek başlayın</Text>
                 </View>
-              </View>
-            ))}
+              )
+            )}
 
             {/* Typing Indicator - Admin yazıyor göstergesi */}
             {sending && (
@@ -467,7 +597,23 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: COLORS.gray400,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 16,
     fontWeight: '600',
+    color: COLORS.textMain,
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: COLORS.gray400,
+    marginTop: 8,
   },
   messageRow: {
     flexDirection: 'row',

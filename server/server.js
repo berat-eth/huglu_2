@@ -1,4 +1,5 @@
 const express = require('express');
+const cron = require('node-cron');
 // ✅ PRODUCTION: Logging helper - Production'da sadece error/warning göster
 const LOG_LEVEL = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'error' : 'info');
 const logger = {
@@ -26762,6 +26763,41 @@ async function startServer() {
       TrendyolAPIService.resetRateLimitCounters();
     } catch (error) {
       logger.warn('⚠️ Trendyol API rate limit sıfırlama hatası:', error.message);
+    }
+
+    // Canlı destek mesajlarını otomatik arşivle (Her gün saat 02:00'de çalışır)
+    try {
+      const { archiveOldLiveSupportMessages } = require('./scripts/archive-live-support-messages');
+      
+      // İlk çalıştırmada hemen kontrol et (opsiyonel - test için)
+      if (process.env.ARCHIVE_ON_STARTUP === 'true') {
+        logger.log('📦 Canlı destek mesajları arşivleniyor (startup)...');
+        archiveOldLiveSupportMessages()
+          .then(result => {
+            logger.log(`✅ Arşivleme tamamlandı: ${result.archived} mesaj arşivlendi, ${result.deleted} mesaj silindi`);
+          })
+          .catch(error => {
+            logger.error('❌ Arşivleme hatası:', error);
+          });
+      }
+
+      // Her gün saat 02:00'de otomatik arşivle
+      cron.schedule('0 2 * * *', async () => {
+        logger.log('📦 Canlı destek mesajları otomatik arşivleniyor...');
+        try {
+          const result = await archiveOldLiveSupportMessages();
+          logger.log(`✅ Otomatik arşivleme tamamlandı: ${result.archived} mesaj arşivlendi, ${result.deleted} mesaj silindi`);
+        } catch (error) {
+          logger.error('❌ Otomatik arşivleme hatası:', error);
+        }
+      }, {
+        scheduled: true,
+        timezone: 'Europe/Istanbul'
+      });
+
+      logger.log('📦 Canlı destek mesajları otomatik arşivleme aktif (Her gün 02:00)\n');
+    } catch (error) {
+      logger.warn('⚠️ Canlı destek mesajları arşivleme başlatılamadı:', error.message);
     }
   });
 

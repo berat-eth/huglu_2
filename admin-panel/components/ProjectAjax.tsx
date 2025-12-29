@@ -214,9 +214,50 @@ export default function ProjectAjax() {
             await checkGeminiStatus()
             
             alert('✅ API key başarıyla kaydedildi!')
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ API key kaydedilemedi:', error)
-            alert('❌ API key kaydedilemedi. Lütfen tekrar deneyin.')
+            
+            // QuotaExceededError için özel mesaj
+            if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+                const shouldClear = confirm(
+                    '⚠️ Tarayıcı depolama alanı dolu. Eski verileri temizlemek ister misiniz?\n\n' +
+                    'Bu işlem sadece Gemini ile ilgili eski verileri temizleyecektir.'
+                )
+                
+                if (shouldClear) {
+                    try {
+                        // localStorage'daki gemini ile ilgili eski verileri temizle
+                        const keysToRemove: string[] = []
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i)
+                            if (key && (key.startsWith('gemini_') || key.includes('chat') || key.includes('message'))) {
+                                keysToRemove.push(key)
+                            }
+                        }
+                        
+                        keysToRemove.forEach(key => {
+                            try {
+                                localStorage.removeItem(key)
+                            } catch (e) {
+                                // Devam et
+                            }
+                        })
+                        
+                        // Tekrar kaydetmeyi dene
+                        await GeminiService.saveConfig({ apiKey: aiApiKeyLocal.trim() })
+                        const updatedConfig = await GeminiService.getConfig()
+                        setGeminiConfig(updatedConfig)
+                        await checkGeminiStatus()
+                        
+                        alert('✅ API key başarıyla kaydedildi! (Eski veriler temizlendi)')
+                    } catch (retryError) {
+                        console.error('❌ Temizleme sonrası kaydedilemedi:', retryError)
+                        alert('❌ API key kaydedilemedi. Lütfen tarayıcı ayarlarından depolama alanını temizleyin.')
+                    }
+                }
+            } else {
+                alert(`❌ API key kaydedilemedi: ${error?.message || 'Bilinmeyen hata'}`)
+            }
         } finally {
             setAiSaving(false)
         }

@@ -766,13 +766,21 @@ export default function ProductDetailScreen({ navigation, route }) {
       };
     } else if (lowerMessage.includes('yardım') || lowerMessage.includes('help')) {
       return {
-        text: '🤝 Size nasıl yardımcı olabilirim?\n\n• Hızlı sipariş\n• Beden bilgisi\n• Fiyat ve kampanyalar\n• Kargo ve teslimat\n• İade ve değişim\n• Stok durumu\n• Ödeme seçenekleri\n• Mağaza saatleri',
-        type: 'text'
+        text: '🤝 Size nasıl yardımcı olabilirim?\n\n• Hızlı sipariş\n• Beden bilgisi\n• Fiyat ve kampanyalar\n• Kargo ve teslimat\n• İade ve değişim\n• Stok durumu\n• Ödeme seçenekleri\n• Mağaza saatleri\n\n💬 Daha fazla yardım için müşteri hizmetlerimize bağlanabilirsiniz!',
+        type: 'text',
+        showSupportButton: true
+      };
+    } else if (lowerMessage.includes('müşteri hizmetleri') || lowerMessage.includes('canlı destek') || lowerMessage.includes('destek') || lowerMessage.includes('support') || lowerMessage.includes('temsilci')) {
+      return {
+        text: '💬 Müşteri hizmetlerimize bağlanmak ister misiniz?\n\nSize daha detaylı yardımcı olabiliriz!',
+        type: 'text',
+        showSupportButton: true
       };
     } else {
       return {
-        text: 'Size nasıl yardımcı olabilirim? 😊\n\n"Sipariş ver" diyerek hızlı sipariş verebilir veya beden, fiyat, kargo, iade hakkında sorabilirsiniz.',
-        type: 'text'
+        text: 'Size nasıl yardımcı olabilirim? 😊\n\n"Sipariş ver" diyerek hızlı sipariş verebilir veya beden, fiyat, kargo, iade hakkında sorabilirsiniz.\n\n💬 Daha fazla yardım için müşteri hizmetlerimize bağlanabilirsiniz!',
+        type: 'text',
+        showSupportButton: true
       };
     }
   };
@@ -1944,6 +1952,22 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.quickOrderButtonText}>Sepete Ekle ve Devam Et</Text>
                     </TouchableOpacity>
                   )}
+                  
+                  {/* Müşteri Hizmetlerine Bağlan Button */}
+                  {message.showSupportButton && (
+                    <TouchableOpacity 
+                      style={styles.supportButton}
+                      onPress={() => {
+                        setShowChatbot(false);
+                        navigation.navigate('LiveChat', {
+                          initialMessage: 'Merhaba, yardıma ihtiyacım var.'
+                        });
+                      }}
+                    >
+                      <Ionicons name="headset" size={18} color={COLORS.white} />
+                      <Text style={styles.supportButtonText}>Müşteri Hizmetlerine Bağlan</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 {message.type === 'user' && (
                   <Text style={styles.chatbotMessageTime}>
@@ -2035,6 +2059,18 @@ export default function ProductDetailScreen({ navigation, route }) {
               onPress={() => handleQuickAction('Fiyat')}
             >
               <Text style={styles.chatbotQuickActionText}>Fiyat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.chatbotQuickAction, styles.chatbotQuickActionSupport]}
+              onPress={() => {
+                setShowChatbot(false);
+                navigation.navigate('LiveChat', {
+                  initialMessage: 'Merhaba, yardıma ihtiyacım var.'
+                });
+              }}
+            >
+              <Ionicons name="headset" size={14} color={COLORS.success} />
+              <Text style={[styles.chatbotQuickActionText, styles.chatbotQuickActionTextSupport]}>Müşteri Hizmetleri</Text>
             </TouchableOpacity>
           </View>
 
@@ -4024,6 +4060,31 @@ const styles = StyleSheet.create({
   },
   chatbotQuickActionTextPrimary: {
     color: COLORS.primary,
+    fontWeight: '600',
+  },
+  chatbotQuickActionSupport: {
+    backgroundColor: `${COLORS.success}15`,
+    borderColor: COLORS.success,
+    borderWidth: 1,
+  },
+  chatbotQuickActionTextSupport: {
+    color: COLORS.success,
+    fontWeight: '600',
+  },
+  supportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.success,
+    borderRadius: 12,
+  },
+  supportButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
     fontWeight: '600',
   },
   quickOrderButton: {

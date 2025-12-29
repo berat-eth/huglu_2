@@ -61,6 +61,14 @@ export default function Chatbot() {
       const response = await api.get<any>('/admin/chatbot/conversations')
       const data = response as any
       
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Chatbot] API Response:', {
+          success: data?.success,
+          dataLength: Array.isArray(data?.data) ? data.data.length : 0,
+          rawData: data
+        })
+      }
+      
       if (!data || !data.success) {
         console.warn('Chatbot conversations response başarısız:', data)
         setConversations([])
@@ -104,18 +112,55 @@ export default function Chatbot() {
           const conv = conversationMap.get(userId)!
           if (msg.message && msg.timestamp) {
             const timestamp = new Date(msg.timestamp).getTime()
-            conv.messages.push({
-              id: msg.id || timestamp,
-              sender: isAdminMessage ? 'agent' as const : 'customer' as const,
-              text: msg.voiceUrl ? '🎤 Sesli mesaj' : msg.message,
-              time: new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-              read: true,
-              timestamp: timestamp,
-              voiceUrl: msg.voiceUrl || undefined
+            const messageText = msg.message || ''
+            
+            // Daha güçlü duplicate kontrolü: ID, text+timestamp kombinasyonu ve text+timestamp yakınlığı
+            const messageExists = conv.messages.some(m => {
+              // Aynı ID varsa duplicate
+              if (m.id === msg.id) return true
+              
+              // Aynı text ve timestamp'e çok yakınsa (1 saniye içinde) duplicate
+              if (m.text === messageText && Math.abs((m.timestamp || 0) - timestamp) < 1000) return true
+              
+              // Aynı text ve aynı sender ve timestamp'e çok yakınsa duplicate
+              const sameSender = m.sender === (isAdminMessage ? 'agent' : 'customer')
+              if (sameSender && m.text === messageText && Math.abs((m.timestamp || 0) - timestamp) < 2000) return true
+              
+              return false
             })
+            
+            if (!messageExists) {
+              conv.messages.push({
+                id: msg.id || timestamp,
+                sender: isAdminMessage ? 'agent' as const : 'customer' as const,
+                text: msg.voiceUrl ? '🎤 Sesli mesaj' : messageText,
+                time: new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+                read: true,
+                timestamp: timestamp,
+                voiceUrl: msg.voiceUrl || undefined
+              })
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[Chatbot] Mesaj eklendi:', {
+                  id: msg.id,
+                  sender: isAdminMessage ? 'agent' : 'customer',
+                  text: messageText.substring(0, 30),
+                  intent: msg.intent,
+                  timestamp
+                })
+              }
+            } else {
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[Chatbot] Duplicate mesaj atlandı:', {
+                  id: msg.id,
+                  text: messageText.substring(0, 30)
+                })
+              }
+            }
+            
             // En son mesajı güncelle
-            if (new Date(msg.timestamp) > new Date(conv.time || 0)) {
-              conv.lastMessage = msg.message
+            if (timestamp > (conv.messages[conv.messages.length - 1]?.timestamp || 0)) {
+              conv.lastMessage = messageText
               conv.time = new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
               // Canlı destek mesajları için status'u online yap
               if (isLiveSupport) {
@@ -127,12 +172,60 @@ export default function Chatbot() {
         
         // Mesajları timestamp'e göre sırala (her konuşma için)
         conversationMap.forEach((conv) => {
+          // Daha güçlü duplicate temizleme: ID, text+timestamp kombinasyonu
+          const uniqueMessages = new Map<string, Message>()
+          conv.messages.forEach(msg => {
+            // Önce ID ile kontrol et
+            const idKey = `id-${msg.id}`
+            if (uniqueMessages.has(idKey)) {
+              // Aynı ID varsa, daha yeni timestamp'e sahip olanı tut
+              const existing = uniqueMessages.get(idKey)!
+              if ((msg.timestamp || msg.id) > (existing.timestamp || existing.id)) {
+                uniqueMessages.set(idKey, msg)
+              }
+            } else {
+              uniqueMessages.set(idKey, msg)
+            }
+            
+            // Text+timestamp kombinasyonu ile de kontrol et (optimistic update için)
+            const textTimestampKey = `text-${msg.text}-${msg.timestamp || msg.id}-${msg.sender}`
+            if (!uniqueMessages.has(textTimestampKey)) {
+              uniqueMessages.set(textTimestampKey, msg)
+            } else {
+              // Aynı text+timestamp varsa, gerçek ID'ye sahip olanı tut (optimistic update'i sil)
+              const existing = uniqueMessages.get(textTimestampKey)!
+              // Eğer biri çok büyük ID'ye sahipse (Date.now() gibi), diğerini tut
+              if (msg.id < 1000000000000 && existing.id > 1000000000000) {
+                uniqueMessages.set(textTimestampKey, msg)
+              }
+            }
+          })
+          
+          // Map'ten unique mesajları al (ID key'lerini kullan)
+          const finalMessages: Message[] = []
+          const seenTextTimestamp = new Set<string>()
+          
+          uniqueMessages.forEach((msg, key) => {
+            if (key.startsWith('id-')) {
+              const textTimestampKey = `${msg.text}-${msg.timestamp || msg.id}-${msg.sender}`
+              if (!seenTextTimestamp.has(textTimestampKey)) {
+                finalMessages.push(msg)
+                seenTextTimestamp.add(textTimestampKey)
+              }
+            }
+          })
+          
+          conv.messages = finalMessages
           conv.messages.sort((a, b) => {
             // Timestamp varsa onu kullan, yoksa ID'yi kullan
             const aTime = a.timestamp || a.id
             const bTime = b.timestamp || b.id
             return aTime - bTime
           })
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Chatbot] Konuşma ${conv.id} mesaj sayısı:`, conv.messages.length)
+          }
         })
         
         const newConversations = Array.from(conversationMap.values())
@@ -143,13 +236,32 @@ export default function Chatbot() {
             const existingConv = prev.find(c => c.id === newConv.id)
             if (existingConv) {
               // Mevcut mesajları koru, sadece yeni mesajları ekle
-              // Hem ID hem de timestamp kontrolü yap (daha güvenilir)
-              const existingMessageKeys = new Set(
-                existingConv.messages.map(m => `${m.id}-${m.timestamp || m.id}`)
-              )
+              // Daha güçlü duplicate kontrolü: ID, text+timestamp kombinasyonu
+              const existingMessageKeys = new Set<string>()
+              existingConv.messages.forEach(m => {
+                existingMessageKeys.add(`id-${m.id}`)
+                existingMessageKeys.add(`text-${m.text}-${m.timestamp || m.id}-${m.sender}`)
+              })
+              
               const newMessages = newConv.messages.filter(m => {
-                const messageKey = `${m.id}-${m.timestamp || m.id}`
-                return !existingMessageKeys.has(messageKey)
+                const idKey = `id-${m.id}`
+                const textTimestampKey = `text-${m.text}-${m.timestamp || m.id}-${m.sender}`
+                
+                // Eğer ID veya text+timestamp kombinasyonu varsa duplicate
+                if (existingMessageKeys.has(idKey) || existingMessageKeys.has(textTimestampKey)) {
+                  return false
+                }
+                
+                // Aynı text ve timestamp'e çok yakın mesaj varsa duplicate
+                const hasSimilarMessage = existingConv.messages.some(existing => {
+                  if (existing.text === m.text && existing.sender === m.sender) {
+                    const timeDiff = Math.abs((existing.timestamp || existing.id) - (m.timestamp || m.id))
+                    return timeDiff < 2000 // 2 saniye içinde
+                  }
+                  return false
+                })
+                
+                return !hasSimilarMessage
               })
               
               // Yeni mesaj kontrolü - bildirim sesi çal ve Gemini ile otomatik yanıt
@@ -173,7 +285,28 @@ export default function Chatbot() {
               }
               
               // Yeni mesajları ekle ve sırala
-              const allMessages = [...existingConv.messages, ...newMessages]
+              // Önce duplicate'leri temizle
+              const messageMap = new Map<number, Message>()
+              
+              // Mevcut mesajları ekle
+              existingConv.messages.forEach(m => {
+                messageMap.set(m.id, m)
+              })
+              
+              // Yeni mesajları ekle (duplicate kontrolü ile)
+              newMessages.forEach(m => {
+                // Eğer aynı ID varsa, daha yeni timestamp'e sahip olanı tut
+                if (messageMap.has(m.id)) {
+                  const existing = messageMap.get(m.id)!
+                  if ((m.timestamp || m.id) > (existing.timestamp || existing.id)) {
+                    messageMap.set(m.id, m)
+                  }
+                } else {
+                  messageMap.set(m.id, m)
+                }
+              })
+              
+              const allMessages = Array.from(messageMap.values())
               allMessages.sort((a, b) => {
                 const aTime = a.timestamp || a.id
                 const bTime = b.timestamp || b.id
@@ -214,11 +347,11 @@ export default function Chatbot() {
     }
   }
 
-  // Otomatik yenileme - Her 5 saniyede bir backend'den yeni mesajları kontrol et (mobil uygulama ile senkronize)
+  // Otomatik yenileme - Her 3 saniyede bir backend'den yeni mesajları kontrol et (daha hızlı güncelleme)
   useEffect(() => {
     const interval = setInterval(() => {
       loadConversations()
-    }, 5000) // 5 saniye (mobil uygulama ile senkronize)
+    }, 3000) // 3 saniye (daha hızlı güncelleme)
 
     return () => clearInterval(interval)
   }, [soundEnabled, selectedChat])
@@ -282,19 +415,28 @@ export default function Chatbot() {
       timestamp: currentTimestamp
     }
 
-    // UI'da hemen göster
+    // UI'da hemen göster (optimistic update)
+    // Not: Bu mesaj geçici bir ID ile ekleniyor, backend'den gerçek mesaj geldiğinde değiştirilecek
     setConversations(prev => {
       const newConvs = [...prev]
       const convIndex = newConvs.findIndex(c => c.id === selectedChat)
       if (convIndex !== -1 && newConvs[convIndex] && newConvs[convIndex].messages) {
-        // Mesajı sona ekle (timestamp sırasına göre)
-        newConvs[convIndex].messages.push(newMessage)
-        // Timestamp'e göre sırala
-        newConvs[convIndex].messages.sort((a, b) => {
-          const aTime = a.timestamp || a.id
-          const bTime = b.timestamp || b.id
-          return aTime - bTime
-        })
+        // Aynı text ve timestamp'e sahip mesaj varsa ekleme (duplicate önleme)
+        const hasDuplicate = newConvs[convIndex].messages.some(m => 
+          m.text === messageToSend && 
+          m.sender === 'agent' && 
+          Math.abs((m.timestamp || m.id) - currentTimestamp) < 1000
+        )
+        
+        if (!hasDuplicate) {
+          newConvs[convIndex].messages.push(newMessage)
+          // Timestamp'e göre sırala
+          newConvs[convIndex].messages.sort((a, b) => {
+            const aTime = a.timestamp || a.id
+            const bTime = b.timestamp || b.id
+            return aTime - bTime
+          })
+        }
         newConvs[convIndex].lastMessage = messageToSend
         newConvs[convIndex].time = 'Şimdi'
         newConvs[convIndex].unread = 0
@@ -332,9 +474,10 @@ export default function Chatbot() {
       } else {
         // Başarılı gönderim sonrası hemen konuşmaları yenile
         // Optimistic update zaten yapıldı, şimdi backend'den gerçek mesajı al
+        // Optimistic update'teki temp mesajı backend'den gelen gerçek mesajla değiştir
         setTimeout(() => {
           loadConversations()
-        }, 500) // 500ms sonra yenile (mesajın kaydedilmesi için yeterli süre)
+        }, 300) // 300ms sonra yenile (mesajın kaydedilmesi için yeterli süre)
       }
     } catch (error) {
       console.error('[Chatbot] Mesaj gönderme hatası:', error)
@@ -804,44 +947,66 @@ TONE: Dost canlısı, yardımsever, profesyonel ama samimi`
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50 dark:bg-slate-900">
                 {selectedConversation.messages && selectedConversation.messages.length > 0 ? (
-                  selectedConversation.messages.map((message, index) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`flex ${message.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[70%] ${message.sender === 'agent' ? 'order-2' : 'order-1'}`}>
-                      <div className={`rounded-2xl px-4 py-3 ${message.sender === 'agent'
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
-                        }`}>
-                        <p className="text-sm">{message.text}</p>
-                        {message.voiceUrl && (
-                          <div className="mt-2">
-                            <audio controls className="w-full max-w-xs">
-                              <source src={message.voiceUrl} type="audio/m4a" />
-                              <source src={message.voiceUrl} type="audio/mpeg" />
-                              <source src={message.voiceUrl} type="audio/wav" />
-                              Tarayıcınız ses oynatmayı desteklemiyor.
-                            </audio>
+                  selectedConversation.messages.map((message, index) => {
+                    if (!message || !message.text) {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.warn('[Chatbot] Geçersiz mesaj:', message)
+                      }
+                      return null
+                    }
+                    
+                    return (
+                      <motion.div
+                        key={message.id || `msg-${index}-${message.timestamp || Date.now()}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`flex ${message.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[70%] ${message.sender === 'agent' ? 'order-2' : 'order-1'}`}>
+                          {/* Avatar - sadece customer mesajları için */}
+                          {message.sender === 'customer' && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+                                {selectedConversation.avatar}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className={`rounded-2xl px-4 py-3 ${message.sender === 'agent'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                            }`}>
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                            {message.voiceUrl && (
+                              <div className="mt-2">
+                                <audio controls className="w-full max-w-xs">
+                                  <source src={message.voiceUrl} type="audio/m4a" />
+                                  <source src={message.voiceUrl} type="audio/mpeg" />
+                                  <source src={message.voiceUrl} type="audio/wav" />
+                                  Tarayıcınız ses oynatmayı desteklemiyor.
+                                </audio>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className={`flex items-center space-x-1 mt-1 text-xs text-slate-400 dark:text-slate-500 ${message.sender === 'agent' ? 'justify-end' : 'justify-start'
-                        }`}>
-                        <span>{message.time}</span>
-                        {message.sender === 'agent' && (
-                          <CheckCheck className={`w-4 h-4 ${message.read ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                  ))
+                          <div className={`flex items-center space-x-1 mt-1 text-xs text-slate-400 dark:text-slate-500 ${message.sender === 'agent' ? 'justify-end' : 'justify-start'
+                            }`}>
+                            <span>{message.time || '00:00'}</span>
+                            {message.sender === 'agent' && (
+                              <CheckCheck className={`w-4 h-4 ${message.read ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <p className="text-slate-400 dark:text-slate-500">Henüz mesaj yok</p>
+                    <div className="text-center">
+                      <MessageSquare className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+                      <p className="text-slate-400 dark:text-slate-500">Henüz mesaj yok</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Müşteri mesaj gönderdiğinde burada görünecek</p>
+                    </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />

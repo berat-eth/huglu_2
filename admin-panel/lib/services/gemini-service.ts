@@ -57,10 +57,18 @@ export class GeminiService {
     try {
       if (typeof window === 'undefined') return this.DEFAULT_CONFIG;
       
+      // Önce localStorage'dan dene
       const stored = localStorage.getItem(this.CONFIG_KEY);
       if (stored) {
         return { ...this.DEFAULT_CONFIG, ...JSON.parse(stored) };
       }
+      
+      // localStorage'da yoksa sessionStorage'dan dene
+      const sessionStored = sessionStorage.getItem(this.CONFIG_KEY);
+      if (sessionStored) {
+        return { ...this.DEFAULT_CONFIG, ...JSON.parse(sessionStored) };
+      }
+      
       return this.DEFAULT_CONFIG;
     } catch (error) {
       console.error('❌ Gemini config alınamadı:', error);
@@ -75,11 +83,94 @@ export class GeminiService {
       
       const currentConfig = await this.getConfig();
       const newConfig = { ...currentConfig, ...config };
-      localStorage.setItem(this.CONFIG_KEY, JSON.stringify(newConfig));
-      console.log('✅ Gemini config kaydedildi:', { ...newConfig, apiKey: newConfig.apiKey ? '***' : '' });
+      
+      // Sadece gerekli verileri sakla (localStorage quota için)
+      const configToSave = {
+        enabled: newConfig.enabled,
+        apiKey: newConfig.apiKey,
+        model: newConfig.model,
+        temperature: newConfig.temperature,
+        maxTokens: newConfig.maxTokens
+      };
+      
+      localStorage.setItem(this.CONFIG_KEY, JSON.stringify(configToSave));
+      console.log('✅ Gemini config kaydedildi:', { ...configToSave, apiKey: configToSave.apiKey ? '***' : '' });
+    } catch (error: any) {
+      // QuotaExceededError durumunda localStorage'ı temizle ve tekrar dene
+      if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+        console.warn('⚠️ localStorage quota aşıldı, temizleniyor...');
+        try {
+          // Sadece gemini_config'i temizle, diğer önemli verileri koru
+          this.clearOldData();
+          
+          // Tekrar kaydetmeyi dene
+          const currentConfig = await this.getConfig();
+          const newConfig = { ...currentConfig, ...config };
+          const configToSave = {
+            enabled: newConfig.enabled,
+            apiKey: newConfig.apiKey,
+            model: newConfig.model,
+            temperature: newConfig.temperature,
+            maxTokens: newConfig.maxTokens
+          };
+          
+          localStorage.setItem(this.CONFIG_KEY, JSON.stringify(configToSave));
+          console.log('✅ Gemini config temizleme sonrası kaydedildi');
+        } catch (retryError) {
+          console.error('❌ Gemini config kaydedilemedi (temizleme sonrası):', retryError);
+          // Son çare: sessionStorage kullan
+          try {
+            const fallbackConfig = await this.getConfig();
+            sessionStorage.setItem(this.CONFIG_KEY, JSON.stringify({
+              enabled: config.enabled ?? fallbackConfig.enabled,
+              apiKey: config.apiKey ?? fallbackConfig.apiKey,
+              model: config.model ?? fallbackConfig.model,
+              temperature: config.temperature ?? fallbackConfig.temperature,
+              maxTokens: config.maxTokens ?? fallbackConfig.maxTokens
+            }));
+            console.log('✅ Gemini config sessionStorage\'a kaydedildi');
+          } catch (sessionError) {
+            console.error('❌ sessionStorage\'a da kaydedilemedi:', sessionError);
+            throw new Error('Config kaydedilemedi. Lütfen tarayıcı ayarlarını kontrol edin.');
+          }
+        }
+      } else {
+        console.error('❌ Gemini config kaydedilemedi:', error);
+        throw error;
+      }
+    }
+  }
+
+  // Eski/büyük verileri temizle
+  private static clearOldData(): void {
+    try {
+      if (typeof window === 'undefined') return;
+      
+      // localStorage'daki tüm key'leri kontrol et
+      const keysToCheck = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          keysToCheck.push(key);
+        }
+      }
+      
+      // Büyük verileri temizle (gemini_config hariç)
+      keysToCheck.forEach(key => {
+        if (key !== this.CONFIG_KEY && key.startsWith('gemini_')) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value && value.length > 10000) { // 10KB'dan büyük veriler
+              console.log(`🗑️ Büyük veri temizleniyor: ${key} (${value.length} bytes)`);
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            // Hata durumunda devam et
+          }
+        }
+      });
     } catch (error) {
-      console.error('❌ Gemini config kaydedilemedi:', error);
-      throw error;
+      console.error('❌ Eski veriler temizlenirken hata:', error);
     }
   }
 
