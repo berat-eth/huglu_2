@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { ClipboardList, Package, Calendar, User, CheckCircle, Clock, AlertCircle, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ClipboardList, Package, Calendar, User, CheckCircle, Clock, AlertCircle, X, RefreshCw, Trash2, Edit } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
 
 export default function ProductionOrders() {
-  // Mock veriler kaldırıldı - Backend entegrasyonu için hazır
-  const [orders] = useState<any[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -19,6 +19,24 @@ export default function ProductionOrders() {
     importance_level: 'Orta',
     notes: ''
   })
+
+  const loadOrders = async () => {
+    setLoading(true)
+    try {
+      const result = await api.get<any>('/admin/production-orders')
+      if ((result as any)?.success) {
+        setOrders((result as any).data || [])
+      }
+    } catch (e: any) {
+      console.error('Üretim emirleri yüklenemedi:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadOrders()
+  }, [])
 
   const handleCreate = async () => {
     setError(null)
@@ -42,6 +60,7 @@ export default function ProductionOrders() {
       })
       setShowCreate(false)
       setForm({ productId: '', quantity: '', plannedStart: '', plannedEnd: '', importance_level: 'Orta', notes: '' })
+      await loadOrders()
       if (typeof window !== 'undefined') {
         window.alert('Üretim emri oluşturuldu')
       }
@@ -52,14 +71,37 @@ export default function ProductionOrders() {
     }
   }
 
-  const statusColors = {
-    'Başlamadı': 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200',
-    'Devam Ediyor': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-    'Tamamlandı': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-    'Gecikmiş': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  const handleDelete = async (id: number) => {
+    if (!confirm('Bu üretim emrini silmek istediğinize emin misiniz?')) return
+    try {
+      await api.delete<any>(`/admin/production-orders/${id}`)
+      await loadOrders()
+      if (typeof window !== 'undefined') {
+        window.alert('Üretim emri silindi')
+      }
+    } catch (e: any) {
+      alert('Silme işlemi başarısız: ' + (e?.message || 'Bilinmeyen hata'))
+    }
   }
 
-  // İstatistik kartları kaldırıldı (mock)
+  const statusColors: Record<string, string> = {
+    'planned': 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200',
+    'in_progress': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+    'completed': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+    'delayed': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  }
+
+  const statusLabels: Record<string, string> = {
+    'planned': 'Planlandı',
+    'in_progress': 'Devam Ediyor',
+    'completed': 'Tamamlandı',
+    'delayed': 'Gecikmiş',
+  }
+
+  const formatDate = (date: string | null) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleDateString('tr-TR')
+  }
 
   return (
     <div className="space-y-6">
@@ -68,68 +110,91 @@ export default function ProductionOrders() {
           <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Üretim Emirleri</h2>
           <p className="text-slate-500 dark:text-gray-400 mt-1">Üretim emirlerini takip edin</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-shadow font-medium"
-        >
-          Yeni Emir Oluştur
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={loadOrders}
+            disabled={loading}
+            className="px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:shadow-lg transition-shadow font-medium flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Yenile
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-shadow font-medium"
+          >
+            Yeni Emir Oluştur
+          </button>
+        </div>
       </div>
-
-      {/* İstatistik kartları kaldırıldı */}
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
         <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Aktif Üretim Emirleri</h3>
-        <div className="space-y-4">
-          {orders.map((order, index) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-gradient-to-r from-slate-50 dark:from-slate-700/50 to-white dark:to-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl p-5 hover:shadow-lg transition-all"
-            >
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg font-mono text-sm font-bold">
-                      {order.id}
-                    </span>
-                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">{order.product}</h4>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-gray-400 mb-3">
-                    <span className="flex items-center">
-                      <Package className="w-4 h-4 mr-1" />
-                      {order.quantity} Adet
-                    </span>
-                    <span className="flex items-center">
-                      <User className="w-4 h-4 mr-1" />
-                      {order.assignedTo}
-                    </span>
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      {order.startDate} - {order.dueDate}
-                    </span>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+            <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>Henüz üretim emri bulunmuyor</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {orders.map((order, index) => (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gradient-to-r from-slate-50 dark:from-slate-700/50 to-white dark:to-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl p-5 hover:shadow-lg transition-all"
+              >
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg font-mono text-sm font-bold">
+                        #{order.id}
+                      </span>
+                      <h4 className="text-lg font-bold text-slate-800 dark:text-white">{order.productName || `Ürün #${order.productId}`}</h4>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-gray-400 mb-3 flex-wrap">
+                      <span className="flex items-center">
+                        <Package className="w-4 h-4 mr-1" />
+                        {order.quantity} Adet
+                      </span>
+                      {order.plannedStart && (
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {formatDate(order.plannedStart)} - {formatDate(order.plannedEnd)}
+                        </span>
+                      )}
+                      {order.importance_level && (
+                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs">
+                          {order.importance_level}
+                        </span>
+                      )}
+                    </div>
+                    {order.notes && (
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{order.notes}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 max-w-xs">
-                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${order.completion === 100 ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400'}`}
-                          style={{ width: `${order.completion}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-slate-700 dark:text-gray-300">{order.completion}%</span>
+                    <span className={`px-4 py-2 rounded-lg text-sm font-medium ${statusColors[order.status] || statusColors.planned}`}>
+                      {statusLabels[order.status] || order.status}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(order.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <span className={`px-4 py-2 rounded-lg text-sm font-medium ${statusColors[order.status as keyof typeof statusColors]}`}>
-                  {order.status}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Yeni Emir Modal */}

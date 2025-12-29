@@ -372,42 +372,30 @@ export default function ProductionPlanning() {
     }
 
     try {
-      // API çağrısı yap
-      const response = await fetch('https://api.huglutekstil.com/api/admin/production-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          productId: selectedProduct.id,
-          quantity: totalQty,
-          status: 'planned',
-          importance_level: selectedImportance,
-          notes: `${selectedProduct.name} için üretim talebi - Bedenler: ${Object.entries(sizeQuantities)
-            .filter(([_, qty]) => qty > 0)
-            .map(([size, qty]) => `${size}: ${qty}`)
-            .join(', ')}`
-        })
+      // API client kullanarak istek gönder
+      const result = await api.post<any>('/admin/production-orders', {
+        productId: selectedProduct.id,
+        quantity: totalQty,
+        status: 'planned',
+        importance_level: selectedImportance,
+        notes: `${selectedProduct.name} için üretim talebi - Bedenler: ${Object.entries(sizeQuantities)
+          .filter(([_, qty]) => qty > 0)
+          .map(([size, qty]) => `${size}: ${qty}`)
+          .join(', ')}`
       })
-
-      if (!response.ok) {
-        throw new Error('Üretim talebi oluşturulamadı')
-      }
-
-      const result = await response.json()
       
-      if (result.success) {
+      if ((result as any)?.success) {
         alert(`${selectedProduct.name} için toplam ${totalQty} adet üretim talebi oluşturuldu!`)
-    setShowSizeModal(false)
+        setShowSizeModal(false)
         // Sayfayı yenile veya listeyi güncelle
         typeof window !== 'undefined' && window.location.reload()
       } else {
-        throw new Error(result.message || 'Üretim talebi oluşturulamadı')
+        throw new Error((result as any)?.message || 'Üretim talebi oluşturulamadı')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Üretim talebi oluşturma hatası:', error)
-      alert(`Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
+      const errorMessage = error?.message || (error?.response?.data?.message) || 'Bilinmeyen hata'
+      alert(`Hata: ${errorMessage}`)
     }
   }
 

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Copy, User, Bot, Loader2, TrendingUp, FileText, Code, Lightbulb, Database, Table, Search, Play, Download, Eye, Settings, BarChart3, Activity, Brain, TestTube2, Volume2, VolumeX, Mic, MicOff, Trash2 } from 'lucide-react'
-import { OllamaService, OllamaConfig, OllamaMessage } from '@/lib/services/ollama-service'
+import { Send, Copy, User, Bot, Loader2, TrendingUp, FileText, Code, Lightbulb, Database, Table, Search, Play, Download, Eye, Settings, BarChart3, Activity, Brain, TestTube2, Volume2, VolumeX, Mic, MicOff, Trash2, Upload, X, Plus } from 'lucide-react'
+import { GeminiService, GeminiConfig, GeminiMessage } from '@/lib/services/gemini-service'
 import { productService, orderService } from '@/lib/services'
 import { api } from '@/lib/api'
 
@@ -66,8 +66,8 @@ export default function ProjectAjax() {
     ])
     const [input, setInput] = useState('')
     const [isTyping, setIsTyping] = useState(false)
-    const [aiProvider, setAiProvider] = useState<'ollama'>('ollama')
-    const [aiModel, setAiModel] = useState('gemma3:4b')
+    const [aiProvider, setAiProvider] = useState<'gemini'>('gemini')
+    const [aiModel, setAiModel] = useState('gemini-2.5-flash')
     const [availableModels, setAvailableModels] = useState<string[]>([])
     const [streamingContent, setStreamingContent] = useState('')
     const [isStreaming, setIsStreaming] = useState(false)
@@ -77,6 +77,8 @@ export default function ProjectAjax() {
     const [aiTesting, setAiTesting] = useState(false)
     const [aiTestMessage, setAiTestMessage] = useState<string | null>(null)
     const [aiApiKeyLocal, setAiApiKeyLocal] = useState('')
+    // Dosya yükleme
+    const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
 
     // Database Interface States - Removed
 
@@ -122,17 +124,17 @@ export default function ProjectAjax() {
     const [transcript, setTranscript] = useState('')
     const recognitionRef = useRef<any>(null)
     
-    // Ollama Config
-    const [ollamaConfig, setOllamaConfig] = useState<OllamaConfig>({
+    // Gemini Config
+    const [geminiConfig, setGeminiConfig] = useState<GeminiConfig>({
         enabled: true,
-        apiUrl: 'http://localhost:11434',
-        model: 'gemma3:4b',
+        apiKey: '',
+        model: 'gemini-2.5-flash',
         temperature: 0.7,
-        maxTokens: 2000
+        maxTokens: 8192
     })
     
-    const [ollamaStatus, setOllamaStatus] = useState<'online' | 'offline' | 'checking'>('checking')
-    const [ollamaModels, setOllamaModels] = useState<string[]>([])
+    const [geminiStatus, setGeminiStatus] = useState<'online' | 'offline' | 'checking'>('checking')
+    const [geminiModels, setGeminiModels] = useState<string[]>([])
 
     // System Prompt
     const [systemPrompt, setSystemPrompt] = useState(`Sen Ajax AI'sın. Berat Şimşek geliştirdi. E-ticaret uzmanısın. Kısa yanıtlar ver. Huglu Outdoor firması için çalışıyorsun.`)
@@ -151,14 +153,14 @@ export default function ProjectAjax() {
         scrollToBottom()
     }, [messages])
 
-    // Ollama konfigürasyonunu yükle
+    // Gemini konfigürasyonunu yükle
     useEffect(() => {
-        loadOllamaConfig()
-        checkOllamaStatus()
+        loadGeminiConfig()
+        checkGeminiStatus()
         loadSessions()
-        // Ollama varsayılan olarak kullanılacak
-        setAiProvider('ollama')
-        setAiModel('gemma3:4b')
+        // Gemini varsayılan olarak kullanılacak
+        setAiProvider('gemini')
+        setAiModel('gemini-2.5-flash')
     }, [])
 
     // Session değiştiğinde mesajları yükle
@@ -168,30 +170,55 @@ export default function ProjectAjax() {
         }
     }, [currentSessionId])
 
-    const loadOllamaConfig = async () => {
+    const loadGeminiConfig = async () => {
         try {
-            const config = await OllamaService.getConfig()
-            setOllamaConfig(config)
+            const config = await GeminiService.getConfig()
+            setGeminiConfig(config)
+            setAiApiKeyLocal(config.apiKey || '')
         } catch (error) {
-            console.error('❌ Ollama config yüklenemedi:', error)
+            console.error('❌ Gemini config yüklenemedi:', error)
         }
     }
 
-    const checkOllamaStatus = async () => {
-        setOllamaStatus('checking')
+    const checkGeminiStatus = async () => {
+        setGeminiStatus('checking')
         try {
-            const health = await OllamaService.checkHealth()
-            setOllamaStatus(health.status)
+            const health = await GeminiService.checkHealth()
+            setGeminiStatus(health.status)
             if (health.models && health.models.length > 0) {
-                setOllamaModels(health.models)
+                setGeminiModels(health.models)
                 // Eğer mevcut model listede yoksa, ilk modeli seç
                 if (!health.models.includes(aiModel)) {
                     setAiModel(health.models[0])
                 }
             }
         } catch (error) {
-            console.error('❌ Ollama status kontrol edilemedi:', error)
-            setOllamaStatus('offline')
+            console.error('❌ Gemini status kontrol edilemedi:', error)
+            setGeminiStatus('offline')
+        }
+    }
+
+    const handleSaveApiKey = async () => {
+        if (!aiApiKeyLocal.trim()) {
+            alert('Lütfen API key girin')
+            return
+        }
+
+        setAiSaving(true)
+        try {
+            await GeminiService.saveConfig({ apiKey: aiApiKeyLocal.trim() })
+            const updatedConfig = await GeminiService.getConfig()
+            setGeminiConfig(updatedConfig)
+            
+            // Durumu kontrol et
+            await checkGeminiStatus()
+            
+            alert('✅ API key başarıyla kaydedildi!')
+        } catch (error) {
+            console.error('❌ API key kaydedilemedi:', error)
+            alert('❌ API key kaydedilemedi. Lütfen tekrar deneyin.')
+        } finally {
+            setAiSaving(false)
         }
     }
 
@@ -358,8 +385,8 @@ export default function ProjectAjax() {
         }
 
         try {
-            // Sadece Ollama kullanılıyor
-            await sendToOllama(currentInput, aiModel)
+            // Gemini kullanılıyor
+            await sendToGemini(currentInput, aiModel)
         } catch (error) {
             console.error('❌ Mesaj gönderilemedi:', error)
             
@@ -367,10 +394,12 @@ export default function ProjectAjax() {
             let errorContent = `❌ Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`
             
             if (error instanceof Error) {
-                if (error.message.includes('Model bulunamadı')) {
-                    errorContent = `❌ Model Hatası: Ajax V1:1b modeli bulunamadı. Lütfen model adını kontrol edin.`
+                if (error.message.includes('API key')) {
+                    errorContent = `❌ API Key Hatası: Gemini API key'i eksik veya geçersiz. Lütfen ayarlardan API key'inizi girin.`
+                } else if (error.message.includes('Model bulunamadı')) {
+                    errorContent = `❌ Model Hatası: Model bulunamadı. Lütfen model adını kontrol edin.`
                 } else if (error.message.includes('Sunucu hatası')) {
-                    errorContent = `❌ Sunucu Hatası: Ollama sunucusunda bir sorun var. Lütfen daha sonra tekrar deneyin.`
+                    errorContent = `❌ Sunucu Hatası: Gemini sunucusunda bir sorun var. Lütfen daha sonra tekrar deneyin.`
                 } else if (error.message.includes('Geçersiz istek')) {
                     errorContent = `❌ İstek Hatası: Gönderilen veri geçersiz. Lütfen mesajınızı kontrol edin.`
                 }
@@ -387,7 +416,7 @@ export default function ProjectAjax() {
         }
     }
 
-    const sendToOllama = async (userInput: string, modelName: string) => {
+    const sendToGemini = async (userInput: string, modelName: string) => {
         try {
                 // API entegrasyonu tekrar aktif - optimizasyonlarla
                 let enhancedPrompt = systemPrompt
@@ -531,31 +560,262 @@ export default function ProjectAjax() {
                         console.log('Stok verisi alınamadı:', error)
                     }
                 }
-
-            // Mesaj geçmişini hazırla - daha kısa tut
-            const ollamaMessages: OllamaMessage[] = [
-                { role: 'system', content: enhancedPrompt }
-            ]
-
-            // Son 1 mesajı al ve içeriklerini kısalt (ultra agresif optimizasyon)
-            const recentMessages = messages.slice(-1)
-            recentMessages.forEach(msg => {
-                const shortContent = msg.content.length > 50 
-                    ? msg.content.substring(0, 50) + '...' 
-                    : msg.content
                 
-                ollamaMessages.push({
-                    role: msg.role as 'user' | 'assistant',
-                    content: shortContent
-                })
+                // Ticimax sipariş anahtar kelimeleri
+                if (lowerInput.includes('ticimax') || lowerInput.includes('ticimax sipariş')) {
+                    try {
+                        const ticimaxData = await fetch('https://api.huglutekstil.com/api/admin/ticimax-orders?sortOrder=desc', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                            },
+                            credentials: 'include',
+                            signal: AbortSignal.timeout(10000)
+                        })
+                        
+                        if (ticimaxData.ok) {
+                            const data = await ticimaxData.json()
+                            if (data.success && data.data) {
+                                // Veriyi sınırla - sadece ilk 5 kayıt ve önemli alanlar
+                                const limitedData = Array.isArray(data.data) ? data.data.slice(0, 5).map((order: any) => ({
+                                    id: order.id,
+                                    externalOrderId: order.externalOrderId,
+                                    orderNumber: order.orderNumber,
+                                    totalAmount: order.totalAmount,
+                                    status: order.status,
+                                    customerName: order.customerName,
+                                    customerEmail: order.customerEmail,
+                                    city: order.city,
+                                    district: order.district,
+                                    orderDate: order.orderDate,
+                                    createdAt: order.createdAt,
+                                    itemsCount: order.items?.length || 0
+                                })) : data.data
+                                enhancedPrompt += `\n\nTICIMAX SİPARİŞ VERİLERİ:\n${JSON.stringify(limitedData)}`
+                                if (data.total !== undefined) {
+                                    enhancedPrompt += `\nToplam Ticimax Sipariş Sayısı: ${data.total}`
+                                }
+                                if (data.totalAmount !== undefined) {
+                                    enhancedPrompt += `\nToplam Ticimax Tutar: ${data.totalAmount} TL`
+                                }
+                                fetchedApiData = { type: 'ticimax-orders', data: limitedData }
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Ticimax sipariş verisi alınamadı:', error)
+                    }
+                }
+                
+                // Trendyol sipariş anahtar kelimeleri
+                if (lowerInput.includes('trendyol') || lowerInput.includes('trendyol sipariş')) {
+                    try {
+                        const trendyolData = await fetch('https://api.huglutekstil.com/api/admin/marketplace-orders?provider=trendyol', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                            },
+                            credentials: 'include',
+                            signal: AbortSignal.timeout(10000)
+                        })
+                        
+                        if (trendyolData.ok) {
+                            const data = await trendyolData.json()
+                            if (data.success && data.data) {
+                                // Veriyi sınırla - sadece ilk 5 kayıt ve önemli alanlar
+                                const limitedData = Array.isArray(data.data) ? data.data.slice(0, 5).map((order: any) => ({
+                                    id: order.id,
+                                    externalOrderId: order.externalOrderId,
+                                    totalAmount: order.totalAmount,
+                                    status: order.status,
+                                    customerName: order.customerName,
+                                    customerEmail: order.customerEmail,
+                                    city: order.city,
+                                    district: order.district,
+                                    syncedAt: order.syncedAt,
+                                    createdAt: order.createdAt,
+                                    itemsCount: order.items?.length || 0
+                                })) : data.data
+                                enhancedPrompt += `\n\nTRENDYOL SİPARİŞ VERİLERİ:\n${JSON.stringify(limitedData)}`
+                                if (data.total !== undefined) {
+                                    enhancedPrompt += `\nToplam Trendyol Sipariş Sayısı: ${data.total}`
+                                }
+                                if (data.totalAmount !== undefined) {
+                                    enhancedPrompt += `\nToplam Trendyol Tutar: ${data.totalAmount} TL`
+                                }
+                                fetchedApiData = { type: 'trendyol-orders', data: limitedData }
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Trendyol sipariş verisi alınamadı:', error)
+                    }
+                }
+                
+                // Hepsiburada sipariş anahtar kelimeleri
+                if (lowerInput.includes('hepsiburada') || lowerInput.includes('hepsiburada sipariş') || lowerInput.includes('hepsi burada')) {
+                    try {
+                        const hepsiburadaData = await fetch('https://api.huglutekstil.com/api/admin/hepsiburada-orders', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                            },
+                            credentials: 'include',
+                            signal: AbortSignal.timeout(10000)
+                        })
+                        
+                        if (hepsiburadaData.ok) {
+                            const data = await hepsiburadaData.json()
+                            if (data.success && data.data) {
+                                // Veriyi sınırla - sadece ilk 5 kayıt ve önemli alanlar
+                                const limitedData = Array.isArray(data.data) ? data.data.slice(0, 5).map((order: any) => ({
+                                    id: order.id,
+                                    externalOrderId: order.externalOrderId,
+                                    totalAmount: order.totalAmount,
+                                    status: order.status,
+                                    customerName: order.customerName,
+                                    customerEmail: order.customerEmail,
+                                    city: order.city,
+                                    district: order.district,
+                                    syncedAt: order.syncedAt,
+                                    createdAt: order.createdAt,
+                                    itemsCount: order.items?.length || 0
+                                })) : data.data
+                                enhancedPrompt += `\n\nHEPSİBURADA SİPARİŞ VERİLERİ:\n${JSON.stringify(limitedData)}`
+                                if (data.total !== undefined) {
+                                    enhancedPrompt += `\nToplam Hepsiburada Sipariş Sayısı: ${data.total}`
+                                }
+                                if (data.totalAmount !== undefined) {
+                                    enhancedPrompt += `\nToplam Hepsiburada Tutar: ${data.totalAmount} TL`
+                                }
+                                fetchedApiData = { type: 'hepsiburada-orders', data: limitedData }
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Hepsiburada sipariş verisi alınamadı:', error)
+                    }
+                }
+                
+                // Tüm marketplace siparişleri (ticimax + trendyol + hepsiburada)
+                if (lowerInput.includes('marketplace') || lowerInput.includes('pazaryeri') || 
+                    (lowerInput.includes('sipariş') && (lowerInput.includes('tüm') || lowerInput.includes('hepsi')))) {
+                    try {
+                        // Tüm marketplace'leri paralel olarak çek
+                        const [ticimaxRes, trendyolRes, hepsiburadaRes] = await Promise.all([
+                            fetch('https://api.huglutekstil.com/api/admin/ticimax-orders?sortOrder=desc', {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                                },
+                                credentials: 'include',
+                                signal: AbortSignal.timeout(10000)
+                            }),
+                            fetch('https://api.huglutekstil.com/api/admin/marketplace-orders?provider=trendyol', {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                                },
+                                credentials: 'include',
+                                signal: AbortSignal.timeout(10000)
+                            }),
+                            fetch('https://api.huglutekstil.com/api/admin/hepsiburada-orders', {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-API-Key': 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f'
+                                },
+                                credentials: 'include',
+                                signal: AbortSignal.timeout(10000)
+                            })
+                        ])
+                        
+                        const marketplaceData: any = {}
+                        
+                        if (ticimaxRes.ok) {
+                            const ticimaxData = await ticimaxRes.json()
+                            if (ticimaxData.success && ticimaxData.data) {
+                                marketplaceData.ticimax = {
+                                    orders: Array.isArray(ticimaxData.data) ? ticimaxData.data.slice(0, 3).map((o: any) => ({
+                                        id: o.id,
+                                        externalOrderId: o.externalOrderId,
+                                        totalAmount: o.totalAmount,
+                                        status: o.status
+                                    })) : ticimaxData.data,
+                                    total: ticimaxData.total || 0,
+                                    totalAmount: ticimaxData.totalAmount || 0
+                                }
+                            }
+                        }
+                        
+                        if (trendyolRes.ok) {
+                            const trendyolData = await trendyolRes.json()
+                            if (trendyolData.success && trendyolData.data) {
+                                marketplaceData.trendyol = {
+                                    orders: Array.isArray(trendyolData.data) ? trendyolData.data.slice(0, 3).map((o: any) => ({
+                                        id: o.id,
+                                        externalOrderId: o.externalOrderId,
+                                        totalAmount: o.totalAmount,
+                                        status: o.status
+                                    })) : trendyolData.data,
+                                    total: trendyolData.total || 0,
+                                    totalAmount: trendyolData.totalAmount || 0
+                                }
+                            }
+                        }
+                        
+                        if (hepsiburadaRes.ok) {
+                            const hepsiburadaData = await hepsiburadaRes.json()
+                            if (hepsiburadaData.success && hepsiburadaData.data) {
+                                marketplaceData.hepsiburada = {
+                                    orders: Array.isArray(hepsiburadaData.data) ? hepsiburadaData.data.slice(0, 3).map((o: any) => ({
+                                        id: o.id,
+                                        externalOrderId: o.externalOrderId,
+                                        totalAmount: o.totalAmount,
+                                        status: o.status
+                                    })) : hepsiburadaData.data,
+                                    total: hepsiburadaData.total || 0,
+                                    totalAmount: hepsiburadaData.totalAmount || 0
+                                }
+                            }
+                        }
+                        
+                        if (Object.keys(marketplaceData).length > 0) {
+                            enhancedPrompt += `\n\nTÜM MARKETPLACE SİPARİŞ VERİLERİ:\n${JSON.stringify(marketplaceData)}`
+                            fetchedApiData = { type: 'all-marketplace-orders', data: marketplaceData }
+                        }
+                    } catch (error) {
+                        console.log('Marketplace sipariş verileri alınamadı:', error)
+                    }
+                }
+
+            // Mesaj geçmişini hazırla - Gemini formatı
+            const geminiMessages: GeminiMessage[] = []
+
+            // System prompt'u ilk user mesajına ekle (Gemini system mesajı desteklemez)
+            const firstUserMessage = enhancedPrompt + (enhancedPrompt ? '\n\n' : '') + userInput
+
+            // Son 10 mesajı al (Gemini daha fazla mesaj geçmişi destekler)
+            const recentMessages = messages.slice(-10)
+            
+            // Mesaj geçmişini ekle
+            recentMessages.forEach(msg => {
+                if (msg.content && msg.content.trim()) {
+                    geminiMessages.push({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        content: msg.content
+                    })
+                }
             })
 
-            // Kullanıcının yeni mesajını ekle
-            ollamaMessages.push({ role: 'user', content: userInput })
+            // Kullanıcının yeni mesajını ekle (system prompt ile birleştirilmiş)
+            geminiMessages.push({ role: 'user', content: firstUserMessage })
 
-            // Enhanced prompt'u sınırla (maksimum 500 karakter - ultra agresif optimizasyon)
-            if (enhancedPrompt.length > 500) {
-                enhancedPrompt = enhancedPrompt.substring(0, 500) + '...\n[Veri kısaltıldı]'
+            // Enhanced prompt'u sınırla (maksimum 2000 karakter)
+            if (enhancedPrompt.length > 2000) {
+                enhancedPrompt = enhancedPrompt.substring(0, 2000) + '...\n[Veri kısaltıldı]'
             }
 
             // Prompt modal'ı tetikle
@@ -566,21 +826,22 @@ export default function ProjectAjax() {
 
             // Model adını debug et
             console.log('🔍 Gönderilen model adı:', modelName)
-            console.log('🔍 Ollama mesajları:', ollamaMessages)
+            console.log('🔍 Gemini mesajları:', geminiMessages)
             
-            // Ollama'ya gönder
-            const response = await OllamaService.sendMessage(ollamaMessages, {
+            // Gemini'ye gönder (dosyalarla birlikte)
+            const response = await GeminiService.sendMessage(geminiMessages, {
                 model: modelName,
                 temperature: 0.8,
-                maxTokens: 1500
+                maxTokens: 4096,
+                files: uploadedFiles.length > 0 ? uploadedFiles : undefined
             })
 
             // Yanıt yapısını kontrol et ve uygun şekilde parse et
             let content = '';
-            if (response.message && response.message.content) {
-                content = response.message.content;
-            } else if ((response as any).response) {
-                content = (response as any).response;
+            if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+                content = response.candidates[0].content.parts[0].text;
+            } else if ((response as any).text) {
+                content = (response as any).text;
             } else if (typeof response === 'string') {
                 content = response;
             } else {
@@ -633,6 +894,9 @@ export default function ProjectAjax() {
                     saveSessionMessages(currentSessionId, updatedMessages)
                 }
                 
+                // Yüklenen dosyaları temizle
+                setUploadedFiles([])
+                
                 // Otomatik seslendirme (ses motoru ayarı açıksa)
                 if (autoSpeakEnabled && content && content.trim()) {
                     // Kısa bir gecikme sonra seslendir (animasyon tamamlansın)
@@ -642,12 +906,14 @@ export default function ProjectAjax() {
                 }
             }, content.length * 30 + 500)
         } catch (error) {
-            console.error('❌ Ollama yanıtı alınamadı:', error)
+            console.error('❌ Gemini yanıtı alınamadı:', error)
             
             // Hata mesajını kullanıcı dostu hale getir
-            let errorMessage = 'Ollama servisi şu anda kullanılamıyor.';
+            let errorMessage = 'Gemini servisi şu anda kullanılamıyor.';
             if (error instanceof Error) {
-                if (error.message.includes('kullanılamıyor')) {
+                if (error.message.includes('API key')) {
+                    errorMessage = 'Gemini API key eksik veya geçersiz. Lütfen ayarlardan API key\'inizi girin.';
+                } else if (error.message.includes('kullanılamıyor')) {
                     errorMessage = error.message;
                 } else if (error.message.includes('Failed to fetch')) {
                     errorMessage = 'Sunucu bağlantısı kurulamadı. İnternet bağlantınızı kontrol edin.';
@@ -1238,117 +1504,201 @@ export default function ProjectAjax() {
     };
 
     return (
-        <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#1a1c21]">
-            {/* Header - Gemini Stili */}
-            <div className="bg-[#1a1c21] p-3 text-white border-b border-gray-700">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                            <Bot className="w-5 h-5" />
+        <div className="h-[calc(100vh-6rem)] flex bg-white dark:bg-[#212121]">
+            {/* Left Sidebar - ChatGPT Style */}
+            <div className={`w-64 bg-[#171717] dark:bg-[#1a1a1a] border-r border-gray-800 dark:border-gray-700 flex flex-col transition-all duration-300 ${showSessions ? '' : 'hidden lg:flex'}`}>
+                {/* New Chat Button */}
+                <button
+                    onClick={createNewSession}
+                    className="m-3 px-3 py-2.5 border border-gray-700 dark:border-gray-600 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-white text-sm font-medium"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span>Yeni Konuşma</span>
+                </button>
+
+                {/* Sessions List */}
+                <div className="flex-1 overflow-y-auto px-2 space-y-1">
+                    {isLoadingSessions ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-base font-medium">Ajax</h2>
-                                <span className="text-xs text-gray-400">10:40 AM</span>
-                            </div>
-                            <p className="text-xs text-gray-400">Yapay Zeka İş Asistanı</p>
+                    ) : sessions.length === 0 ? (
+                        <div className="text-center py-8 px-4">
+                            <Database className="w-8 h-8 mx-auto mb-2 text-gray-500" />
+                            <p className="text-sm text-gray-400">Henüz konuşma yok</p>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="hidden md:flex items-center gap-2 bg-[#2d2f36] rounded-full px-3 py-1.5">
-                            <span className="text-gray-300 text-xs">Ollama</span>
-                        </div>
-                        <div className="flex">
+                    ) : (
+                        sessions.map((session) => (
                             <button
-                                onClick={() => setShowSessions(!showSessions)}
-                                className={`p-2 rounded-l border-r border-gray-700 transition-all ${showSessions ? 'bg-[#2d2f36]' : 'bg-[#2d2f36]/50'}`}
-                                title="Oturumlar"
-                            >
-                                <Database className="w-4 h-4 text-gray-400" />
-                            </button>
-                            <button
-                                onClick={() => setShowApiAnalysis(!showApiAnalysis)}
-                                className={`p-2 border-r border-gray-700 transition-all ${showApiAnalysis ? 'bg-[#2d2f36]' : 'bg-[#2d2f36]/50'}`}
-                                title="API Analizi"
-                            >
-                                <BarChart3 className="w-4 h-4 text-gray-400" />
-                            </button>
-                            <button
-                                onClick={() => setShowAiSettings(!showAiSettings)}
-                                className={`p-2 border-r border-gray-700 transition-all ${showAiSettings ? 'bg-[#2d2f36]' : 'bg-[#2d2f36]/50'}`}
-                                title="AI Ayarları"
-                            >
-                                <Settings className="w-4 h-4 text-gray-400" />
-                            </button>
-                            {/* Ses Motoru Hızlı Toggle */}
-                            <button
-                                onClick={toggleAutoSpeak}
-                                className={`p-2 transition-all ${
-                                    autoSpeakEnabled 
-                                        ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30' 
-                                        : 'bg-[#2d2f36]/50 text-gray-400 hover:bg-[#2d2f36]'
+                                key={session.id}
+                                onClick={() => setCurrentSessionId(session.id)}
+                                className={`w-full px-3 py-2.5 rounded-lg text-left transition-colors ${
+                                    currentSessionId === session.id
+                                        ? 'bg-gray-800 dark:bg-gray-700 text-white'
+                                        : 'text-gray-300 hover:bg-gray-800/50 dark:hover:bg-gray-700/50'
                                 }`}
-                                title={autoSpeakEnabled ? 'Otomatik seslendirme açık' : 'Otomatik seslendirme kapalı'}
                             >
-                                {autoSpeakEnabled ? (
-                                    <Volume2 className="w-4 h-4" />
-                                ) : (
-                                    <VolumeX className="w-4 h-4" />
-                                )}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm truncate flex-1">{session.name}</span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            deleteSession(session.id)
+                                        }}
+                                        className="ml-2 p-1 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">{session.messageCount} mesaj</p>
                             </button>
-                        </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="p-3 border-t border-gray-800 dark:border-gray-700 space-y-2">
+                    <button
+                        onClick={() => setShowAiSettings(!showAiSettings)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span>Ayarlar</span>
+                    </button>
+                    <button
+                        onClick={() => setShowApiAnalysis(!showApiAnalysis)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        <BarChart3 className="w-4 h-4" />
+                        <span>API Analizi</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content Area - ChatGPT Style */}
+            <div className="flex-1 flex flex-col">
+                {/* Top Bar - Minimal */}
+                <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 bg-white dark:bg-[#212121]">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowSessions(!showSessions)}
+                            className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                        >
+                            <Database className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        </button>
+                        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Ajax AI</h1>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                            geminiStatus === 'online' 
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                        }`}>
+                            {geminiStatus === 'online' ? 'Çevrimiçi' : 'Çevrimdışı'}
+                        </span>
+                        <button
+                            onClick={toggleAutoSpeak}
+                            className={`p-2 rounded-lg transition-colors ${
+                                autoSpeakEnabled 
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
+                            title="Seslendirme"
+                        >
+                            {autoSpeakEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                        </button>
                     </div>
                 </div>
 
-        {/* AI Settings Inline Panel - Sadeleştirilmiş */}
-        {showAiSettings && (
-            <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
+                {/* AI Settings Inline Panel - Sadeleştirilmiş */}
+                {showAiSettings && (
+                    <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
-                            Model {ollamaStatus === 'online' && ollamaModels.length > 0 && `(${ollamaModels.length} model yüklü)`}
+                            API Key
                         </label>
-                        {ollamaStatus === 'online' && ollamaModels.length > 0 ? (
+                        <div className="flex gap-2">
+                            <input 
+                                type="password"
+                                value={aiApiKeyLocal} 
+                                onChange={(e)=> setAiApiKeyLocal(e.target.value)} 
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSaveApiKey()
+                                    }
+                                }}
+                                className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400" 
+                                placeholder="Gemini API Key girin" 
+                            />
+                            <button
+                                onClick={handleSaveApiKey}
+                                disabled={aiSaving || !aiApiKeyLocal.trim()}
+                                className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                {aiSaving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Kaydediliyor...</span>
+                                    </>
+                                ) : (
+                                    <span>Kaydet</span>
+                                )}
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                                API Key almak için tıklayın
+                            </a>
+                        </p>
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
+                            Model {geminiStatus === 'online' && geminiModels.length > 0 && `(${geminiModels.length} model)`}
+                        </label>
+                        {geminiStatus === 'online' && geminiModels.length > 0 ? (
                             <select 
                                 value={aiModel} 
                                 onChange={(e)=> setAiModel(e.target.value)}
                                 className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100"
                             >
-                                {ollamaModels.map((model) => (
+                                {geminiModels.map((model) => (
                                     <option key={model} value={model}>{model}</option>
                                 ))}
                             </select>
                         ) : (
-                            <input 
+                            <select 
                                 value={aiModel} 
-                                onChange={(e)=> setAiModel(e.target.value)} 
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400" 
-                                placeholder="ollama model (örn: gemma3:4b)" 
-                            />
+                                onChange={(e)=> setAiModel(e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100"
+                            >
+                                <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+                                <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                            </select>
                         )}
-                        {ollamaStatus === 'checking' && (
+                        {geminiStatus === 'checking' && (
                             <p className="text-xs text-gray-400 mt-1">Modeller yükleniyor...</p>
                         )}
-                        {ollamaStatus === 'offline' && (
-                            <p className="text-xs text-red-400 mt-1">Ollama servisi çevrimdışı</p>
+                        {geminiStatus === 'offline' && (
+                            <p className="text-xs text-red-400 mt-1">Gemini servisi çevrimdışı - API key gerekli</p>
                         )}
                     </div>
                     <div>
                         <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">Durum</label>
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${
-                                ollamaStatus === 'online' ? 'bg-green-500' : 
-                                ollamaStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 
+                                geminiStatus === 'online' ? 'bg-green-500' : 
+                                geminiStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 
                                 'bg-red-500'
                             }`}></div>
                             <span className="text-xs text-gray-600 dark:text-slate-300">
-                                {ollamaStatus === 'online' ? 'Çevrimiçi' : 
-                                 ollamaStatus === 'checking' ? 'Kontrol ediliyor...' : 
+                                {geminiStatus === 'online' ? 'Çevrimiçi' : 
+                                 geminiStatus === 'checking' ? 'Kontrol ediliyor...' : 
                                  'Çevrimdışı'}
                             </span>
                             <button
-                                onClick={checkOllamaStatus}
+                                onClick={checkGeminiStatus}
                                 className="ml-auto px-2 py-1 text-xs bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-200 rounded hover:bg-gray-300 dark:hover:bg-slate-500"
                             >
                                 Yenile
@@ -1385,11 +1735,11 @@ export default function ProjectAjax() {
                     </div>
                 </div>
             </div>
-        )}
+                )}
 
-            {/* Session Management Interface - Sadeleştirilmiş */}
-            {showSessions && (
-                <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
+                {/* Session Management Interface - Sadeleştirilmiş */}
+                {showSessions && (
+                    <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-80">
                         {/* Left Panel - Session List */}
                         <div className="border border-gray-200 dark:border-slate-700 rounded p-3 bg-white dark:bg-slate-800">
@@ -1516,11 +1866,11 @@ export default function ProjectAjax() {
                         </div>
                     </div>
                 </div>
-            )}
+                )}
 
-            {/* API Analysis Interface - Sadeleştirilmiş */}
-            {showApiAnalysis && (
-                <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
+                {/* API Analysis Interface - Sadeleştirilmiş */}
+                {showApiAnalysis && (
+                    <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-3">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 h-80">
                         {/* Left Panel - API Controls */}
                         <div className="border border-gray-200 dark:border-slate-700 rounded p-3 bg-white dark:bg-slate-800">
@@ -1628,234 +1978,253 @@ export default function ProjectAjax() {
                         </div>
                     </div>
                 </div>
-            )}
-
-
-            {/* Messages Area - Gemini Stili */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-0">
-            <div className="lg:col-span-3 bg-[#1a1c21] overflow-y-auto p-4 space-y-6">
-                {messages.map((message, index) => (
-                    <div
-                        key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                        <div className={`flex items-start gap-3 max-w-2xl ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            {/* Avatar */}
-                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${message.role === 'user' ? 'bg-orange-200' : 'bg-blue-500'}`}>
-                                {message.role === 'user' ? (
-                                    <User className={`w-4 h-4 ${message.role === 'user' ? 'text-orange-500' : 'text-white'}`} />
-                                ) : (
-                                    <Bot className="w-4 h-4 text-white" />
-                                )}
-                            </div>
-
-                            {/* Message Content with Sender Info */}
-                            <div className="flex-1">
-                                <div className="flex items-center mb-1">
-                                    <span className="text-sm font-medium text-gray-300">
-                                        {message.role === 'user' ? 'Admin' : 'Ajax'}
-                                    </span>
-                                    <span className="text-xs text-gray-500 ml-2">
-                                        {message.timestamp instanceof Date 
-                                            ? message.timestamp.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-                                            : new Date(message.timestamp || Date.now()).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-                                        }
-                                    </span>
-                                </div>
-                                
-                                <div className={`rounded-lg ${message.role === 'user' ? 'bg-[#2563eb] text-white' : 'bg-[#2d2f36] text-gray-200'}`}>
-                                    <div className="whitespace-pre-wrap text-sm p-3">
-                                        {message.content}
-                                        {isStreaming && message.role === 'assistant' && message.content === streamingContent && (
-                                            <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse"></span>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Code Block Handling */}
-                                    {(() => { 
-                                        const block = extractCodeBlock(message.content); 
-                                        if (!block || message.role === 'user') return null; 
-                                        return (
-                                            <div className="mt-2 border-t border-gray-700 bg-[#262830] rounded-b-lg overflow-hidden">
-                                                <div className="flex items-center justify-between px-3 py-1 bg-[#1f2028]">
-                                                    <span className="text-xs text-gray-400">{block.lang}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => { setPreviewBlock(block); setShowPreviewPanel(true) }}
-                                                            className="text-xs text-gray-400 hover:text-white transition-colors"
-                                                            title="Expand"
-                                                        >
-                                                            Expand
-                                                        </button>
-                                                        <button
-                                                            onClick={() => copyMessage(block.code)}
-                                                            className="text-xs text-gray-400 hover:text-white transition-colors"
-                                                            title="Copy code"
-                                                        >
-                                                            Copy code
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <pre className="p-3 text-sm text-gray-300 overflow-x-auto">
-                                                    <code>{block.code}</code>
-                                                </pre>
-                                            </div>
-                                        )
-                                    })()}
-                                </div>
-
-                                {/* Message Actions */}
-                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                    {/* Copy ve Speak butonları - sadece assistant mesajları için (code block yoksa) */}
-                                    {message.role === 'assistant' && !extractCodeBlock(message.content) && (
-                                        <>
-                                            <button
-                                                onClick={() => copyMessage(message.content)}
-                                                className="hover:text-blue-400 transition-colors"
-                                                title="Kopyala"
-                                            >
-                                                <Copy className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => speakMessage(message.content, message.id)}
-                                                className={`hover:text-green-400 transition-colors ${speakingMessageId === message.id ? 'text-green-400' : ''}`}
-                                                title={isSpeaking && speakingMessageId === message.id ? 'Durdur' : 'Seslendir'}
-                                            >
-                                                {isSpeaking && speakingMessageId === message.id ? (
-                                                    <VolumeX className="w-3.5 h-3.5 animate-pulse" />
-                                                ) : (
-                                                    <Volume2 className="w-3.5 h-3.5" />
-                                                )}
-                                            </button>
-                                        </>
-                                    )}
-                                    {/* Silme butonu - tüm mesajlar için */}
-                                    <button
-                                        onClick={() => deleteMessage(message.id)}
-                                        className="hover:text-red-400 transition-colors ml-auto"
-                                        title="Mesajı sil"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {/* Typing Indicator - Gemini Style */}
-                {isTyping && (
-                    <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                            <Bot className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                            <div className="flex items-center mb-1">
-                                <span className="text-sm font-medium text-gray-300">AI Assistant</span>
-                            </div>
-                            <div className="bg-[#2d2f36] p-3 rounded-lg">
-                                <div className="flex gap-1">
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 )}
 
-                <div ref={messagesEndRef} />
-            </div>
+                {/* Messages Area - ChatGPT Style */}
+                <div className="flex-1 overflow-y-auto bg-white dark:bg-[#212121]">
+                    <div className="max-w-3xl mx-auto px-4 py-8">
+                        {messages.map((message, index) => (
+                            <div
+                                key={message.id}
+                                className={`group py-6 ${message.role === 'user' ? 'bg-white dark:bg-[#212121]' : 'bg-gray-50 dark:bg-[#2a2a2a]'} -mx-4 px-4`}
+                            >
+                                <div className="max-w-3xl mx-auto">
+                                    <div className="flex gap-4">
+                                        {/* Avatar */}
+                                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                            message.role === 'user' 
+                                                ? 'bg-green-500' 
+                                                : 'bg-[#19c37d]'
+                                        }`}>
+                                            {message.role === 'user' ? (
+                                                <User className="w-5 h-5 text-white" />
+                                            ) : (
+                                                <Bot className="w-5 h-5 text-white" />
+                                            )}
+                                        </div>
 
-            {/* Preview Panel - Gemini Style */}
-            {showPreviewPanel && (
-              <div className="lg:col-span-1 border-l border-gray-700 bg-[#1f2028] p-3 hidden lg:block">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                    <Code className="w-4 h-4 text-blue-400" />
-                    {previewBlock?.lang ? (
-                      <span>{previewBlock?.lang} preview</span>
-                    ) : (
-                      <span>Preview</span>
-                    )}
-                  </div>
-                  <button 
-                    onClick={()=> setShowPreviewPanel(false)} 
-                    className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-700/50 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="border border-gray-700 rounded-lg overflow-hidden bg-[#262830]">
-                  {(() => { const preview = buildPreviewHtml(previewBlock); if (!preview) return (
-                    <div className="p-8 text-sm text-gray-400 text-center">
-                      <Code className="w-8 h-8 mx-auto mb-2 text-gray-500" />
-                      <p>Select a code block to preview</p>
-                    </div>
-                  ); return (
-                    <iframe title="browser-preview" className="w-full h-[28rem]" sandbox="allow-scripts allow-same-origin" srcDoc={preview || ''} />
-                  )})()}
-                </div>
-              </div>
-            )}
-            </div>
+                                        {/* Message Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                                                {(() => {
+                                                    const block = extractCodeBlock(message.content);
+                                                    if (block && message.role === 'assistant') {
+                                                        return (
+                                                            <div className="space-y-2">
+                                                                <div className="bg-gray-900 dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-700 dark:border-gray-600">
+                                                                    <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700 dark:border-gray-600">
+                                                                        <span className="text-xs text-gray-400 font-mono">{block.lang || 'code'}</span>
+                                                                        <button
+                                                                            onClick={() => copyMessage(block.code)}
+                                                                            className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+                                                                        >
+                                                                            <Copy className="w-3.5 h-3.5" />
+                                                                            <span>Kopyala</span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <pre className="p-4 overflow-x-auto">
+                                                                        <code className="text-sm text-gray-100 font-mono">{block.code}</code>
+                                                                    </pre>
+                                                                </div>
+                                                                <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100 leading-relaxed">
+                                                                    {message.content.replace(/```[\s\S]*?```/g, '').trim()}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-100 leading-relaxed">
+                                                            {message.content}
+                                                            {isStreaming && message.role === 'assistant' && message.content === streamingContent && (
+                                                                <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse"></span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
 
+                                            {/* Message Actions - ChatGPT Style */}
+                                            <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {message.role === 'assistant' && !extractCodeBlock(message.content) && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => copyMessage(message.content)}
+                                                            className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                                                            title="Kopyala"
+                                                        >
+                                                            <Copy className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => speakMessage(message.content, message.id)}
+                                                            className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors ${
+                                                                speakingMessageId === message.id 
+                                                                    ? 'text-green-600 dark:text-green-400' 
+                                                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                                                            }`}
+                                                            title="Seslendir"
+                                                        >
+                                                            {isSpeaking && speakingMessageId === message.id ? (
+                                                                <VolumeX className="w-4 h-4" />
+                                                            ) : (
+                                                                <Volume2 className="w-4 h-4" />
+                                                            )}
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <button
+                                                    onClick={() => deleteMessage(message.id)}
+                                                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors ml-auto"
+                                                    title="Sil"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
 
-            {/* Input Area - Gemini Style */}
-            <div className="bg-[#1a1c21] border-t border-gray-700 p-3">
-                <div className="flex items-center gap-3 mx-auto max-w-4xl">
-                    <div className="flex-1 relative">
-                        {/* Sesli girdi durumu göstergesi */}
-                        {isListening && (
-                            <div className="absolute top-2 left-2 flex items-center gap-2 text-red-500 text-xs z-10">
-                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                <span>Dinleniyor...</span>
+                        {/* Typing Indicator - ChatGPT Style */}
+                        {isTyping && (
+                            <div className="py-6 bg-gray-50 dark:bg-[#2a2a2a] -mx-4 px-4">
+                                <div className="max-w-3xl mx-auto">
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#19c37d] flex items-center justify-center">
+                                            <Bot className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex gap-1.5 items-center pt-2">
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
-                        <textarea
-                            ref={inputRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Type your message here..."
-                            rows={1}
-                            className="w-full px-4 py-3 bg-[#2d2f36] text-gray-200 border border-gray-700 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            style={{ minHeight: '46px', maxHeight: '120px' }}
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                            {input.length > 0 && (
-                                <div className="text-xs text-gray-400 mr-1">
-                                    {input.length}
+
+                        {/* Typing Indicator - ChatGPT Style */}
+                        {isTyping && (
+                            <div className="py-6 bg-gray-50 dark:bg-[#2a2a2a] -mx-4 px-4">
+                                <div className="max-w-3xl mx-auto">
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#19c37d] flex items-center justify-center">
+                                            <Bot className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex gap-1.5 items-center pt-2">
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                            {/* Mikrofon Butonu */}
-                            <button
-                                onClick={() => isListening ? stopVoiceInput() : startVoiceInput()}
-                                className={`p-2 rounded-full transition-colors ${
-                                    isListening 
-                                        ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' 
-                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
-                                title={isListening ? 'Sesli girdiyi durdur' : 'Sesli girdi başlat'}
-                            >
-                                {isListening ? (
-                                    <MicOff className="w-4 h-4" />
-                                ) : (
-                                    <Mic className="w-4 h-4" />
-                                )}
-                            </button>
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() || isTyping}
-                                className="p-2 bg-blue-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-                            >
-                                {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            </button>
-                        </div>
+                            </div>
+                        )}
+
+                        <div ref={messagesEndRef} />
                     </div>
                 </div>
-                <div className="text-xs text-center text-gray-500 mt-2">
-                    Ajax AI, Huglu Outdoor için geliştirilmiştir.
+
+                {/* Input Area - ChatGPT Style */}
+                <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#212121]">
+                    <div className="max-w-3xl mx-auto px-4 py-4">
+                        {/* Yüklenen dosyalar */}
+                        {uploadedFiles.length > 0 && (
+                            <div className="mb-3 flex flex-wrap gap-2">
+                                {uploadedFiles.map((file, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        <span className="max-w-[150px] truncate">{file.name}</span>
+                                        <button
+                                            onClick={() => {
+                                                const newFiles = [...uploadedFiles]
+                                                newFiles.splice(index, 1)
+                                                setUploadedFiles(newFiles)
+                                            }}
+                                            className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {/* Input Container */}
+                        <div className="relative">
+                            {isListening && (
+                                <div className="absolute -top-8 left-0 flex items-center gap-2 text-red-600 dark:text-red-400 text-xs">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span>Dinleniyor...</span>
+                                </div>
+                            )}
+                            <div className="flex items-end gap-2">
+                                <div className="flex-1 relative">
+                                    <textarea
+                                        ref={inputRef}
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Mesaj gönder..."
+                                        rows={1}
+                                        className="w-full px-4 py-3 pr-20 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-2xl resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-500 shadow-sm transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                                        style={{ minHeight: '52px', maxHeight: '200px' }}
+                                    />
+                                    <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const files = Array.from(e.target.files || [])
+                                                    setUploadedFiles(prev => [...prev, ...files])
+                                                }}
+                                                accept="image/*,application/pdf,text/*,.doc,.docx"
+                                            />
+                                            <button
+                                                type="button"
+                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                                                title="Dosya yükle"
+                                            >
+                                                <Upload className="w-4 h-4" />
+                                            </button>
+                                        </label>
+                                        <button
+                                            onClick={() => isListening ? stopVoiceInput() : startVoiceInput()}
+                                            className={`p-1.5 rounded transition-colors ${
+                                                isListening 
+                                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse' 
+                                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                            }`}
+                                            title="Sesli girdi"
+                                        >
+                                            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleSend}
+                                    disabled={(!input.trim() && uploadedFiles.length === 0) || isTyping}
+                                    className="p-3 bg-black dark:bg-white text-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                                    title="Gönder"
+                                >
+                                    {isTyping ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Send className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
+                            Ajax AI, Gemini API ile desteklenmektedir. Yanıtlar hata içerebilir.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

@@ -88,23 +88,31 @@ export default function LiveChatScreen({ navigation, route }) {
           });
         }
         
-        const formattedMessages = filteredMessages.map((msg, index) => {
+        // Mesajları formatla ve duplicate kontrolü yap
+        const messageMap = new Map();
+        filteredMessages.forEach((msg, index) => {
           const isUser = msg.intent === 'live_support';
           const isAdmin = msg.intent === 'admin_message';
           
-          return {
-            id: msg.id || index,
-            text: msg.message || '',
-            isUser: isUser,
-            isAdmin: isAdmin,
-            time: msg.timestamp 
-              ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
-          };
+          // Mesaj ID'si ve timestamp kombinasyonu ile unique key oluştur
+          const messageKey = `${msg.id || index}-${msg.timestamp || Date.now()}`;
+          
+          if (!messageMap.has(messageKey)) {
+            messageMap.set(messageKey, {
+              id: msg.id || Date.now() + index,
+              text: msg.message || '',
+              isUser: isUser,
+              isAdmin: isAdmin,
+              time: msg.timestamp 
+                ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+              timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
+            });
+          }
         });
 
-        // Timestamp'e göre sırala
+        // Map'ten array'e çevir ve timestamp'e göre sırala
+        const formattedMessages = Array.from(messageMap.values());
         formattedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
         setMessages(formattedMessages);
@@ -115,7 +123,10 @@ export default function LiveChatScreen({ navigation, route }) {
         }, 100);
       }
     } catch (error) {
-      console.error('Mesaj geçmişi yükleme hatası:', error);
+      console.error('[LiveChat] Mesaj geçmişi yükleme hatası:', error);
+      if (__DEV__) {
+        console.error('[LiveChat] Hata detayları:', error);
+      }
       // İlk yüklemede hata varsa hoş geldin mesajı göster
       if (messages.length === 0) {
         setMessages([{
@@ -180,17 +191,21 @@ export default function LiveChatScreen({ navigation, route }) {
       const response = await liveSupportAPI.sendMessage(userId, messageText);
       
       if (response && response.success) {
-        // Mesaj başarıyla gönderildi, geçmişi yenile
+        // Mesaj başarıyla gönderildi, hemen geçmişi yenile
+        // Optimistic update zaten yapıldı, şimdi backend'den gerçek mesajı al
         setTimeout(() => {
           loadMessages();
-        }, 500);
+        }, 300); // 300ms sonra yenile (mesajın kaydedilmesi için yeterli süre)
       } else {
         // Hata durumunda mesajı geri al
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen tekrar deneyin.');
       }
     } catch (error) {
-      console.error('Mesaj gönderme hatası:', error);
+      console.error('[LiveChat] Mesaj gönderme hatası:', error);
+      if (__DEV__) {
+        console.error('[LiveChat] Hata detayları:', error);
+      }
       // Hata durumunda mesajı geri al
       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
       Alert.alert('Hata', 'Mesaj gönderilemedi. Lütfen internet bağlantınızı kontrol edin.');

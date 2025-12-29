@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Mail, Send, Users, TrendingUp, Eye, MousePointer, Trash2, Edit, Plus, Copy, Download, Filter, Search, Calendar, BarChart3, FileText, Image, Code, Sparkles, X, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sanitizeHTML } from '@/lib/xss-sanitizer'
-import { OllamaService, OllamaMessage } from '@/lib/services/ollama-service'
+import { GeminiService, GeminiMessage } from '@/lib/services/gemini-service'
 
 interface EmailTemplate {
   id: number
@@ -530,21 +530,23 @@ KURALLAR:
 
                           const userPrompt = `Aşağıdaki açıklamaya göre profesyonel bir pazarlama e-postası HTML kodu oluştur:\n\n${aiPrompt}`
 
-                          const messages: OllamaMessage[] = [
-                            { role: 'system', content: systemPrompt },
-                            { role: 'user', content: userPrompt }
+                          // System prompt'u user mesajına birleştir (Gemini system role desteklemiyor)
+                          const fullPrompt = `${systemPrompt}\n\n${userPrompt}`
+
+                          const messages: GeminiMessage[] = [
+                            { role: 'user', content: fullPrompt }
                           ]
 
-                          const response = await OllamaService.sendMessage(messages, {
+                          const response = await GeminiService.sendMessage(messages, {
                             temperature: 0.7,
-                            maxTokens: 3000
+                            maxTokens: 4000
                           })
 
                           let htmlCode = ''
-                          if (response.message && response.message.content) {
-                            htmlCode = response.message.content
-                          } else if ((response as any).response) {
-                            htmlCode = (response as any).response
+                          if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+                            htmlCode = response.candidates[0].content.parts[0].text
+                          } else if ((response as any).text) {
+                            htmlCode = (response as any).text
                           } else if (typeof response === 'string') {
                             htmlCode = response
                           } else {
@@ -573,8 +575,16 @@ ${htmlCode}
                           setTemplateHtml(htmlCode)
                           setAiPrompt('')
                         } catch (error: any) {
-                          console.error('❌ Ollama hatası:', error)
-                          alert(`E-posta oluşturulurken hata oluştu: ${error.message || 'Bilinmeyen hata'}`)
+                          console.error('❌ Gemini hatası:', error)
+                          let errorMessage = 'E-posta oluşturulurken hata oluştu'
+                          if (error.message) {
+                            if (error.message.includes('API key')) {
+                              errorMessage = 'Gemini API key eksik veya geçersiz. Lütfen Project Ajax sayfasından API key\'inizi girin.'
+                            } else {
+                              errorMessage = error.message
+                            }
+                          }
+                          alert(errorMessage)
                         } finally {
                           setIsGenerating(false)
                         }

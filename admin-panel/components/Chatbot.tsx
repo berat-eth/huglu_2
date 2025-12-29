@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Bot, Send, User, Clock, CheckCheck, Phone, Video, MoreVertical, Search, Paperclip, Smile, X, Volume2, VolumeX, Users, TrendingUp } from 'lucide-react'
+import { MessageSquare, Bot, Send, User, Clock, CheckCheck, Phone, Video, MoreVertical, Search, Paperclip, Smile, X, Volume2, VolumeX, Users, TrendingUp, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { GeminiService, GeminiMessage } from '@/lib/services/gemini-service'
 
 interface Message {
   id: number
@@ -45,6 +46,8 @@ export default function Chatbot() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(false)
   const previousMessageCountsRef = useRef<Map<number, number>>(new Map())
+  const [geminiEnabled, setGeminiEnabled] = useState(true)
+  const [isGeminiResponding, setIsGeminiResponding] = useState(false)
   
   // Backend'den konuşmaları yükle
   useEffect(() => {
@@ -140,14 +143,32 @@ export default function Chatbot() {
             const existingConv = prev.find(c => c.id === newConv.id)
             if (existingConv) {
               // Mevcut mesajları koru, sadece yeni mesajları ekle
-              const existingMessageIds = new Set(existingConv.messages.map(m => m.id))
-              const newMessages = newConv.messages.filter(m => !existingMessageIds.has(m.id))
+              // Hem ID hem de timestamp kontrolü yap (daha güvenilir)
+              const existingMessageKeys = new Set(
+                existingConv.messages.map(m => `${m.id}-${m.timestamp || m.id}`)
+              )
+              const newMessages = newConv.messages.filter(m => {
+                const messageKey = `${m.id}-${m.timestamp || m.id}`
+                return !existingMessageKeys.has(messageKey)
+              })
               
-              // Yeni mesaj kontrolü - bildirim sesi çal
-              if (newMessages.length > 0 && soundEnabled) {
+              // Yeni mesaj kontrolü - bildirim sesi çal ve Gemini ile otomatik yanıt
+              if (newMessages.length > 0) {
                 const hasNewCustomerMessage = newMessages.some(m => m.sender === 'customer')
-                if (hasNewCustomerMessage && (selectedChat !== newConv.id || !selectedChat)) {
+                if (hasNewCustomerMessage && soundEnabled && (selectedChat !== newConv.id || !selectedChat)) {
                   playNotificationSound()
+                }
+                
+                // Gemini ile otomatik yanıt üret (sadece müşteri mesajları için)
+                if (hasNewCustomerMessage && geminiEnabled && !isGeminiResponding) {
+                  const customerMessages = newMessages.filter(m => m.sender === 'customer')
+                  if (customerMessages.length > 0) {
+                    // En son müşteri mesajını al
+                    const latestCustomerMessage = customerMessages[customerMessages.length - 1]
+                    // Tüm mesajları birleştir (mevcut + yeni)
+                    const allMessages = [...existingConv.messages, ...newMessages]
+                    generateGeminiResponse(newConv.id, latestCustomerMessage.text, allMessages, newConv)
+                  }
                 }
               }
               
@@ -183,18 +204,21 @@ export default function Chatbot() {
         setConversations([])
       }
     } catch (error: any) {
-      console.error('Konuşmalar yüklenemedi:', error?.message || error)
+      console.error('[Chatbot] Konuşmalar yüklenemedi:', error?.message || error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Chatbot] Hata detayları:', error)
+      }
       setConversations([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Otomatik yenileme - Her 10 saniyede bir backend'den yeni mesajları kontrol et
+  // Otomatik yenileme - Her 5 saniyede bir backend'den yeni mesajları kontrol et (mobil uygulama ile senkronize)
   useEffect(() => {
     const interval = setInterval(() => {
       loadConversations()
-    }, 10000) // 10 saniye (daha hızlı güncelleme)
+    }, 5000) // 5 saniye (mobil uygulama ile senkronize)
 
     return () => clearInterval(interval)
   }, [soundEnabled, selectedChat])
@@ -288,7 +312,10 @@ export default function Chatbot() {
       })
       
       if (!response || !(response as any).success) {
-        console.error('Mesaj gönderme başarısız:', response)
+        console.error('[Chatbot] Mesaj gönderme başarısız:', response)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Chatbot] Hata detayları:', response)
+        }
         // Hata durumunda mesajı geri al
         setConversations(prev => {
           const newConvs = [...prev]
@@ -303,70 +330,17 @@ export default function Chatbot() {
           return newConvs
         })
       } else {
-        // Başarılı gönderim sonrası konuşmaları yenile ve geçici mesajı gerçek mesajla değiştir
-        setTimeout(async () => {
-          try {
-            const { api } = await import('@/lib/api')
-            const response = await api.get<any>('/admin/chatbot/conversations')
-            const data = response as any
-            
-            if (data && data.success && Array.isArray(data.data)) {
-              // Seçili konuşmanın yeni mesajlarını bul
-              const selectedUserId = conv.userId
-              const adminMessages = data.data.filter((msg: any) => 
-                msg.userId === selectedUserId && 
-                msg.intent === 'admin_message' &&
-                msg.message === messageToSend
-              )
-              
-              if (adminMessages.length > 0) {
-                // En yeni admin mesajını al
-                const latestAdminMessage = adminMessages.sort((a: any, b: any) => 
-                  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                )[0]
-                
-                // Geçici mesajı gerçek mesajla değiştir
-                setConversations(prev => {
-                  const newConvs = [...prev]
-                  const convIndex = newConvs.findIndex(c => c.id === selectedChat)
-                  if (convIndex !== -1 && newConvs[convIndex] && newConvs[convIndex].messages) {
-                    // Geçici mesajı bul ve değiştir
-                    const tempMsgIndex = newConvs[convIndex].messages.findIndex(m => m.id === tempMessageId)
-                    if (tempMsgIndex !== -1) {
-                      const messageTimestamp = new Date(latestAdminMessage.timestamp).getTime()
-                      newConvs[convIndex].messages[tempMsgIndex] = {
-                        id: latestAdminMessage.id,
-                        sender: 'agent' as const,
-                        text: latestAdminMessage.message,
-                        time: new Date(latestAdminMessage.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-                        read: true,
-                        timestamp: messageTimestamp
-                      }
-                      // Tekrar sırala
-                      newConvs[convIndex].messages.sort((a, b) => {
-                        const aTime = a.timestamp || a.id
-                        const bTime = b.timestamp || b.id
-                        return aTime - bTime
-                      })
-                    }
-                  }
-                  return newConvs
-                })
-              } else {
-                // Mesaj bulunamadıysa normal yenileme yap
-                loadConversations()
-              }
-            } else {
-              loadConversations()
-            }
-          } catch (error) {
-            console.error('Mesaj güncelleme hatası:', error)
-            loadConversations()
-          }
-        }, 1500)
+        // Başarılı gönderim sonrası hemen konuşmaları yenile
+        // Optimistic update zaten yapıldı, şimdi backend'den gerçek mesajı al
+        setTimeout(() => {
+          loadConversations()
+        }, 500) // 500ms sonra yenile (mesajın kaydedilmesi için yeterli süre)
       }
     } catch (error) {
-      console.error('Mesaj gönderme hatası:', error)
+      console.error('[Chatbot] Mesaj gönderme hatası:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Chatbot] Hata detayları:', error)
+      }
       // Hata durumunda mesajı geri al
       setConversations(prev => {
         const newConvs = [...prev]
@@ -383,6 +357,141 @@ export default function Chatbot() {
     }
 
     setTimeout(() => scrollToBottom(), 100)
+  }
+
+  // Gemini ile otomatik yanıt üretme
+  const generateGeminiResponse = async (
+    conversationId: number,
+    customerMessage: string,
+    messageHistory: Message[],
+    conversation: Conversation
+  ) => {
+    if (isGeminiResponding) return
+    
+    try {
+      setIsGeminiResponding(true)
+      
+      // Gemini config kontrolü
+      const geminiConfig = await GeminiService.getConfig()
+      if (!geminiConfig.enabled || !geminiConfig.apiKey) {
+        console.log('⚠️ Gemini devre dışı veya API key eksik')
+        setIsGeminiResponding(false)
+        return
+      }
+
+      // Müşteri hizmetleri system prompt'u
+      const systemPrompt = `Sen Huglu Outdoor'un profesyonel ve dost canlısı müşteri hizmetleri temsilcisisin. 
+
+KURALLAR:
+- Her zaman nazik, anlayışlı ve yardımsever ol
+- Türkçe konuş, samimi ama profesyonel bir dil kullan
+- Müşterinin sorununu dinle ve çözüm odaklı yaklaş
+- Kısa ve net yanıtlar ver (maksimum 2-3 cümle)
+- Emoji kullanabilirsin ama abartma
+- Ürün bilgisi istiyorsa detaylı bilgi ver
+- Sipariş durumu soruyorsa yardımcı ol
+- Şikayet varsa özür dileyip çözüm öner
+- Müşteri adı: ${conversation.userName || conversation.customer || 'Değerli Müşterimiz'}
+${conversation.productName ? `- İlgili ürün: ${conversation.productName}` : ''}
+${conversation.productPrice ? `- Ürün fiyatı: ${conversation.productPrice} TL` : ''}
+
+TONE: Dost canlısı, yardımsever, profesyonel ama samimi`
+
+      // Mesaj geçmişini Gemini formatına çevir (son 10 mesaj)
+      const recentMessages = messageHistory.slice(-10)
+      const geminiMessages: GeminiMessage[] = []
+      
+      // System prompt'u ilk mesaja ekle
+      geminiMessages.push({
+        role: 'user',
+        content: systemPrompt + '\n\nMüşteri mesajı: ' + customerMessage
+      })
+      
+      // Geçmiş mesajları ekle (context için)
+      recentMessages.forEach(msg => {
+        if (msg.sender === 'customer') {
+          geminiMessages.push({
+            role: 'user',
+            content: msg.text
+          })
+        } else {
+          geminiMessages.push({
+            role: 'assistant',
+            content: msg.text
+          })
+        }
+      })
+
+      // Gemini'ye gönder
+      const response = await GeminiService.sendMessage(geminiMessages, {
+        temperature: 0.8,
+        maxTokens: 200,
+        model: 'gemini-2.5-flash'
+      })
+
+      // Yanıtı al
+      let aiResponse = ''
+      if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+        aiResponse = response.candidates[0].content.parts[0].text.trim()
+      } else if ((response as any).text) {
+        aiResponse = (response as any).text.trim()
+      }
+
+      // Yanıt varsa müşteriye gönder
+      if (aiResponse && aiResponse.length > 0) {
+        // Yanıtı temizle (markdown formatından arındır)
+        aiResponse = aiResponse
+          .replace(/```[\s\S]*?```/g, '')
+          .replace(/`/g, '')
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .trim()
+
+        // Backend'e gönder
+        const { api } = await import('@/lib/api')
+        await api.post('/admin/chatbot/send-message', {
+          userId: conversation.userId,
+          message: aiResponse,
+          conversationId: conversation.id
+        })
+
+        // UI'da göster
+        const aiMessage: Message = {
+          id: Date.now(),
+          sender: 'agent',
+          text: aiResponse,
+          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          read: true,
+          timestamp: Date.now()
+        }
+
+        setConversations(prev => {
+          const newConvs = [...prev]
+          const convIndex = newConvs.findIndex(c => c.id === conversationId)
+          if (convIndex !== -1 && newConvs[convIndex]) {
+            if (!newConvs[convIndex].messages) {
+              newConvs[convIndex].messages = []
+            }
+            newConvs[convIndex].messages.push(aiMessage)
+            newConvs[convIndex].messages.sort((a, b) => {
+              const aTime = a.timestamp || a.id
+              const bTime = b.timestamp || b.id
+              return aTime - bTime
+            })
+            newConvs[convIndex].lastMessage = aiResponse
+            newConvs[convIndex].time = 'Şimdi'
+          }
+          return newConvs
+        })
+
+        setTimeout(() => scrollToBottom(), 100)
+      }
+    } catch (error) {
+      console.error('❌ Gemini yanıt hatası:', error)
+      // Hata durumunda sessizce devam et, müşteriye hata gösterme
+    } finally {
+      setIsGeminiResponding(false)
+    }
   }
 
   // Enter tuşu için ayrı handler
@@ -422,6 +531,17 @@ export default function Chatbot() {
         </div>
         <div className="flex items-center space-x-3">
           <button
+            onClick={() => setGeminiEnabled(!geminiEnabled)}
+            className={`p-3 rounded-xl transition-colors ${
+              geminiEnabled 
+                ? 'bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-600 dark:text-blue-400' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+            }`}
+            title={geminiEnabled ? 'AI Otomatik Yanıt Açık' : 'AI Otomatik Yanıt Kapalı'}
+          >
+            <Sparkles className={`w-5 h-5 ${geminiEnabled ? 'animate-pulse' : ''}`} />
+          </button>
+          <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-3 rounded-xl transition-colors ${soundEnabled ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
               }`}
@@ -432,6 +552,12 @@ export default function Chatbot() {
           {totalUnread > 0 && (
             <div className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl font-bold">
               {totalUnread} Yeni Mesaj
+            </div>
+          )}
+          {isGeminiResponding && (
+            <div className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-medium flex items-center gap-2">
+              <Bot className="w-4 h-4 animate-pulse" />
+              <span>AI Yanıt Veriyor...</span>
             </div>
           )}
         </div>

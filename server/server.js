@@ -23293,19 +23293,30 @@ async function startServer() {
 
       // Kullanıcı kontrolü (aynı tenant'ta mı?)
       const [userCheck] = await poolWrapper.execute(
-        'SELECT id FROM users WHERE id = ? AND tenantId = ? LIMIT 1',
-        [userId, tenantId]
+        'SELECT id, tenantId FROM users WHERE id = ? LIMIT 1',
+        [userId]
       );
 
       if (userCheck.length === 0) {
+        console.error(`[Admin Send Message] Kullanıcı bulunamadı: userId=${userId}, tenantId=${tenantId}`);
         return res.status(404).json({
           success: false,
           message: 'Kullanıcı bulunamadı'
         });
       }
 
+      // Kullanıcının tenant ID'sini kontrol et
+      const userTenantId = userCheck[0].tenantId || 1;
+      if (userTenantId !== tenantId) {
+        console.error(`[Admin Send Message] Tenant uyuşmazlığı: userId=${userId}, adminTenant=${tenantId}, userTenant=${userTenantId}`);
+        return res.status(403).json({
+          success: false,
+          message: 'Bu kullanıcıya mesaj gönderemezsiniz'
+        });
+      }
+
       // Kullanıcıya mesaj kaydet
-      await poolWrapper.execute(
+      const [result] = await poolWrapper.execute(
         `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, timestamp) 
          VALUES (?, ?, ?, ?, NOW())`,
         [
@@ -23316,12 +23327,18 @@ async function startServer() {
         ]
       );
 
+      console.log(`[Admin Send Message] Mesaj kaydedildi: userId=${userId}, messageId=${result.insertId}, tenantId=${tenantId}`);
+
       res.json({
         success: true,
-        message: 'Mesaj gönderildi'
+        message: 'Mesaj gönderildi',
+        data: {
+          id: result.insertId,
+          timestamp: new Date().toISOString()
+        }
       });
     } catch (error) {
-      console.error(' Admin mesaj gönderme hatası:', error);
+      console.error('[Admin Send Message] Hata:', error);
       res.status(500).json({ success: false, message: 'Mesaj gönderilemedi' });
     }
   });
@@ -23441,7 +23458,12 @@ async function startServer() {
         [userId]
       );
 
-      const tenantId = userRow.length > 0 ? userRow[0].tenantId : 1;
+      if (userRow.length === 0) {
+        console.error(`[Live Support History] Kullanıcı bulunamadı: userId=${userId}`);
+        return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
+      }
+
+      const tenantId = userRow[0].tenantId || 1;
 
       // Canlı destek mesajlarını getir (live_support ve admin_message intent'leri)
       const [rows] = await poolWrapper.execute(
@@ -23453,12 +23475,14 @@ async function startServer() {
         [userId, tenantId]
       );
 
+      console.log(`[Live Support History] Mesajlar getirildi: userId=${userId}, tenantId=${tenantId}, mesajSayisi=${rows.length}`);
+
       res.json({
         success: true,
         data: rows
       });
     } catch (error) {
-      console.error(' Canlı destek mesaj geçmişi getirme hatası:', error);
+      console.error('[Live Support History] Hata:', error);
       res.status(500).json({ success: false, message: 'Mesaj geçmişi getirilemedi' });
     }
   });
