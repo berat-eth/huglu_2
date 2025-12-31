@@ -35,7 +35,9 @@ api.interceptors.request.use(
       console.log('📤 API Request:', config.method.toUpperCase(), config.url, {
         tenantId: tenantId || '1',
         baseURL: config.baseURL,
-        fullURL: `${config.baseURL}${config.url}`
+        fullURL: `${config.baseURL}${config.url}`,
+        params: config.params,
+        data: config.data ? Object.keys(config.data) : undefined
       });
     } catch (error) {
       console.error('❌ Request interceptor error:', error);

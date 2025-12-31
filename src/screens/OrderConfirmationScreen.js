@@ -257,12 +257,22 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         
         // Sepeti temizle ve badge'i güncelle
         try {
-          await cartAPI.clear(storedUserId);
+          console.log('🗑️ Sepet temizleniyor... userId:', storedUserId);
+          const clearResponse = await cartAPI.clear(storedUserId);
+          console.log('✅ Sepet temizleme yanıtı:', clearResponse.data);
+          
+          // Local state'i temizle
+          setCartItems([]);
+          setSubtotal(0);
+          setTotal(0);
+          
           // Badge'i sıfırla
           await updateCartBadge(storedUserId);
           console.log('✅ Sepet temizlendi ve badge güncellendi');
         } catch (clearError) {
-          console.error('Sepet temizleme hatası:', clearError);
+          console.error('❌ Sepet temizleme hatası:', clearError);
+          console.error('❌ Hata detayı:', clearError.response?.data || clearError.message);
+          // Sepet temizlenemese bile sipariş başarılı, kullanıcıya bilgi verme
         }
       } else {
         setErrorMessage(response.data?.message || 'Sipariş oluşturulamadı');
@@ -408,31 +418,46 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const loadShippingAddress = async () => {
     try {
       const userId = await AsyncStorage.getItem('userId');
-      if (!userId) return;
+      console.log('📍 loadShippingAddress - userId:', userId);
+      
+      if (!userId) {
+        console.log('⚠️ userId bulunamadı');
+        return;
+      }
 
       // Route'dan gelen adresi kontrol et
       if (routeShippingAddress) {
+        console.log('📍 Route\'dan adres kullanılıyor:', routeShippingAddress);
         setShippingAddress(routeShippingAddress);
         return;
       }
 
       // API'den varsayılan adresi çek
       try {
+        console.log('📍 API\'den adres çekiliyor... userId:', userId);
         const response = await userAPI.getAddresses(userId, 'shipping');
+        console.log('📍 API yanıtı:', response.data);
+        
         if (response.data?.success) {
           const addresses = response.data.data || response.data.addresses || [];
+          console.log('📍 Bulunan adresler:', addresses.length, 'adet');
+          
           // Varsayılan adresi bul veya ilk adresi kullan
           const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
           if (defaultAddress) {
+            console.log('📍 Seçilen adres:', defaultAddress);
             setShippingAddress(defaultAddress);
+          } else {
+            console.log('⚠️ Hiç adres bulunamadı');
           }
         }
       } catch (error) {
-        console.log('Adres yüklenemedi:', error.message);
+        console.log('❌ Adres yüklenemedi:', error.message);
+        console.log('❌ Hata detayı:', error.response?.data);
         // Hata durumunda boş bırak, kullanıcı bilgileri gösterilir
       }
     } catch (error) {
-      console.error('Adres yükleme hatası:', error);
+      console.error('❌ Adres yükleme hatası:', error);
     }
   };
 
@@ -463,15 +488,25 @@ export default function OrderConfirmationScreen({ navigation, route }) {
     try {
       setLoadingAddresses(true);
       const userId = await AsyncStorage.getItem('userId');
-      if (!userId) return;
+      console.log('📍 loadAddresses - userId:', userId);
+      
+      if (!userId) {
+        console.log('⚠️ userId bulunamadı');
+        return;
+      }
 
+      console.log('📍 API\'den adresler çekiliyor... userId:', userId);
       const response = await userAPI.getAddresses(userId, 'shipping');
+      console.log('📍 loadAddresses API yanıtı:', response.data);
+      
       if (response.data?.success) {
         const addressList = response.data.data || response.data.addresses || [];
+        console.log('📍 Yüklenen adresler:', addressList.length, 'adet');
         setAddresses(addressList);
       }
     } catch (error) {
-      console.error('Adresler yüklenemedi:', error);
+      console.error('❌ Adresler yüklenemedi:', error);
+      console.error('❌ Hata detayı:', error.response?.data);
       setAddresses([]);
     } finally {
       setLoadingAddresses(false);

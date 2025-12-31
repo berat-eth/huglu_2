@@ -2300,15 +2300,32 @@ app.get('/api/user-addresses', async (req, res) => {
   try {
     const { userId, addressType } = req.query;
 
+    console.log('📍 Adres getirme isteği:', { 
+      userId, 
+      addressType, 
+      tenantId: req.tenant?.id,
+      requestUserId: req.user?.userId 
+    });
+
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
+
+    // userId'yi internal numeric ID'ye çevir (user_id string'den users.id'ye)
+    const internalUserId = await resolveInternalUserId(userId, req.tenant.id);
+    
+    if (!internalUserId) {
+      console.log('⚠️ Kullanıcı bulunamadı:', userId);
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    console.log('📍 Resolved userId:', userId, '→', internalUserId);
 
     let query = `
       SELECT * FROM user_addresses 
       WHERE userId = ? AND tenantId = ?
     `;
-    let params = [userId, req.tenant.id];
+    let params = [internalUserId, req.tenant.id];
 
     if (addressType && (addressType === 'shipping' || addressType === 'billing')) {
       query += ' AND addressType = ?';
@@ -2317,11 +2334,19 @@ app.get('/api/user-addresses', async (req, res) => {
 
     query += ' ORDER BY isDefault DESC, createdAt DESC';
 
+    console.log('📍 SQL Query:', query);
+    console.log('📍 Params:', params);
+
     const [addresses] = await poolWrapper.execute(query, params);
+
+    console.log('📍 Bulunan adresler:', addresses.length, 'adet');
+    if (addresses.length > 0) {
+      console.log('📍 İlk adres userId:', addresses[0].userId);
+    }
 
     res.json({ success: true, data: addresses });
   } catch (error) {
-    console.error(' Error fetching user addresses:', error);
+    console.error('❌ Error fetching user addresses:', error);
     res.status(500).json({ success: false, message: 'Error fetching addresses' });
   }
 });
@@ -21165,25 +21190,41 @@ async function startServer() {
     try {
       const { userId } = req.params;
       const { deviceId } = req.query;
+      const tenantId = req.tenant?.id || 1;
+
+      console.log('🗑️ Sepet temizleme isteği:', { userId, deviceId, tenantId });
 
       let deleteSql = 'DELETE FROM cart WHERE tenantId = ?';
-      const deleteParams = [req.tenant?.id || 1];
+      const deleteParams = [tenantId];
+      
       if (parseInt(userId) !== 1) {
+        // Giriş yapmış kullanıcı - userId'ye göre temizle
         deleteSql += ' AND userId = ?';
-        deleteParams.push(userId);
-      } else {
+        deleteParams.push(parseInt(userId));
+      } else if (deviceId) {
+        // Misafir kullanıcı - deviceId'ye göre temizle
         deleteSql += ' AND userId = 1 AND deviceId = ?';
-        deleteParams.push(String(deviceId || ''));
+        deleteParams.push(String(deviceId));
+      } else {
+        // deviceId yoksa hata döndür
+        return res.status(400).json({ 
+          success: false, 
+          message: 'DeviceId required for guest users' 
+        });
       }
 
-      await poolWrapper.execute(deleteSql, deleteParams);
+      console.log('🗑️ SQL:', deleteSql, 'Params:', deleteParams);
+      const [result] = await poolWrapper.execute(deleteSql, deleteParams);
+      
+      console.log('✅ Sepet temizlendi:', result.affectedRows, 'ürün silindi');
 
       res.json({
         success: true,
-        message: 'Cart cleared'
+        message: 'Cart cleared',
+        deletedItems: result.affectedRows
       });
     } catch (error) {
-      console.error(' Error clearing cart:', error);
+      console.error('❌ Error clearing cart:', error);
       res.status(500).json({ success: false, message: 'Error clearing cart' });
     }
   });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,27 +16,20 @@ export default function WalletScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [vouchers, setVouchers] = useState([]);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState(null);
 
   useEffect(() => {
     loadWalletData();
   }, []);
 
   const handleRecharge = () => {
-    Alert.alert(
-      'Para Yükle',
-      'Cüzdanınıza ne kadar para yüklemek istersiniz?',
-      [
-        { text: '₺50', onPress: () => processRecharge(50) },
-        { text: '₺100', onPress: () => processRecharge(100) },
-        { text: '₺250', onPress: () => processRecharge(250) },
-        { text: '₺500', onPress: () => processRecharge(500) },
-        { text: 'İptal', style: 'cancel' },
-      ]
-    );
+    setShowRechargeModal(true);
   };
 
   const processRecharge = async (amount) => {
     try {
+      setShowRechargeModal(false);
       const response = await walletAPI.rechargeRequest(userId, amount, 'credit_card');
       
       if (response.data?.success) {
@@ -132,16 +125,18 @@ export default function WalletScreen({ navigation }) {
 
       // 5. Hediye çekleri ve kuponlar al (opsiyonel)
       try {
+        console.log('🎁 Hediye çekleri isteniyor... userId:', storedUserId);
         const vouchersResponse = await walletAPI.getVouchers(storedUserId);
         console.log('🎁 Hediye çekleri yanıtı:', JSON.stringify(vouchersResponse.data, null, 2));
         
         if (vouchersResponse.data?.success) {
-          const vouchersData = vouchersResponse.data.vouchers || vouchersResponse.data.data || [];
+          const vouchersData =
+            vouchersResponse.data.vouchers || vouchersResponse.data.data || [];
           setVouchers(Array.isArray(vouchersData) ? vouchersData : []);
           console.log('✅ Hediye çekleri:', vouchersData.length, 'adet');
         }
       } catch (error) {
-        console.log('⚠️ Hediye çekleri endpoint\'i yok veya hata:', error.message);
+        console.log("⚠️ Hediye çekleri endpoint'i yok veya hata:", error.message);
         setVouchers([]);
       }
     } catch (error) {
@@ -249,8 +244,59 @@ export default function WalletScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ödeme Yöntemleri</Text>
           
-          {paymentMethods.length > 0 ? (
+          {/* EFT/Havale Bilgileri */}
+          <View style={styles.bankTransferCard}>
+            <View style={styles.bankTransferHeader}>
+              <View style={styles.bankIconContainer}>
+                <Ionicons name="business" size={24} color="#3B82F6" />
+              </View>
+              <View style={styles.bankTransferHeaderText}>
+                <Text style={styles.bankTransferTitle}>EFT / Havale</Text>
+                <Text style={styles.bankTransferSubtitle}>Banka Hesap Bilgileri</Text>
+              </View>
+            </View>
+
+            <View style={styles.bankInfoContainer}>
+              <View style={styles.bankInfoRow}>
+                <Text style={styles.bankInfoLabel}>Banka Adı</Text>
+                <Text style={styles.bankInfoValue}>İş Bankası</Text>
+              </View>
+              <View style={styles.bankInfoDivider} />
+              
+              <View style={styles.bankInfoRow}>
+                <Text style={styles.bankInfoLabel}>Hesap Sahibi</Text>
+                <Text style={styles.bankInfoValue}>Huğlu Av Tüfekleri Kooperatifi</Text>
+              </View>
+              <View style={styles.bankInfoDivider} />
+              
+              <View style={styles.bankInfoRow}>
+                <Text style={styles.bankInfoLabel}>IBAN</Text>
+                <View style={styles.ibanContainer}>
+                  <Text style={styles.ibanText}>TR33 0006 4000 0011 2345 6789 01</Text>
+                  <TouchableOpacity 
+                    style={styles.copyButton}
+                    onPress={() => {
+                      // IBAN kopyalama fonksiyonu
+                      Alert.alert('Kopyalandı', 'IBAN numarası panoya kopyalandı');
+                    }}
+                  >
+                    <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.bankTransferNote}>
+              <Ionicons name="information-circle-outline" size={16} color="#3B82F6" />
+              <Text style={styles.bankTransferNoteText}>
+                Havale/EFT açıklamasına kullanıcı ID'nizi ({userId.slice(0, 8)}) yazınız
+              </Text>
+            </View>
+          </View>
+
+          {paymentMethods.length > 0 && (
             <>
+              <Text style={styles.subsectionTitle}>Kayıtlı Kartlar</Text>
               {paymentMethods.map((method) => {
                 const cardType = method.cardType || method.type || 'VISA';
                 const lastFour = method.lastFour || method.cardNumber?.slice(-4) || '****';
@@ -287,17 +333,12 @@ export default function WalletScreen({ navigation }) {
                 );
               })}
             </>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="card-outline" size={48} color={COLORS.gray300} />
-              <Text style={styles.emptyStateText}>Kayıtlı ödeme yöntemi yok</Text>
-            </View>
           )}
 
           {/* Add Payment Method */}
           <TouchableOpacity style={styles.addPaymentButton}>
             <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.addPaymentText}>Ödeme Yöntemi Ekle</Text>
+            <Text style={styles.addPaymentText}>Kredi Kartı Ekle</Text>
           </TouchableOpacity>
         </View>
 
@@ -363,6 +404,99 @@ export default function WalletScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Recharge Modal */}
+      <Modal
+        visible={showRechargeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRechargeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowRechargeModal(false)}
+          />
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="wallet" size={28} color={COLORS.primary} />
+                </View>
+                <Text style={styles.modalTitle}>Para Yükle</Text>
+                <Text style={styles.modalSubtitle}>
+                  Cüzdanınıza ne kadar para yüklemek istersiniz?
+                </Text>
+              </View>
+
+              {/* Amount Options */}
+              <View style={styles.amountGrid}>
+                {[50, 100, 250, 500].map((amount) => (
+                  <TouchableOpacity
+                    key={amount}
+                    style={[
+                      styles.amountOption,
+                      selectedAmount === amount && styles.amountOptionSelected
+                    ]}
+                    onPress={() => setSelectedAmount(amount)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.amountIconContainer}>
+                      <Ionicons 
+                        name="cash-outline" 
+                        size={24} 
+                        color={selectedAmount === amount ? COLORS.primary : COLORS.gray400} 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.amountText,
+                      selectedAmount === amount && styles.amountTextSelected
+                    ]}>
+                      ₺{amount}
+                    </Text>
+                    {selectedAmount === amount && (
+                      <View style={styles.selectedCheckmark}>
+                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowRechargeModal(false);
+                    setSelectedAmount(null);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmButton,
+                    !selectedAmount && styles.confirmButtonDisabled
+                  ]}
+                  onPress={() => {
+                    if (selectedAmount) {
+                      processRecharge(selectedAmount);
+                      setSelectedAmount(null);
+                    }
+                  }}
+                  disabled={!selectedAmount}
+                >
+                  <Text style={styles.confirmButtonText}>Yükle</Text>
+                  <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -563,6 +697,117 @@ const styles = StyleSheet.create({
     color: COLORS.textMain,
     marginBottom: 12,
   },
+  subsectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  // Bank Transfer Card Styles
+  bankTransferCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.gray100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bankTransferHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  bankIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bankTransferHeaderText: {
+    flex: 1,
+  },
+  bankTransferTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    marginBottom: 2,
+  },
+  bankTransferSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  bankInfoContainer: {
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  bankInfoRow: {
+    paddingVertical: 8,
+  },
+  bankInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  bankInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  bankInfoDivider: {
+    height: 1,
+    backgroundColor: COLORS.gray200,
+    marginVertical: 4,
+  },
+  ibanContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    marginTop: 4,
+  },
+  ibanText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    fontFamily: 'monospace',
+    flex: 1,
+  },
+  copyButton: {
+    padding: 8,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  bankTransferNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderRadius: 8,
+  },
+  bankTransferNoteText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#3B82F6',
+    lineHeight: 18,
+  },
   paymentItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -709,5 +954,137 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 12,
     textAlign: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  amountGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  amountOption: {
+    width: '47%',
+    aspectRatio: 1.5,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: COLORS.gray200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  amountOptionSelected: {
+    backgroundColor: 'rgba(17, 212, 33, 0.08)',
+    borderColor: COLORS.primary,
+  },
+  amountIconContainer: {
+    marginBottom: 8,
+  },
+  amountText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  amountTextSelected: {
+    color: COLORS.primary,
+  },
+  selectedCheckmark: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  confirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: COLORS.gray300,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
   },
 });
