@@ -358,7 +358,7 @@ function createAnalyticsRoutes(poolWrapper) {
           context.tenantId,
           {
             type: 'purchase',
-            value: amount
+            value: parseFloat(amount) || 0
           }
         );
       }

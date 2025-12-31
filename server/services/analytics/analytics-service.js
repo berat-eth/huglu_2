@@ -176,11 +176,23 @@ class AnalyticsService {
       );
 
       if (sessions.length === 0) {
-        throw new Error('Session not found');
+        console.warn('⚠️ Analytics: Session not found:', sessionId);
+        return { success: false, message: 'Session not found' };
       }
 
       const session = sessions[0];
-      const duration = Math.floor((sessionEnd - new Date(session.sessionStart)) / 1000);
+      const sessionStartDate = new Date(session.sessionStart);
+      const duration = Math.max(0, Math.floor((sessionEnd - sessionStartDate) / 1000));
+
+      // Duration kontrolü
+      if (isNaN(duration)) {
+        console.error('❌ Analytics: Invalid duration calculated:', {
+          sessionEnd,
+          sessionStart: session.sessionStart,
+          sessionStartDate
+        });
+        throw new Error('Invalid duration calculated');
+      }
 
       // Event sayısını hesapla
       const [eventCount] = await this.pool.execute(
@@ -202,8 +214,39 @@ class AnalyticsService {
 
       // Conversion bilgileri
       const conversion = conversionData ? 1 : 0; // MySQL BOOLEAN için 1 veya 0
-      const conversionValue = conversionData?.value || null;
+      const conversionValue = conversionData?.value !== undefined && conversionData?.value !== null 
+        ? parseFloat(conversionData.value) 
+        : null;
       const conversionType = conversionData?.type || null;
+
+      // Parametreleri hazırla ve tip kontrolü yap
+      const updateParams = [
+        sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // sessionEnd: DATETIME format
+        parseInt(duration) || 0, // duration: INT
+        parseInt(pageViewsCount) || 0, // pageViews: INT
+        parseInt(eventsCount) || 0, // eventsCount: INT
+        conversion ? 1 : 0, // conversion: BOOLEAN (0 or 1)
+        conversionValue, // conversionValue: DECIMAL or NULL
+        conversionType, // conversionType: VARCHAR or NULL
+        sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // lastActivity: DATETIME format
+        String(sessionId), // sessionId: VARCHAR
+        parseInt(tenantId) || 1 // tenantId: INT
+      ];
+
+      // Debug: Parametreleri logla
+      console.log('🔍 Analytics endSession params:', {
+        sessionEnd: updateParams[0],
+        duration: updateParams[1],
+        pageViews: updateParams[2],
+        eventsCount: updateParams[3],
+        conversion: updateParams[4],
+        conversionValue: updateParams[5],
+        conversionType: updateParams[6],
+        lastActivity: updateParams[7],
+        sessionId: updateParams[8],
+        tenantId: updateParams[9],
+        paramTypes: updateParams.map((p, i) => `${i}: ${typeof p} (${p === null ? 'null' : p})`)
+      });
 
       await this.pool.execute(
         `UPDATE analytics_sessions SET
@@ -217,18 +260,7 @@ class AnalyticsService {
           isActive = 0,
           lastActivity = ?
          WHERE id = ? AND tenantId = ?`,
-        [
-          sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // sessionEnd: DATETIME format
-          duration,
-          pageViewsCount,
-          eventsCount,
-          conversion,
-          conversionValue,
-          conversionType,
-          sessionEnd.toISOString().slice(0, 19).replace('T', ' '), // lastActivity: DATETIME format
-          sessionId,
-          tenantId
-        ]
+        updateParams
       );
 
       return { success: true, duration, eventsCount, pageViews: pageViewsCount };

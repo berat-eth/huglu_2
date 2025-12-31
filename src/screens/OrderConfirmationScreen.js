@@ -9,6 +9,7 @@ import { cartAPI, ordersAPI, userLevelAPI, userAPI, walletAPI } from '../service
 import OrderSuccessModal from '../components/OrderSuccessModal';
 import ErrorModal from '../components/ErrorModal';
 import analytics from '../services/analytics';
+import { updateCartBadge } from '../utils/cartBadge';
 
 export default function OrderConfirmationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
@@ -254,9 +255,12 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         });
         setShowSuccessModal(true);
         
-        // Sepeti temizle
+        // Sepeti temizle ve badge'i güncelle
         try {
           await cartAPI.clear(storedUserId);
+          // Badge'i sıfırla
+          await updateCartBadge(storedUserId);
+          console.log('✅ Sepet temizlendi ve badge güncellendi');
         } catch (clearError) {
           console.error('Sepet temizleme hatası:', clearError);
         }

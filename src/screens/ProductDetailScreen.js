@@ -24,15 +24,15 @@ const { width } = Dimensions.get('window');
 const maskUserName = (name) => {
   // Null, undefined veya boş string kontrolü
   if (!name) return 'Kullanıcı';
-  
+
   // String'e çevir ve trim yap
   const nameStr = String(name).trim();
   if (!nameStr || nameStr === '') return 'Kullanıcı';
-  
+
   // Kelimelere ayır
   const parts = nameStr.split(/\s+/).filter(part => part.length > 0);
   if (parts.length === 0) return 'Kullanıcı';
-  
+
   // Her kelimeyi maskele
   return parts.map(part => {
     if (part.length <= 2) {
@@ -116,186 +116,186 @@ export default function ProductDetailScreen({ navigation, route }) {
         }
         return;
       }
-      
+
       try {
         setLoadingDetail(true);
-        
+
         // 1. Ürün detayını al - Her zaman API'den güncel veriyi çek
         const response = await productsAPI.getById(productId);
-        
+
         if (response.data?.success) {
-            let data = response.data.data?.product || response.data.data || response.data;
-            
-            // initialProduct varsa ve bazı alanlar eksikse, onları birleştir
-            if (initialProduct) {
-              data = {
-                ...initialProduct,
-                ...data,
-                // Önemli: API'den gelen variations ve images alanlarını koru
-                variations: data.variations || initialProduct.variations,
-                images: data.images || initialProduct.images,
-                gallery: data.gallery || initialProduct.gallery,
-                variationDetails: data.variationDetails || initialProduct.variationDetails,
-                xmlOptions: data.xmlOptions || initialProduct.xmlOptions,
-              };
-            }
-            
-            // Debug: API'den gelen görsel verilerini logla
-            console.log('🔍 API\'den gelen TÜM ürün verisi:', JSON.stringify(data, null, 2));
-            console.log('🔍 API\'den gelen görsel alanları:', {
-              hasImage: !!data?.image,
-              hasImages: !!data?.images,
-              hasGallery: !!data?.gallery,
-              image: data?.image,
-              images: data?.images,
-              imagesType: typeof data?.images,
-              gallery: data?.gallery,
-              galleryType: typeof data?.gallery,
-              image1: data?.image1,
-              image2: data?.image2,
-              image3: data?.image3,
-              image4: data?.image4,
-              image5: data?.image5,
-              // Tüm görsel alanlarını kontrol et
-              allKeys: Object.keys(data || {}).filter(key => key.toLowerCase().includes('image') || key.toLowerCase().includes('gallery') || key.toLowerCase().includes('photo') || key.toLowerCase().includes('picture')),
-            });
-            
-            // 2. Varyasyonları ayrı endpoint'ten al
-            try {
-              const variationsResponse = await productsAPI.getVariations(productId);
-              
-              if (variationsResponse.data?.success) {
-                // Backend'den gelen variations yapısını kontrol et
-                const responseData = variationsResponse.data.data || variationsResponse.data;
-                const variations = responseData.variations || responseData || [];
-                
-                console.log('📦 Backend\'den gelen variations:', JSON.stringify(variations, null, 2));
-                
-                // Varyasyonları ürün datasına ekle (öncelik API'den gelen veriye)
-                if (Array.isArray(variations) && variations.length > 0) {
-                  data.variations = variations;
-                } else if (!data.variations) {
-                  // Eğer API'den variations gelmediyse ve data'da da yoksa, initialProduct'tan al
-                  data.variations = initialProduct?.variations;
-                }
-              }
-            } catch (variationError) {
-              console.error('❌ Variations endpoint hatası:', variationError);
-              // Varyasyon endpoint'i yoksa, initialProduct'tan variations'ı koru
-              if (!data.variations && initialProduct?.variations) {
-                data.variations = initialProduct.variations;
+          let data = response.data.data?.product || response.data.data || response.data;
+
+          // initialProduct varsa ve bazı alanlar eksikse, onları birleştir
+          if (initialProduct) {
+            data = {
+              ...initialProduct,
+              ...data,
+              // Önemli: API'den gelen variations ve images alanlarını koru
+              variations: data.variations || initialProduct.variations,
+              images: data.images || initialProduct.images,
+              gallery: data.gallery || initialProduct.gallery,
+              variationDetails: data.variationDetails || initialProduct.variationDetails,
+              xmlOptions: data.xmlOptions || initialProduct.xmlOptions,
+            };
+          }
+
+          // Debug: API'den gelen görsel verilerini logla
+          console.log('🔍 API\'den gelen TÜM ürün verisi:', JSON.stringify(data, null, 2));
+          console.log('🔍 API\'den gelen görsel alanları:', {
+            hasImage: !!data?.image,
+            hasImages: !!data?.images,
+            hasGallery: !!data?.gallery,
+            image: data?.image,
+            images: data?.images,
+            imagesType: typeof data?.images,
+            gallery: data?.gallery,
+            galleryType: typeof data?.gallery,
+            image1: data?.image1,
+            image2: data?.image2,
+            image3: data?.image3,
+            image4: data?.image4,
+            image5: data?.image5,
+            // Tüm görsel alanlarını kontrol et
+            allKeys: Object.keys(data || {}).filter(key => key.toLowerCase().includes('image') || key.toLowerCase().includes('gallery') || key.toLowerCase().includes('photo') || key.toLowerCase().includes('picture')),
+          });
+
+          // 2. Varyasyonları ayrı endpoint'ten al
+          try {
+            const variationsResponse = await productsAPI.getVariations(productId);
+
+            if (variationsResponse.data?.success) {
+              // Backend'den gelen variations yapısını kontrol et
+              const responseData = variationsResponse.data.data || variationsResponse.data;
+              const variations = responseData.variations || responseData || [];
+
+              console.log('📦 Backend\'den gelen variations:', JSON.stringify(variations, null, 2));
+
+              // Varyasyonları ürün datasına ekle (öncelik API'den gelen veriye)
+              if (Array.isArray(variations) && variations.length > 0) {
+                data.variations = variations;
+              } else if (!data.variations) {
+                // Eğer API'den variations gelmediyse ve data'da da yoksa, initialProduct'tan al
+                data.variations = initialProduct?.variations;
               }
             }
-            
-            if (data) {
-              // Flash deal kontrolü - önce initialProduct'tan kontrol et
-              if (initialProduct?.isFlashDeal && initialProduct?.oldPrice) {
-                setIsFlashDeal(true);
-                setFlashDealOldPrice(parseFloat(initialProduct.oldPrice));
-                // initialProduct'tan gelen fiyatı kullan
-                if (initialProduct.price) {
-                  data.price = parseFloat(initialProduct.price);
-                }
-                if (initialProduct.oldPrice) {
-                  data.oldPrice = parseFloat(initialProduct.oldPrice);
-                }
-              } else {
-                // Flash deal kontrolü - API'den kontrol et
-                try {
-                  const flashDealsResponse = await flashDealsAPI.getActive();
-                  if (flashDealsResponse.data?.success) {
-                    const flashDealsData = flashDealsResponse.data.data || [];
-                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
-                    
-                    // Tüm flash deal'lerde bu ürünü ara
-                    let foundFlashDeal = null;
-                    for (const deal of flashDealsData) {
-                      const dealProducts = deal.products || [];
-                      const productInDeal = dealProducts.find(p => (p.id || p._id) === productId);
-                      if (productInDeal) {
-                        foundFlashDeal = deal;
-                        break;
-                      }
-                    }
-                    
-                    if (foundFlashDeal) {
-                      const basePrice = parseFloat(data.price || 0);
-                      const discountValue = parseFloat(foundFlashDeal.discount_value || 0);
-                      let discountedPrice = basePrice;
-                      
-                      if (foundFlashDeal.discount_type === 'percentage') {
-                        discountedPrice = basePrice * (1 - discountValue / 100);
-                      } else {
-                        discountedPrice = basePrice - discountValue;
-                      }
-                      
-                      setIsFlashDeal(true);
-                      setFlashDealOldPrice(basePrice);
-                      // Ürün fiyatını güncelle
-                      data.price = Math.max(0, discountedPrice);
-                      data.oldPrice = basePrice;
-                    } else {
-                      setIsFlashDeal(false);
-                      setFlashDealOldPrice(null);
-                    }
-                  }
-                } catch (flashDealError) {
-                  console.warn('⚠️ Flash deals kontrol edilemedi:', flashDealError.message);
-                  setIsFlashDeal(false);
-                  setFlashDealOldPrice(null);
-                }
+          } catch (variationError) {
+            console.error('❌ Variations endpoint hatası:', variationError);
+            // Varyasyon endpoint'i yoksa, initialProduct'tan variations'ı koru
+            if (!data.variations && initialProduct?.variations) {
+              data.variations = initialProduct.variations;
+            }
+          }
+
+          if (data) {
+            // Flash deal kontrolü - önce initialProduct'tan kontrol et
+            if (initialProduct?.isFlashDeal && initialProduct?.oldPrice) {
+              setIsFlashDeal(true);
+              setFlashDealOldPrice(parseFloat(initialProduct.oldPrice));
+              // initialProduct'tan gelen fiyatı kullan
+              if (initialProduct.price) {
+                data.price = parseFloat(initialProduct.price);
               }
-              
-              setProduct(data);
-              
-              // Kullanıcının favorilerini kontrol et
+              if (initialProduct.oldPrice) {
+                data.oldPrice = parseFloat(initialProduct.oldPrice);
+              }
+            } else {
+              // Flash deal kontrolü - API'den kontrol et
               try {
-                const userId = await AsyncStorage.getItem('userId');
-                if (userId) {
-                  // Award EXP for viewing product
-                  try {
-                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
-                    await userLevelAPI.addProductViewExp(userId, productId);
-                    
-                    // Analytics: Product view tracking
-                    try {
-                      await analytics.trackProductView(productId, {
-                        productName: data.name,
-                        categoryId: data.categoryId,
-                        price: data.price,
-                        originalPrice: data.originalPrice
-                      });
-                    } catch (analyticsError) {
-                      console.log('Analytics product view error:', analyticsError);
+                const flashDealsResponse = await flashDealsAPI.getActive();
+                if (flashDealsResponse.data?.success) {
+                  const flashDealsData = flashDealsResponse.data.data || [];
+                  const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+
+                  // Tüm flash deal'lerde bu ürünü ara
+                  let foundFlashDeal = null;
+                  for (const deal of flashDealsData) {
+                    const dealProducts = deal.products || [];
+                    const productInDeal = dealProducts.find(p => (p.id || p._id) === productId);
+                    if (productInDeal) {
+                      foundFlashDeal = deal;
+                      break;
                     }
-                  } catch (expError) {
-                    console.log('Product view EXP error:', expError);
-                    // Don't fail if EXP addition fails
                   }
-                  const favoritesResponse = await wishlistAPI.get(userId);
-                  if (favoritesResponse.data?.success) {
-                    const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
-                    const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
-                    const isInFavorites = favorites.some((fav: any) => 
-                      (fav.productId || fav.id) === productId
-                    );
-                    setIsFavorite(isInFavorites);
+
+                  if (foundFlashDeal) {
+                    const basePrice = parseFloat(data.price || 0);
+                    const discountValue = parseFloat(foundFlashDeal.discount_value || 0);
+                    let discountedPrice = basePrice;
+
+                    if (foundFlashDeal.discount_type === 'percentage') {
+                      discountedPrice = basePrice * (1 - discountValue / 100);
+                    } else {
+                      discountedPrice = basePrice - discountValue;
+                    }
+
+                    setIsFlashDeal(true);
+                    setFlashDealOldPrice(basePrice);
+                    // Ürün fiyatını güncelle
+                    data.price = Math.max(0, discountedPrice);
+                    data.oldPrice = basePrice;
                   } else {
-                    setIsFavorite(!!data?.isFavorite);
+                    setIsFlashDeal(false);
+                    setFlashDealOldPrice(null);
                   }
-                  
-                  // Chatbot'tan beden önerisi al (sadece ürünün beden seçenekleri varsa)
-                  // NOT: AI beden önerisi sizeOptions hazır olduğunda useEffect içinde kontrol edilecek
-                  // Burada sadece temizleme yapıyoruz
-                  setRecommendedSize(null);
+                }
+              } catch (flashDealError) {
+                console.warn('⚠️ Flash deals kontrol edilemedi:', flashDealError.message);
+                setIsFlashDeal(false);
+                setFlashDealOldPrice(null);
+              }
+            }
+
+            setProduct(data);
+
+            // Kullanıcının favorilerini kontrol et
+            try {
+              const userId = await AsyncStorage.getItem('userId');
+              if (userId) {
+                // Award EXP for viewing product
+                try {
+                  const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                  await userLevelAPI.addProductViewExp(userId, productId);
+
+                  // Analytics: Product view tracking
+                  try {
+                    await analytics.trackProductView(productId, {
+                      productName: data.name,
+                      categoryId: data.categoryId,
+                      price: data.price,
+                      originalPrice: data.originalPrice
+                    });
+                  } catch (analyticsError) {
+                    console.log('Analytics product view error:', analyticsError);
+                  }
+                } catch (expError) {
+                  console.log('Product view EXP error:', expError);
+                  // Don't fail if EXP addition fails
+                }
+                const favoritesResponse = await wishlistAPI.get(userId);
+                if (favoritesResponse.data?.success) {
+                  const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
+                  const productId = data.id || data._id || initialProduct?.id || initialProduct?._id;
+                  const isInFavorites = favorites.some((fav: any) =>
+                    (fav.productId || fav.id) === productId
+                  );
+                  setIsFavorite(isInFavorites);
                 } else {
                   setIsFavorite(!!data?.isFavorite);
                 }
-              } catch (favError) {
-                console.log('Favoriler kontrol edilemedi:', favError);
+
+                // Chatbot'tan beden önerisi al (sadece ürünün beden seçenekleri varsa)
+                // NOT: AI beden önerisi sizeOptions hazır olduğunda useEffect içinde kontrol edilecek
+                // Burada sadece temizleme yapıyoruz
+                setRecommendedSize(null);
+              } else {
                 setIsFavorite(!!data?.isFavorite);
               }
+            } catch (favError) {
+              console.log('Favoriler kontrol edilemedi:', favError);
+              setIsFavorite(!!data?.isFavorite);
             }
+          }
         }
       } catch (error) {
         console.error('Ürün detayı yüklenemedi:', {
@@ -316,12 +316,12 @@ export default function ProductDetailScreen({ navigation, route }) {
   useEffect(() => {
     const fetchQuestions = async () => {
       if (!product?.id && !product?._id) return;
-      
+
       try {
         setLoadingQuestions(true);
         const productId = product.id || product._id;
         const response = await productQuestionsAPI.getByProduct(productId);
-        
+
         if (response.data?.success) {
           const questionsData = response.data.data || response.data.questions || [];
           // Kullanıcı isimlerini maskele
@@ -329,7 +329,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             // Tüm olası isim alanlarını kontrol et
             const originalName = q.userName || q.user?.name || q.name || '';
             const maskedName = maskUserName(originalName);
-            
+
             return {
               ...q,
               userName: maskedName,
@@ -356,19 +356,19 @@ export default function ProductDetailScreen({ navigation, route }) {
     if (!product) {
       return [];
     }
-    
+
     const sizes = [];
-    
+
     // 1. Önce variationDetails'i kontrol et (JSON field)
     if (product.variationDetails) {
       console.log('1️⃣ variationDetails bulundu, parse ediliyor...');
       try {
-        const details = typeof product.variationDetails === 'string' 
-          ? JSON.parse(product.variationDetails) 
+        const details = typeof product.variationDetails === 'string'
+          ? JSON.parse(product.variationDetails)
           : product.variationDetails;
-        
+
         console.log('📋 variationDetails parse edildi:', JSON.stringify(details, null, 2));
-        
+
         if (Array.isArray(details)) {
           details.forEach(variation => {
             console.log('   Variation işleniyor:', variation);
@@ -396,18 +396,18 @@ export default function ProductDetailScreen({ navigation, route }) {
     } else {
       console.log('1️⃣ variationDetails YOK');
     }
-    
+
     // 2. Variations array'i kontrol et (API'den gelen yeni format)
     // ÖNEMLİ: Bu kontrolü her zaman yap, çünkü backend'den variations geliyor olabilir
     if (Array.isArray(product.variations) && product.variations.length > 0) {
       console.log('2️⃣ variations array bulundu, işleniyor...');
       product.variations.forEach(variation => {
         console.log('   Variation:', variation);
-        
+
         // Variation'ın name'i "Beden" veya "Size" ise, options'ları işle
         const variationName = (variation.name || '').toLowerCase();
         const isSizeVariation = variationName.includes('beden') || variationName.includes('size') || variationName.includes('boyut');
-        
+
         // Eğer variation'ın name'i beden/size değilse ve options varsa, options'ları kontrol et
         // VEYA eğer variation'ın name'i yoksa ama options varsa, onları da işle
         if (isSizeVariation || (!variation.name && Array.isArray(variation.options)) || Array.isArray(variation.options)) {
@@ -450,45 +450,45 @@ export default function ProductDetailScreen({ navigation, route }) {
     } else {
       console.log('2️⃣ variations array YOK veya BOŞ');
     }
-    
+
     // 3. xmlOptions'ı kontrol et
     if (sizes.length === 0 && product.xmlOptions) {
       console.log('3️⃣ xmlOptions bulundu, parse ediliyor...');
       try {
-        const xmlOpts = typeof product.xmlOptions === 'string' 
-          ? JSON.parse(product.xmlOptions) 
+        const xmlOpts = typeof product.xmlOptions === 'string'
+          ? JSON.parse(product.xmlOptions)
           : product.xmlOptions;
-        
+
         console.log('📋 xmlOptions parse edildi:', xmlOpts);
-        
+
         // xmlOptions formatı: { options: [...] } veya direkt array
         const optionsArray = xmlOpts?.options || (Array.isArray(xmlOpts) ? xmlOpts : []);
-        
+
         if (Array.isArray(optionsArray) && optionsArray.length > 0) {
           optionsArray.forEach(opt => {
             console.log('   Option:', opt);
-            
+
             // Beden bilgisini attributes objesinden al
             let bedenValue = null;
             if (opt.attributes && typeof opt.attributes === 'object') {
               // Beden veya Size anahtarını bul
               const bedenKeys = Object.keys(opt.attributes).filter(key => {
                 const normalizedKey = key.toLowerCase().trim();
-                return normalizedKey === 'beden' || normalizedKey === 'size' || 
-                       normalizedKey.includes('beden') || normalizedKey.includes('size');
+                return normalizedKey === 'beden' || normalizedKey === 'size' ||
+                  normalizedKey.includes('beden') || normalizedKey.includes('size');
               });
-              
+
               if (bedenKeys.length > 0) {
                 bedenValue = opt.attributes[bedenKeys[0]];
                 console.log(`   ✅ Beden bulundu: "${bedenValue}" (key: ${bedenKeys[0]})`);
               }
             }
-            
+
             // Eğer attributes'ten beden bulunamadıysa, direkt value/name kontrolü yap
             if (!bedenValue) {
               bedenValue = opt.value || opt.name || opt.size;
             }
-            
+
             if (bedenValue) {
               sizes.push({
                 value: bedenValue,
@@ -510,7 +510,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     } else {
       console.log('3️⃣ xmlOptions YOK');
     }
-    
+
     // 4. Eski format desteği (sizes, sizeOptions, variants)
     if (sizes.length === 0) {
       console.log('4️⃣ Eski format kontrol ediliyor...');
@@ -528,7 +528,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           if (typeof s === 'string') {
             sizes.push({ value: s, stock: 999 });
           } else if (s?.name || s?.label || s?.size || s?.value) {
-            sizes.push({ 
+            sizes.push({
               value: s.name || s.label || s.size || s.value,
               stock: s.stock || 999,
             });
@@ -572,7 +572,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           if (favoritesResponse.data?.success) {
             const favorites = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
             const favorite = favorites.find((fav: any) => (fav.productId || fav.id) === productId);
-            
+
             if (favorite && (favorite.id || favorite._id)) {
               // DELETE /favorites/:favoriteId endpoint'ini kullan (endpoint.md'ye göre)
               await wishlistAPI.remove(favorite.id || favorite._id, userId);
@@ -584,7 +584,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           // Favorilere ekle
           await wishlistAPI.add(userId, productId);
         }
-        
+
         console.log(`✅ Ürün ${previousFavoriteState ? 'favorilerden çıkarıldı' : 'favorilere eklendi'}`);
       } catch (error) {
         // Hata durumunda geri al
@@ -709,7 +709,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const getBotResponse = (message) => {
     const lowerMessage = message.toLowerCase();
-    
+
     if (lowerMessage.includes('sipariş') || lowerMessage.includes('satın al') || lowerMessage.includes('al')) {
       return {
         text: '🛒 Hızlı sipariş vermek ister misiniz?\n\nÜrünü sepete ekleyip ödeme sayfasına yönlendirebilirim.',
@@ -744,8 +744,8 @@ export default function ProductDetailScreen({ navigation, route }) {
       };
     } else if (lowerMessage.includes('stok')) {
       return {
-        text: product?.stock > 0 
-          ? `✅ Ürün stoktadır!\n📦 ${product.stock} adet mevcut\n🚀 Hemen sipariş verebilirsiniz.` 
+        text: product?.stock > 0
+          ? `✅ Ürün stoktadır!\n📦 ${product.stock} adet mevcut\n🚀 Hemen sipariş verebilirsiniz.`
           : '❌ Üzgünüm, ürün şu anda stokta yok.\n🔔 Stok geldiğinde bildirim almak ister misiniz?',
         type: 'text'
       };
@@ -825,9 +825,9 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const handleAIOption = (option) => {
     setShowAIModal(false);
-    
+
     setTimeout(() => {
-      switch(option) {
+      switch (option) {
         case 'features':
           setShowFeaturesModal(true);
           break;
@@ -904,7 +904,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     try {
       setSubmittingQuestion(true);
       const userId = await AsyncStorage.getItem('userId');
-      
+
       if (!userId) {
         setLoginRequiredMessage('Soru sormak için lütfen giriş yapın');
         setShowLoginRequiredModal(true);
@@ -930,7 +930,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         setQuestions([maskedNewQuestion, ...questions]);
         setShowQuestionModal(false);
         setNewQuestion('');
-        
+
         // Soruları yeniden yükle (güncel liste için)
         try {
           const questionsResponse = await productQuestionsAPI.getByProduct(productId);
@@ -947,7 +947,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         } catch (refreshError) {
           console.log('Sorular yeniden yüklenemedi:', refreshError);
         }
-        
+
         alert.show('Başarılı', 'Sorunuz gönderildi! Satıcı en kısa sürede yanıtlayacaktır.');
       } else {
         alert.show('Hata', response.data?.message || 'Soru gönderilemedi');
@@ -1032,7 +1032,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     try {
       setAddingCart(true);
       const userId = await AsyncStorage.getItem('userId');
-      
+
       if (!userId) {
         setLoginRequiredMessage('Sepete ürün eklemek için lütfen giriş yapın');
         setShowLoginRequiredModal(true);
@@ -1042,11 +1042,11 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       const pid = product.id || product._id;
       const selectedVariations = {};
-      
+
       // Seçili beden bilgisini ekle
       if (sizeOptions.length > 0 && sizeOptions[selectedSize]) {
         const selectedSizeOption = sizeOptions[selectedSize];
-        
+
         // Yeni format (API'den gelen detaylı bilgi)
         if (selectedSizeOption.id && selectedSizeOption.variationId) {
           selectedVariations[selectedSizeOption.variationId] = {
@@ -1062,7 +1062,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           selectedVariations.size = selectedSizeOption.value || selectedSizeOption;
         }
       }
-      
+
       // Renk seçimi kaldırıldı
 
       // Flash deal fiyatını kullan (eğer varsa)
@@ -1074,7 +1074,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         // Badge'i güncelle
         const { updateCartBadge } = require('../utils/cartBadge');
         await updateCartBadge(userId);
-        
+
         // Analytics: Add to cart tracking
         try {
           await analytics.trackAddToCart(pid, {
@@ -1087,7 +1087,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         } catch (analyticsError) {
           console.log('Analytics add to cart error:', analyticsError);
         }
-        
+
         setShowAddToCartSuccessModal(true);
       } else {
         alert.show('Hata', response.data?.message || 'Sepete eklenemedi');
@@ -1099,11 +1099,11 @@ export default function ProductDetailScreen({ navigation, route }) {
         response: error.response?.data,
         status: error.response?.status,
       });
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          'Sepete eklenirken bir hata oluştu';
-      
+
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Sepete eklenirken bir hata oluştu';
+
       alert.show('Hata', errorMessage);
     } finally {
       setAddingCart(false);
@@ -1126,18 +1126,18 @@ export default function ProductDetailScreen({ navigation, route }) {
   const productImages = useMemo(() => {
     const list = [];
     const API_BASE_URL = getApiUrl().replace('/api', ''); // Base URL'i al (API path'ini kaldır)
-    
+
     const add = (url) => {
       if (url && typeof url === 'string' && url.trim() !== '' && !list.includes(url)) {
         // URL'yi temizle ve normalize et
         let cleanUrl = url.trim();
-        
+
         // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
         if (cleanUrl.startsWith('/uploads/') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//') && !cleanUrl.startsWith('http'))) {
           cleanUrl = `${API_BASE_URL}${cleanUrl}`;
           console.log('🔗 Relative URL düzeltildi:', url, '->', cleanUrl);
         }
-        
+
         // Eğer URL http veya https ile başlıyorsa ekle
         if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
           list.push(cleanUrl);
@@ -1160,10 +1160,10 @@ export default function ProductDetailScreen({ navigation, route }) {
       image4: product?.image4,
       image5: product?.image5,
       // Tüm görsel alanlarını kontrol et
-      allImageKeys: Object.keys(product || {}).filter(key => 
-        key.toLowerCase().includes('image') || 
-        key.toLowerCase().includes('gallery') || 
-        key.toLowerCase().includes('photo') || 
+      allImageKeys: Object.keys(product || {}).filter(key =>
+        key.toLowerCase().includes('image') ||
+        key.toLowerCase().includes('gallery') ||
+        key.toLowerCase().includes('photo') ||
         key.toLowerCase().includes('picture') ||
         key.toLowerCase().includes('img')
       ),
@@ -1178,7 +1178,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     if (product?.images) {
       try {
         let imagesArray = product.images;
-        
+
         // Eğer string ise JSON parse et
         if (typeof product.images === 'string') {
           // Boş string veya null kontrolü
@@ -1198,7 +1198,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             }
           }
         }
-        
+
         // Array ise işle
         if (Array.isArray(imagesArray)) {
           imagesArray.forEach((img) => {
@@ -1226,7 +1226,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     if (product?.gallery) {
       try {
         let galleryArray = product.gallery;
-        
+
         // Eğer string ise JSON parse et
         if (typeof product.gallery === 'string') {
           // Boş string veya null kontrolü
@@ -1246,7 +1246,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             }
           }
         }
-        
+
         // Array ise işle
         if (Array.isArray(galleryArray)) {
           galleryArray.forEach((img) => {
@@ -1316,12 +1316,12 @@ export default function ProductDetailScreen({ navigation, route }) {
       console.warn('⚠️ Ürün görseli bulunamadı, placeholder kullanılıyor');
       add('https://via.placeholder.com/400?text=Ürün+Görseli');
     }
-    
+
     return list;
   }, [product]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+
   // Product değiştiğinde image index ve selected size'ı sıfırla
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -1336,19 +1336,19 @@ export default function ProductDetailScreen({ navigation, route }) {
         setRecommendedSize(null);
         return;
       }
-      
+
       // Beden seçenekleri varsa, AI önerisini al
       try {
         const userId = await AsyncStorage.getItem('userId');
         if (!userId || !product) {
           return;
         }
-        
+
         const productId = product.id || product._id;
         if (!productId) {
           return;
         }
-        
+
         const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
         if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
           const responseData = chatbotResponse.data.data;
@@ -1370,24 +1370,24 @@ export default function ProductDetailScreen({ navigation, route }) {
         setRecommendedSize(null);
       }
     };
-    
+
     fetchBedenOnerisi();
   }, [sizeOptions.length, product?.id, product?._id]);
-  
+
   // productImages değiştiğinde currentImageIndex'i geçerli tut
   useEffect(() => {
     if (productImages.length > 0 && currentImageIndex >= productImages.length) {
       setCurrentImageIndex(0);
     }
   }, [productImages.length]);
-  
+
   // sizeOptions değiştiğinde selectedSize'ı geçerli tut
   useEffect(() => {
     if (sizeOptions.length > 0 && selectedSize >= sizeOptions.length) {
       setSelectedSize(0);
     }
   }, [sizeOptions.length]);
-  
+
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
@@ -1404,7 +1404,7 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [newQuestion, setNewQuestion] = useState('');
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
-  
+
   const displayImage = productImages[currentImageIndex] || 'https://via.placeholder.com/400';
 
   const hasStock = product?.stock === undefined ? true : product.stock > 0;
@@ -1427,8 +1427,8 @@ export default function ProductDetailScreen({ navigation, route }) {
             <TouchableOpacity style={[styles.headerButton, styles.aiButton]} onPress={handleAIAssistant}>
               <Ionicons name="sparkles" size={24} color={COLORS.white} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerButton, styles.arButton]} 
+            <TouchableOpacity
+              style={[styles.headerButton, styles.arButton]}
               onPress={handleARView}
             >
               <Ionicons name="cube-outline" size={24} color={COLORS.white} />
@@ -1439,8 +1439,8 @@ export default function ProductDetailScreen({ navigation, route }) {
             <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={24} color={COLORS.white} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerButton} 
+            <TouchableOpacity
+              style={styles.headerButton}
               onPress={handleToggleFavorite}
             >
               <Ionicons
@@ -1453,7 +1453,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         </View>
 
         {/* Product Image */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.imageContainer}
           onPress={() => handleImagePress(currentImageIndex)}
           activeOpacity={0.9}
@@ -1505,8 +1505,8 @@ export default function ProductDetailScreen({ navigation, route }) {
         {/* Image Gallery Thumbnails */}
         {productImages && productImages.length > 1 && (
           <View style={styles.galleryContainer}>
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.galleryContent}
             >
@@ -1547,7 +1547,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           <View style={styles.titleSection}>
             <Text style={styles.category}>{product.category || 'Ürün'}</Text>
             <Text style={styles.productName}>{product.name}</Text>
-            
+
             {/* Live Viewers Badge */}
             <View style={styles.liveViewersContainer}>
               <View style={styles.liveViewersBadge}>
@@ -1558,7 +1558,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 </Text>
               </View>
             </View>
-            
+
             {/* Stok Kodu */}
             {(product.sku || product.stockCode || product.barkod) && (
               <View style={styles.skuContainer}>
@@ -1568,7 +1568,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 </Text>
               </View>
             )}
-            
+
             <View style={styles.priceRow}>
               <View style={styles.priceContainer}>
                 {isFlashDeal && oldPriceValue && parseFloat(oldPriceValue) > priceValue ? (
@@ -1630,7 +1630,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 {sizeOptions.map((size, index) => {
                   const sizeValue = size.value || size;
                   const isOutOfStock = size.stock !== undefined && size.stock <= 0;
-                  
+
                   return (
                     <TouchableOpacity
                       key={size.id || index}
@@ -1662,88 +1662,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* Specs - Tekstil kategorisi için özel alanlar */}
-          {(() => {
-            const isTextileCategory = product?.category && 
-              (product.category.toLowerCase().includes('tişört') ||
-               product.category.toLowerCase().includes('t-shirt') ||
-               product.category.toLowerCase().includes('gömlek') ||
-               product.category.toLowerCase().includes('tekstil') ||
-               product.category.toLowerCase().includes('kumaş') ||
-               product.category.toLowerCase().includes('fabric') ||
-               product.category.toLowerCase().includes('sweatshirt') ||
-               product.category.toLowerCase().includes('hoodie') ||
-               product.category.toLowerCase().includes('kazak') ||
-               product.category.toLowerCase().includes('hırka') ||
-               product.category.toLowerCase().includes('bluz') ||
-               product.category.toLowerCase().includes('elbise') ||
-               product.category.toLowerCase().includes('pantolon') ||
-               product.category.toLowerCase().includes('şort') ||
-               product.category.toLowerCase().includes('etek') ||
-               product.category.toLowerCase().includes('ceket') ||
-               product.category.toLowerCase().includes('mont'));
 
-            if (isTextileCategory) {
-              return (
-                <View style={styles.specsContainer}>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="shirt-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Kumaş Türü</Text>
-                    <Text style={styles.specValue}>%100 Pamuk</Text>
-                  </View>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="water-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Yıkama</Text>
-                    <Text style={styles.specValue}>30°C</Text>
-                  </View>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="resize-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Kesim</Text>
-                    <Text style={styles.specValue}>Regular Fit</Text>
-                  </View>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="leaf-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Özellik</Text>
-                    <Text style={styles.specValue}>Nefes Alır</Text>
-                  </View>
-                </View>
-              );
-            } else {
-              return (
-                <View style={styles.specsContainer}>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="scale-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Ağırlık</Text>
-                    <Text style={styles.specValue}>1.2 kg</Text>
-                  </View>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="water-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Su Geçirmez</Text>
-                    <Text style={styles.specValue}>IPX5</Text>
-                  </View>
-                  <View style={styles.specCard}>
-                    <View style={styles.specIcon}>
-                      <Ionicons name="layers-outline" size={20} color={COLORS.primary} />
-                    </View>
-                    <Text style={styles.specLabel}>Malzeme</Text>
-                    <Text style={styles.specValue}>Naylon</Text>
-                  </View>
-                </View>
-              );
-            }
-          })()}
 
           {/* Description */}
           {product.description && (
@@ -1762,7 +1681,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             </View>
 
             {/* Ask Question Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.askQuestionButton}
               onPress={() => setShowQuestionModal(true)}
             >
@@ -1787,7 +1706,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                             // Tüm olası isim kaynaklarını kontrol et
                             const name = question.userName || question.user?.name || question.name || '';
                             const masked = maskUserName(name);
-                            
+
                             // Eğer maskeleme "Kullanıcı" döndürdüyse, yine de göster
                             // Çünkü backend'den veri gelmemiş olabilir
                             return masked;
@@ -1799,7 +1718,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                       </View>
                     </View>
                   </View>
-                  
+
                   <View style={styles.questionContent}>
                     <View style={styles.questionBadge}>
                       <Ionicons name="help-circle" size={16} color={COLORS.primary} />
@@ -1819,11 +1738,11 @@ export default function ProductDetailScreen({ navigation, route }) {
                         <Text style={styles.answeredBy}>
                           - {(() => {
                             const answeredBy = question.answeredBy?.toLowerCase() || '';
-                            if (answeredBy === 'seller' || 
-                                answeredBy === 'admin' || 
-                                answeredBy === 'huglu outdoor' || 
-                                answeredBy === 'hugluoutdoor' ||
-                                answeredBy === 'huglu outdoor') {
+                            if (answeredBy === 'seller' ||
+                              answeredBy === 'admin' ||
+                              answeredBy === 'huglu outdoor' ||
+                              answeredBy === 'hugluoutdoor' ||
+                              answeredBy === 'huglu outdoor') {
                               return 'Huglu Outdoor';
                             }
                             return question.answeredBy;
@@ -1864,7 +1783,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             </View>
 
             {/* Add Review Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addReviewButton}
               onPress={() => setShowReviewModal(true)}
             >
@@ -1884,11 +1803,11 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.reviewName}>{review.userName}</Text>
                       <View style={styles.reviewStars}>
                         {[1, 2, 3, 4, 5].map((star) => (
-                          <Ionicons 
-                            key={star} 
-                            name={star <= review.rating ? "star" : "star-outline"} 
-                            size={12} 
-                            color="#FFA500" 
+                          <Ionicons
+                            key={star}
+                            name={star <= review.rating ? "star" : "star-outline"}
+                            size={12}
+                            color="#FFA500"
                           />
                         ))}
                       </View>
@@ -1919,7 +1838,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           </View>
 
           {/* Product Recommendations */}
-          <ProductRecommendations 
+          <ProductRecommendations
             currentProduct={product}
             maxItems={6}
             onProductPress={(recommendedProduct) => {
@@ -1932,7 +1851,7 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       {/* Chatbot Floating Button */}
       {!showChatbot && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.chatbotButton}
           onPress={handleChatbotOpen}
           activeOpacity={0.8}
@@ -1951,7 +1870,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         <SafeAreaView style={styles.chatbotContainer} edges={['top', 'bottom']}>
           {/* Chatbot Header */}
           <View style={styles.chatbotHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowChatbot(false)}
               style={styles.chatbotBackButton}
             >
@@ -1975,7 +1894,7 @@ export default function ProductDetailScreen({ navigation, route }) {
           </View>
 
           {/* Chat Messages */}
-          <ScrollView 
+          <ScrollView
             style={styles.chatbotMessages}
             contentContainerStyle={styles.chatbotMessagesContent}
           >
@@ -1999,10 +1918,10 @@ export default function ProductDetailScreen({ navigation, route }) {
                   ]}>
                     {message.text}
                   </Text>
-                  
+
                   {/* Quick Order Button */}
                   {message.messageType === 'quick-order' && message.action === 'add-to-cart' && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.quickOrderButton}
                       onPress={handleQuickOrder}
                     >
@@ -2010,10 +1929,10 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Text style={styles.quickOrderButtonText}>Sepete Ekle ve Devam Et</Text>
                     </TouchableOpacity>
                   )}
-                  
+
                   {/* Müşteri Hizmetlerine Bağlan Button */}
                   {message.showSupportButton && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.supportButton}
                       onPress={() => {
                         setShowChatbot(false);
@@ -2034,7 +1953,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                 )}
               </View>
             ))}
-            
+
             {/* Typing Indicator */}
             {botTyping && (
               <View style={styles.chatbotMessageWrapper}>
@@ -2099,26 +2018,26 @@ export default function ProductDetailScreen({ navigation, route }) {
 
           {/* Quick Actions */}
           <View style={styles.chatbotQuickActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.chatbotQuickAction, styles.chatbotQuickActionPrimary]}
               onPress={() => handleQuickAction('Sipariş ver')}
             >
               <Ionicons name="cart" size={14} color={COLORS.primary} />
               <Text style={[styles.chatbotQuickActionText, styles.chatbotQuickActionTextPrimary]}>Hızlı Sipariş</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.chatbotQuickAction}
               onPress={() => handleQuickAction('Beden bilgisi')}
             >
               <Text style={styles.chatbotQuickActionText}>Beden bilgisi</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.chatbotQuickAction}
               onPress={() => handleQuickAction('Fiyat')}
             >
               <Text style={styles.chatbotQuickActionText}>Fiyat</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.chatbotQuickAction, styles.chatbotQuickActionSupport]}
               onPress={() => {
                 setShowChatbot(false);
@@ -2148,7 +2067,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             <TouchableOpacity style={styles.chatbotVoiceButton}>
               <Ionicons name="mic-outline" size={24} color={COLORS.gray400} />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.chatbotSendButton}
               onPress={handleSendMessage}
             >

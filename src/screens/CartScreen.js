@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { cartAPI } from '../services/api';
 import { COLORS } from '../constants/colors';
 import { updateCartBadge } from '../utils/cartBadge';
@@ -17,6 +18,13 @@ export default function CartScreen({ navigation }) {
   useEffect(() => {
     loadCart();
   }, []);
+
+  // Sayfa her açıldığında sepeti yeniden yükle (sipariş sonrası temizlenmiş sepeti göstermek için)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCart();
+    }, [])
+  );
 
   const loadCart = async () => {
     try {
