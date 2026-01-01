@@ -512,7 +512,7 @@ export default function Chatbot() {
       // Tüm sipariş tiplerini paralel olarak çek
       const [normalOrders, trendyolOrders, hepsiburadaOrders, ticimaxOrders] = await Promise.all([
         api.get<any>('/admin/orders').catch(() => ({ success: false, data: [] })),
-        api.get<any>('/admin/marketplace-orders', { params: { provider: 'trendyol' } }).catch(() => ({ success: false, data: [] })),
+        api.get<any>('/admin/marketplace-orders', { provider: 'trendyol' }).catch(() => ({ success: false, data: [] })),
         api.get<any>('/admin/hepsiburada-orders').catch(() => ({ success: false, data: [] })),
         api.get<any>('/admin/ticimax-orders').catch(() => ({ success: false, data: [] }))
       ])
