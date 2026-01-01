@@ -66,6 +66,8 @@ async function createDatabaseSchema(pool) {
           'invoices',
           // Gemini AI
           'gemini_config', 'gemini_sessions',
+          // ElevenLabs
+          'elevenlabs_config',
           // Chat Sessions
           'chat_sessions', 'chat_messages',
           // Snort Logs
@@ -3561,6 +3563,22 @@ async function createDatabaseSchema(pool) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
       console.log('✅ gemini_sessions table ready');
+
+      // ElevenLabs Config table - Admin panel API key ve ayarları
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS elevenlabs_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          enabled TINYINT(1) DEFAULT 1,
+          apiKey VARCHAR(500) DEFAULT '',
+          defaultVoiceId VARCHAR(100) DEFAULT 'JBFqnCBsd6RMkjVDRZzb',
+          defaultModelId VARCHAR(100) DEFAULT 'eleven_multilingual_v2',
+          defaultOutputFormat VARCHAR(50) DEFAULT 'mp3_44100_128',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_enabled (enabled)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ elevenlabs_config table ready');
 
       // Snort Logs table - Snort IDS loglarını veritabanında sakla
       await pool.execute(`

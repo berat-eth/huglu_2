@@ -4,27 +4,38 @@ const axios = require('axios');
 
 // poolWrapper'ı almak için
 let poolWrapper = null;
+let tableInitialized = false;
 
 // poolWrapper'ı set etmek için middleware
-router.use((req, res, next) => {
-  if (!poolWrapper) {
-    poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+router.use(async (req, res, next) => {
+  try {
+    if (!poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+    }
+    
+    // Tabloyu ilk istekte oluştur
+    if (!tableInitialized && poolWrapper) {
+      await ensureTableExists();
+      tableInitialized = true;
+    }
+    
+    next();
+  } catch (error) {
+    console.error('❌ ElevenLabs middleware hatası:', error);
+    next(error);
   }
-  next();
 });
 
-// ElevenLabs config tablosunu oluştur
+// ElevenLabs config tablosunu oluştur (artık database-schema.js'de oluşturuluyor, bu fonksiyon sadece yedek)
 async function ensureTableExists() {
   if (!poolWrapper) {
-    poolWrapper = require('../database-schema').poolWrapper;
-  }
-  
-  if (!poolWrapper) {
-    console.error('❌ poolWrapper mevcut değil, tablo oluşturulamadı');
+    // poolWrapper henüz hazır değilse, tablo zaten database-schema.js'de oluşturulacak
+    console.log('ℹ️ poolWrapper henüz hazır değil, tablo database-schema.js tarafından oluşturulacak');
     return false;
   }
 
   try {
+    // Tablo zaten database-schema.js'de oluşturulduğu için burada sadece kontrol ediyoruz
     await poolWrapper.execute(`
       CREATE TABLE IF NOT EXISTS elevenlabs_config (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -38,7 +49,7 @@ async function ensureTableExists() {
         INDEX idx_enabled (enabled)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ elevenlabs_config table ready');
+    console.log('✅ elevenlabs_config table ready (backup creation)');
     return true;
   } catch (error) {
     console.error('❌ ElevenLabs config tablosu oluşturulamadı:', error);
@@ -46,17 +57,26 @@ async function ensureTableExists() {
   }
 }
 
-// Tabloyu oluştur
-ensureTableExists();
-
 // GET /api/elevenlabs/config - Config'i getir
 router.get('/config', async (req, res) => {
   try {
+    // poolWrapper'ı tekrar kontrol et
     if (!poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+    }
+    
+    if (!poolWrapper) {
+      console.error('❌ poolWrapper not available in GET /config');
       return res.status(500).json({
         success: false,
         message: 'Database connection not available'
       });
+    }
+
+    // Tablo yoksa oluştur
+    if (!tableInitialized) {
+      await ensureTableExists();
+      tableInitialized = true;
     }
 
     const [configs] = await poolWrapper.execute(`
@@ -102,10 +122,11 @@ router.get('/config', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ ElevenLabs config alınamadı:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Config alınamadı',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
@@ -113,11 +134,23 @@ router.get('/config', async (req, res) => {
 // POST /api/elevenlabs/config - Config'i kaydet
 router.post('/config', async (req, res) => {
   try {
+    // poolWrapper'ı tekrar kontrol et
     if (!poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+    }
+    
+    if (!poolWrapper) {
+      console.error('❌ poolWrapper not available in POST /config');
       return res.status(500).json({
         success: false,
         message: 'Database connection not available'
       });
+    }
+
+    // Tablo yoksa oluştur
+    if (!tableInitialized) {
+      await ensureTableExists();
+      tableInitialized = true;
     }
 
     const { enabled, apiKey, defaultVoiceId, defaultModelId, defaultOutputFormat } = req.body;
@@ -198,10 +231,11 @@ router.post('/config', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ ElevenLabs config kaydedilemedi:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Config kaydedilemedi',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
@@ -209,11 +243,23 @@ router.post('/config', async (req, res) => {
 // POST /api/elevenlabs/text-to-speech - Text to Speech
 router.post('/text-to-speech', async (req, res) => {
   try {
+    // poolWrapper'ı tekrar kontrol et
     if (!poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+    }
+    
+    if (!poolWrapper) {
+      console.error('❌ poolWrapper not available in POST /text-to-speech');
       return res.status(500).json({
         success: false,
         message: 'Database connection not available'
       });
+    }
+
+    // Tablo yoksa oluştur
+    if (!tableInitialized) {
+      await ensureTableExists();
+      tableInitialized = true;
     }
 
     const { text, voiceId, modelId, outputFormat } = req.body;
@@ -300,11 +346,23 @@ router.post('/text-to-speech', async (req, res) => {
 // GET /api/elevenlabs/voices - Mevcut sesleri listele
 router.get('/voices', async (req, res) => {
   try {
+    // poolWrapper'ı tekrar kontrol et
     if (!poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+    }
+    
+    if (!poolWrapper) {
+      console.error('❌ poolWrapper not available in GET /voices');
       return res.status(500).json({
         success: false,
         message: 'Database connection not available'
       });
+    }
+
+    // Tablo yoksa oluştur
+    if (!tableInitialized) {
+      await ensureTableExists();
+      tableInitialized = true;
     }
 
     const [configs] = await poolWrapper.execute(`
