@@ -65,7 +65,9 @@ async function createDatabaseSchema(pool) {
           // Invoices
           'invoices',
           // Gemini AI
-          'gemini_config', 'gemini_sessions'
+          'gemini_config', 'gemini_sessions',
+          // Chat Sessions
+          'chat_sessions', 'chat_messages'
       ];
       const missingTables = requiredTables.filter(table => !existingTables.includes(table));
 
@@ -3530,7 +3532,7 @@ async function createDatabaseSchema(pool) {
         CREATE TABLE IF NOT EXISTS gemini_config (
           id INT AUTO_INCREMENT PRIMARY KEY,
           enabled TINYINT(1) DEFAULT 1,
-          apiKey VARCHAR(500) NOT NULL,
+          apiKey VARCHAR(500) DEFAULT '',
           model VARCHAR(100) DEFAULT 'gemini-2.5-flash',
           temperature DECIMAL(3,2) DEFAULT 0.70,
           maxTokens INT DEFAULT 8192,
