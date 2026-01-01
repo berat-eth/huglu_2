@@ -137,15 +137,9 @@ export default function SplashScreen({ navigation }) {
       // 3. Verileri önceden yükle (opsiyonel)
       await preloadHomeData();
 
-      // 4. Kullanıcı giriş kontrolü
-      const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
-      if (isLoggedIn === 'true') {
-        // Kullanıcı giriş yapmışsa ana sayfaya git
-        navigation.replace('Main');
-      } else {
-        // Kullanıcı giriş yapmamışsa login sayfasına git
-        navigation.replace('Login');
-      }
+      // 4. Her zaman ana sayfaya yönlendir (login kontrolü yapma)
+      // Kullanıcı isterse profil sayfasından login yapabilir
+      navigation.replace('Main');
     } catch (error) {
       console.error('❌ App initialization error:', error);
 
@@ -166,8 +160,8 @@ export default function SplashScreen({ navigation }) {
         console.error('Storage error:', storageError);
       }
 
-      // Hata olsa bile login sayfasına git
-      navigation.replace('Login');
+      // Hata olsa bile ana sayfaya git
+      navigation.replace('Main');
     }
   };
 
@@ -339,7 +333,7 @@ export default function SplashScreen({ navigation }) {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.versionText}>v1.0.0</Text>
+        <Text style={styles.versionText}>v1.0.0 (Beta)</Text>
       </View>
     </View>
   );

@@ -433,7 +433,7 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[styles.logoutText, { color: COLORS.primary }]}>Giriş Yap</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.version}>Huglu Tekstil App v1.0.0</Text>
+          <Text style={styles.version}>Huglu Tekstil App v1.0.0 (Beta)</Text>
         </View>
       </ScrollView>
 

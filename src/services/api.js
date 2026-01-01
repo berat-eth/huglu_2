@@ -19,8 +19,8 @@ const api = axios.create({
     'User-Agent': 'HugluMobileApp/1.0',
   },
   validateStatus: (status) => status < 500,
-  // React Native için SSL sertifika sorunlarını önlemek
-  httpsAgent: undefined,
+  // React Native otomatik olarak sistem SSL sertifikalarını kullanır
+  // httpsAgent sadece Node.js için geçerlidir, React Native'de kullanılmaz
 });
 
 // Request interceptor - TenantId ekle
