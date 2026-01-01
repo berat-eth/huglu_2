@@ -54,7 +54,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind ve inline styles için
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.huglutekstil.com",
+              "media-src 'self' data: blob:", // ElevenLabs audio için data: ve blob: URL'leri
+              "connect-src 'self' https://api.huglutekstil.com https://api.elevenlabs.io",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",

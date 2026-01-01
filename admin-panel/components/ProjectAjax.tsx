@@ -1513,13 +1513,37 @@ export default function ProjectAjax() {
 
                 if (response && response.audio) {
                     console.log('✅ ElevenLabs audio alındı, oynatılıyor...')
-                    const audio = new Audio(response.audio)
+                    
+                    // Data URL'den blob oluştur (CSP uyumluluğu için)
+                    let audioUrl = response.audio
+                    if (audioUrl.startsWith('data:')) {
+                        try {
+                            // Data URL'den base64'i çıkar
+                            const base64Data = audioUrl.split(',')[1]
+                            const binaryString = atob(base64Data)
+                            const bytes = new Uint8Array(binaryString.length)
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i)
+                            }
+                            const blob = new Blob([bytes], { type: 'audio/mpeg' })
+                            audioUrl = URL.createObjectURL(blob)
+                            console.log('✅ Audio blob URL oluşturuldu:', audioUrl)
+                        } catch (error) {
+                            console.error('❌ Blob oluşturma hatası:', error)
+                            // Fallback: data URL kullan
+                        }
+                    }
+                    
+                    const audio = new Audio(audioUrl)
                     
                     // Audio element'ini DOM'a ekle (stopSpeaking için)
                     audio.id = `elevenlabs-audio-${messageId}`
                     if (!document.getElementById(audio.id)) {
                         document.body.appendChild(audio)
                     }
+                    
+                    // Blob URL'yi sakla (temizleme için)
+                    const audioBlobUrl = audioUrl.startsWith('blob:') ? audioUrl : null
                     
                     audio.onended = () => {
                         console.log('✅ ElevenLabs audio tamamlandı')
@@ -1530,6 +1554,10 @@ export default function ProjectAjax() {
                         const audioEl = document.getElementById(audio.id)
                         if (audioEl) {
                             audioEl.remove()
+                        }
+                        // Blob URL'yi temizle
+                        if (audioBlobUrl) {
+                            URL.revokeObjectURL(audioBlobUrl)
                         }
                     }
 
