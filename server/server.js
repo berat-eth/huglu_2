@@ -4324,6 +4324,59 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
       log.id = index + 1;
     });
 
+    // Snort loglarını veritabanına kaydet (async - bloklamadan)
+    if (poolWrapper && parsedLogs.length > 0) {
+      try {
+        // Son kaydedilen log'un timestamp'ini kontrol et (duplicate önleme)
+        const [lastLog] = await poolWrapper.execute(`
+          SELECT timestamp FROM snort_logs 
+          ORDER BY timestamp DESC LIMIT 1
+        `);
+        
+        const lastTimestamp = lastLog && lastLog.length > 0 ? new Date(lastLog[0].timestamp) : null;
+        
+        // Sadece yeni logları kaydet
+        const newLogs = lastTimestamp 
+          ? parsedLogs.filter(log => new Date(log.timestamp) > lastTimestamp)
+          : parsedLogs;
+        
+        if (newLogs.length > 0) {
+          // Batch insert ile veritabanına kaydet
+          const insertPromises = newLogs.map(log => {
+            return poolWrapper.execute(`
+              INSERT INTO snort_logs 
+              (timestamp, priority, classification, message, src_ip, dst_ip, src_port, dst_port, protocol, action, sid, gid, rev, raw_log, createdAt)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            `, [
+              log.timestamp,
+              log.priority,
+              log.classification,
+              log.message,
+              log.sourceIp,
+              log.destIp,
+              log.sourcePort || null,
+              log.destPort || null,
+              log.protocol,
+              log.action,
+              log.signature ? parseInt(log.signature.match(/\d+/)?.[0] || '0') : null,
+              null, // gid
+              null, // rev
+              JSON.stringify(log) // raw_log
+            ]).catch(err => {
+              console.warn('⚠️ Snort log kaydedilemedi:', err.message);
+              return null;
+            });
+          });
+          
+          await Promise.all(insertPromises);
+          console.log(`💾 ${newLogs.length} yeni Snort logu veritabanına kaydedildi`);
+        }
+      } catch (dbError) {
+        console.error('❌ Snort logları veritabanına kaydedilemedi:', dbError.message);
+        // Veritabanı hatası olsa bile logları döndür
+      }
+    }
+
     console.log(`✅ Snort logları okundu: ${limitedLogs.length} log (filtrelenmiş ${filteredLogs.length}, toplam ${parsedLogs.length}, limit: ${limit}) (${foundPath})`);
     return res.json({ success: true, data: limitedLogs });
   } catch (error) {

@@ -161,7 +161,7 @@ export default function ProjectAjax() {
     const [geminiModels, setGeminiModels] = useState<string[]>([])
 
     // System Prompt
-    const [systemPrompt, setSystemPrompt] = useState(`Sen Ajax AI'sın. Berat Şimşek geliştirdi. E-ticaret uzmanısın. Kısa yanıtlar ver. Huglu Outdoor firması için çalışıyorsun. Güvenlik ve sistem yönetimi konularında da yardımcı olabilirsin.`)
+    const [systemPrompt, setSystemPrompt] = useState(`Sen Ajax AI'sın. Berat Şimşek geliştirdi. E-ticaret uzmanısın. Kısa yanıtlar ver. Huglu Outdoor firması için çalışıyorsun. Güvenlik ve sistem yönetimi konularında da yardımcı olabilirsin. ve platform dışında hiç bir soruya Yanıt verme. Yalnızca platform için çalışıyorsun. ve eğer ısrar edillirse agresif davranabilirsin`)
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)

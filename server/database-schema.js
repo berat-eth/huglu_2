@@ -67,7 +67,9 @@ async function createDatabaseSchema(pool) {
           // Gemini AI
           'gemini_config', 'gemini_sessions',
           // Chat Sessions
-          'chat_sessions', 'chat_messages'
+          'chat_sessions', 'chat_messages',
+          // Snort Logs
+          'snort_logs'
       ];
       const missingTables = requiredTables.filter(table => !existingTables.includes(table));
 
@@ -3559,6 +3561,36 @@ async function createDatabaseSchema(pool) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
       console.log('✅ gemini_sessions table ready');
+
+      // Snort Logs table - Snort IDS loglarını veritabanında sakla
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS snort_logs (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          timestamp DATETIME NOT NULL,
+          priority ENUM('low', 'medium', 'high') DEFAULT 'low',
+          classification VARCHAR(255),
+          message TEXT,
+          src_ip VARCHAR(45),
+          dst_ip VARCHAR(45),
+          src_port INT,
+          dst_port INT,
+          protocol VARCHAR(20),
+          action ENUM('alert', 'drop', 'pass', 'log') DEFAULT 'alert',
+          sid INT,
+          gid INT,
+          rev INT,
+          raw_log TEXT,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_timestamp (timestamp DESC),
+          INDEX idx_priority (priority),
+          INDEX idx_src_ip (src_ip),
+          INDEX idx_dst_ip (dst_ip),
+          INDEX idx_action (action),
+          INDEX idx_classification (classification),
+          INDEX idx_created_at (createdAt DESC)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ snort_logs table ready');
 
       // Insert default feature flags if they don't exist
       await pool.execute(`

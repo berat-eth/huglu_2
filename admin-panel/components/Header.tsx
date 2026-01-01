@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Mail, User, List, Shield, X, Package, Users, ShoppingCart, Sun, Moon, Menu, HelpCircle } from 'lucide-react'
+import { Search, Bell, Mail, User, List, Shield, X, Package, Users, ShoppingCart, Sun, Moon, Menu, HelpCircle, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { formatDDMMYYYY } from '@/lib/date'
@@ -387,6 +387,23 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
             <HelpCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
             <span className="hidden sm:inline">Ürün Soruları</span>
             <span className="sm:hidden">Sorular</span>
+          </motion.button>
+
+          {/* Project Ajax kısayolu */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('goto-tab', { detail: { tab: 'project-ajax' } }))
+              }
+            }}
+            className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors text-xs sm:text-sm inline-flex items-center gap-1 sm:gap-2"
+            title="Project Ajax - AI Asistan"
+          >
+            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" /> 
+            <span className="hidden sm:inline">Ajax AI</span>
+            <span className="sm:hidden">Ajax</span>
           </motion.button>
 
           {/* Dark Mode Toggle */}
