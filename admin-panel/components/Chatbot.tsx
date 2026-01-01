@@ -503,8 +503,8 @@ export default function Chatbot() {
   }
 
   // Sipariş bilgilerini çek (kullanıcı için)
-  const fetchOrderInformation = async (userId?: number) => {
-    if (!userId) return null
+  const fetchOrderInformation = async (userId?: number, conversation?: Conversation) => {
+    if (!userId && !conversation) return null
 
     try {
       const { api } = await import('@/lib/api')
@@ -518,8 +518,8 @@ export default function Chatbot() {
       ])
 
       // Kullanıcının siparişlerini filtrele (email veya phone ile eşleştir)
-      const userEmail = conversation.userEmail
-      const userPhone = conversation.userPhone
+      const userEmail = conversation?.userEmail
+      const userPhone = conversation?.userPhone
 
       const allOrders: any[] = []
 
@@ -655,7 +655,7 @@ export default function Chatbot() {
       }
 
       // Sipariş bilgilerini çek
-      const orders = await fetchOrderInformation(conversation.userId)
+      const orders = await fetchOrderInformation(conversation?.userId, conversation)
       const orderInfo = formatOrderInfoForGemini(orders)
 
       // Müşteri hizmetleri system prompt'u

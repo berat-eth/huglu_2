@@ -593,7 +593,8 @@ export class GeminiService {
       if (typeof window === 'undefined') return [];
       
       const response = await api.get<{ success: boolean; sessions: any[] }>('/admin/gemini/sessions', {
-        params: { limit, offset }
+        limit,
+        offset
       });
       
       if (response.success && response.sessions) {
