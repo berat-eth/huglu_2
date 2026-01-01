@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Copy, User, Bot, Loader2, TrendingUp, FileText, Code, Lightbulb, Database, Table, Search, Play, Download, Eye, Settings, BarChart3, Activity, Brain, TestTube2, Volume2, VolumeX, Mic, MicOff, Trash2, Upload, X, Plus } from 'lucide-react'
+import { Send, Copy, User, Bot, Loader2, TrendingUp, FileText, Code, Lightbulb, Database, Table, Search, Play, Download, Eye, Settings, BarChart3, Activity, Brain, TestTube2, Volume2, VolumeX, Mic, MicOff, Trash2, Upload, X, Plus, Pause, PlayCircle, Sliders } from 'lucide-react'
 import { GeminiService, GeminiConfig, GeminiMessage } from '@/lib/services/gemini-service'
 import { productService, orderService } from '@/lib/services'
 import { api } from '@/lib/api'
@@ -107,8 +107,32 @@ export default function ProjectAjax() {
     
     // Text-to-Speech States
     const [isSpeaking, setIsSpeaking] = useState(false)
+    const [isPaused, setIsPaused] = useState(false)
     const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
     const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null)
+    const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+    const [showVoiceSettings, setShowVoiceSettings] = useState(false)
+    
+    // Voice Settings (localStorage'dan yükle)
+    const [voiceSettings, setVoiceSettings] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('ajax_voice_settings')
+            if (saved) {
+                try {
+                    return JSON.parse(saved)
+                } catch (e) {
+                    console.error('Voice settings parse error:', e)
+                }
+            }
+        }
+        return {
+            rate: 1.0,
+            pitch: 1.0,
+            volume: 1.0,
+            voiceName: null as string | null,
+            lang: 'tr-TR'
+        }
+    })
     
     // Auto-speak setting (ses motoru ayarı)
     const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
@@ -137,7 +161,7 @@ export default function ProjectAjax() {
     const [geminiModels, setGeminiModels] = useState<string[]>([])
 
     // System Prompt
-    const [systemPrompt, setSystemPrompt] = useState(`Sen Ajax AI'sın. Berat Şimşek geliştirdi. E-ticaret uzmanısın. Kısa yanıtlar ver. Huglu Outdoor firması için çalışıyorsun.`)
+    const [systemPrompt, setSystemPrompt] = useState(`Sen Ajax AI'sın. Berat Şimşek geliştirdi. E-ticaret uzmanısın. Kısa yanıtlar ver. Huglu Outdoor firması için çalışıyorsun. Güvenlik ve sistem yönetimi konularında da yardımcı olabilirsin.`)
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -832,6 +856,60 @@ export default function ProjectAjax() {
                     }
                 }
 
+                // Snort Logları - Güvenlik anahtar kelimeleri
+                if (lowerInput.includes('snort') || lowerInput.includes('güvenlik') || lowerInput.includes('log') || 
+                    lowerInput.includes('saldırı') || lowerInput.includes('threat') || lowerInput.includes('attack') ||
+                    lowerInput.includes('ids') || lowerInput.includes('security') ||
+                    lowerInput.includes('uyarı') || lowerInput.includes('alert') || lowerInput.includes('engellenen')) {
+                    try {
+                        // Son 24 saatteki logları getir (limit ile)
+                        const snortResponse = await api.get<any>('/admin/snort/logs', { 
+                            limit: 20,
+                            _t: Date.now()
+                        })
+                        
+                        if (snortResponse && Array.isArray(snortResponse.data)) {
+                            const logs = snortResponse.data
+                            
+                            // Logları formatla - sadece önemli bilgiler
+                            const formattedLogs = logs.slice(0, 10).map((log: any) => ({
+                                timestamp: log.timestamp || log.time || log.date,
+                                priority: log.priority || 'unknown',
+                                classification: log.classification || log.message || 'N/A',
+                                sourceIP: log.src_ip || log.sourceIP || log.ip || 'N/A',
+                                destinationIP: log.dst_ip || log.destIP || 'N/A',
+                                action: log.action || 'N/A',
+                                protocol: log.protocol || 'N/A'
+                            }))
+                            
+                            // İstatistikleri hesapla
+                            const stats = {
+                                total: logs.length,
+                                high: logs.filter((l: any) => (l.priority || '').toLowerCase() === 'high').length,
+                                medium: logs.filter((l: any) => (l.priority || '').toLowerCase() === 'medium').length,
+                                low: logs.filter((l: any) => (l.priority || '').toLowerCase() === 'low').length,
+                                alerts: logs.filter((l: any) => (l.action || '').toLowerCase() === 'alert').length,
+                                dropped: logs.filter((l: any) => (l.action || '').toLowerCase() === 'drop').length
+                            }
+                            
+                            enhancedPrompt += `\n\nSNORT IDS GÜVENLİK LOGLARI:\n`
+                            enhancedPrompt += `Toplam Log: ${stats.total}\n`
+                            enhancedPrompt += `Yüksek Öncelik: ${stats.high}\n`
+                            enhancedPrompt += `Orta Öncelik: ${stats.medium}\n`
+                            enhancedPrompt += `Düşük Öncelik: ${stats.low}\n`
+                            enhancedPrompt += `Uyarılar: ${stats.alerts}\n`
+                            enhancedPrompt += `Engellenen: ${stats.dropped}\n\n`
+                            enhancedPrompt += `SON 10 LOG KAYDI:\n${JSON.stringify(formattedLogs, null, 2)}`
+                            
+                            fetchedApiData = { type: 'snort-logs', data: { logs: formattedLogs, stats } }
+                        }
+                    } catch (error) {
+                        console.log('Snort logları alınamadı:', error)
+                        // Hata durumunda bile bilgi ver
+                        enhancedPrompt += `\n\nNOT: Snort IDS loglarına şu anda erişilemiyor. Lütfen sistem yöneticisine başvurun.`
+                    }
+                }
+
             // Mesaj geçmişini hazırla - Gemini formatı
             const geminiMessages: GeminiMessage[] = []
 
@@ -1210,15 +1288,47 @@ export default function ProjectAjax() {
         })
     }
 
-    // Text-to-Speech fonksiyonu
-    const speakMessage = (content: string, messageId: string) => {
-        // Eğer zaten konuşuyorsa durdur
-        if (isSpeaking && speechSynthesisRef.current) {
+    // Ses ayarlarını kaydet
+    const saveVoiceSettings = (settings: typeof voiceSettings) => {
+        setVoiceSettings(settings)
+        localStorage.setItem('ajax_voice_settings', JSON.stringify(settings))
+    }
+
+    // Seslendirmeyi duraklat/devam ettir
+    const togglePauseResume = () => {
+        if (!window.speechSynthesis) return
+
+        if (isPaused) {
+            window.speechSynthesis.resume()
+            setIsPaused(false)
+        } else {
+            window.speechSynthesis.pause()
+            setIsPaused(true)
+        }
+    }
+
+    // Seslendirmeyi durdur
+    const stopSpeaking = () => {
+        if (window.speechSynthesis) {
             window.speechSynthesis.cancel()
-            setIsSpeaking(false)
-            setSpeakingMessageId(null)
-            speechSynthesisRef.current = null
+        }
+        setIsSpeaking(false)
+        setIsPaused(false)
+        setSpeakingMessageId(null)
+        speechSynthesisRef.current = null
+    }
+
+    // Text-to-Speech fonksiyonu (geliştirilmiş)
+    const speakMessage = (content: string, messageId: string) => {
+        // Eğer aynı mesaj konuşuyorsa durdur
+        if (isSpeaking && speakingMessageId === messageId) {
+            stopSpeaking()
             return
+        }
+
+        // Eğer başka bir mesaj konuşuyorsa durdur ve yenisini başlat
+        if (isSpeaking && speechSynthesisRef.current) {
+            stopSpeaking()
         }
 
         // Code block'ları ve özel karakterleri temizle
@@ -1227,6 +1337,8 @@ export default function ProjectAjax() {
             .replace(/`[^`]+`/g, '') // Inline code'ları kaldır
             .replace(/[#*_~]/g, '') // Markdown karakterlerini kaldır
             .replace(/\n{3,}/g, '\n\n') // Çoklu satır sonlarını azalt
+            .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Link metinlerini al
+            .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '') // Resimleri kaldır
             .trim()
 
         if (!cleanContent) {
@@ -1246,38 +1358,67 @@ export default function ProjectAjax() {
 
             // Yeni utterance oluştur
             const utterance = new SpeechSynthesisUtterance(cleanContent)
-            utterance.lang = 'tr-TR' // Türkçe
-            utterance.rate = 1.0 // Konuşma hızı (0.1 - 10)
-            utterance.pitch = 1.0 // Ses tonu (0 - 2)
-            utterance.volume = 1.0 // Ses seviyesi (0 - 1)
+            utterance.lang = voiceSettings.lang || 'tr-TR'
+            utterance.rate = voiceSettings.rate || 1.0
+            utterance.pitch = voiceSettings.pitch || 1.0
+            utterance.volume = voiceSettings.volume || 1.0
 
-            // Türkçe ses seç (varsa)
+            // Ses seçimi
             const voices = window.speechSynthesis.getVoices()
-            const turkishVoice = voices.find(voice => 
-                voice.lang.startsWith('tr') || 
-                voice.name.toLowerCase().includes('turkish') ||
-                voice.name.toLowerCase().includes('türkçe')
-            )
-            if (turkishVoice) {
-                utterance.voice = turkishVoice
+            if (voiceSettings.voiceName) {
+                const selectedVoice = voices.find(v => v.name === voiceSettings.voiceName)
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice
+                } else {
+                    // Seçilen ses bulunamazsa Türkçe ses ara
+                    const turkishVoice = voices.find(voice => 
+                        voice.lang.startsWith('tr') || 
+                        voice.name.toLowerCase().includes('turkish') ||
+                        voice.name.toLowerCase().includes('türkçe')
+                    )
+                    if (turkishVoice) {
+                        utterance.voice = turkishVoice
+                    }
+                }
+            } else {
+                // Varsayılan olarak Türkçe ses seç
+                const turkishVoice = voices.find(voice => 
+                    voice.lang.startsWith('tr') || 
+                    voice.name.toLowerCase().includes('turkish') ||
+                    voice.name.toLowerCase().includes('türkçe')
+                )
+                if (turkishVoice) {
+                    utterance.voice = turkishVoice
+                }
             }
 
             // Event handler'lar
             utterance.onstart = () => {
                 setIsSpeaking(true)
+                setIsPaused(false)
                 setSpeakingMessageId(messageId)
                 speechSynthesisRef.current = utterance
             }
 
             utterance.onend = () => {
                 setIsSpeaking(false)
+                setIsPaused(false)
                 setSpeakingMessageId(null)
                 speechSynthesisRef.current = null
+            }
+
+            utterance.onpause = () => {
+                setIsPaused(true)
+            }
+
+            utterance.onresume = () => {
+                setIsPaused(false)
             }
 
             utterance.onerror = (error) => {
                 console.error('❌ Speech synthesis hatası:', error)
                 setIsSpeaking(false)
+                setIsPaused(false)
                 setSpeakingMessageId(null)
                 speechSynthesisRef.current = null
                 alert('Seslendirme sırasında bir hata oluştu')
@@ -1492,6 +1633,19 @@ export default function ProjectAjax() {
             const voices = window.speechSynthesis.getVoices()
             if (voices.length > 0) {
                 console.log('✅ Sesler yüklendi:', voices.map(v => v.name))
+                setAvailableVoices(voices)
+                
+                // Eğer seçili ses yoksa, varsayılan Türkçe sesi seç
+                if (!voiceSettings.voiceName) {
+                    const turkishVoice = voices.find(voice => 
+                        voice.lang.startsWith('tr') || 
+                        voice.name.toLowerCase().includes('turkish') ||
+                        voice.name.toLowerCase().includes('türkçe')
+                    )
+                    if (turkishVoice) {
+                        saveVoiceSettings({ ...voiceSettings, voiceName: turkishVoice.name })
+                    }
+                }
             }
         }
 
@@ -2095,21 +2249,47 @@ export default function ProjectAjax() {
                                                         >
                                                             <Copy className="w-4 h-4" />
                                                         </button>
-                                                        <button
-                                                            onClick={() => speakMessage(message.content, message.id)}
-                                                            className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors ${
-                                                                speakingMessageId === message.id 
-                                                                    ? 'text-green-600 dark:text-green-400' 
-                                                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                                                            }`}
-                                                            title="Seslendir"
-                                                        >
+                                                        <div className="flex items-center gap-1">
                                                             {isSpeaking && speakingMessageId === message.id ? (
-                                                                <VolumeX className="w-4 h-4" />
+                                                                <>
+                                                                    <button
+                                                                        onClick={togglePauseResume}
+                                                                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-green-600 dark:text-green-400"
+                                                                        title={isPaused ? "Devam Et" : "Duraklat"}
+                                                                    >
+                                                                        {isPaused ? (
+                                                                            <PlayCircle className="w-4 h-4" />
+                                                                        ) : (
+                                                                            <Pause className="w-4 h-4" />
+                                                                        )}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={stopSpeaking}
+                                                                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-red-600 dark:text-red-400"
+                                                                        title="Durdur"
+                                                                    >
+                                                                        <VolumeX className="w-4 h-4" />
+                                                                    </button>
+                                                                </>
                                                             ) : (
-                                                                <Volume2 className="w-4 h-4" />
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => speakMessage(message.content, message.id)}
+                                                                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                                                                        title="Seslendir"
+                                                                    >
+                                                                        <Volume2 className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setShowVoiceSettings(true)}
+                                                                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                                                                        title="Ses Ayarları"
+                                                                    >
+                                                                        <Sliders className="w-4 h-4" />
+                                                                    </button>
+                                                                </>
                                                             )}
-                                                        </button>
+                                                        </div>
                                                     </>
                                                 )}
                                                 <button
@@ -2268,6 +2448,123 @@ export default function ProjectAjax() {
                     </div>
                 </div>
             </div>
+
+            {/* Ses Ayarları Modal */}
+            {showVoiceSettings && (
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl max-w-md w-full p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Sliders className="w-5 h-5" />
+                                Ses Ayarları
+                            </h3>
+                            <button
+                                onClick={() => setShowVoiceSettings(false)}
+                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 dark:text-gray-400"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Ses Seçimi */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Ses
+                                </label>
+                                <select
+                                    value={voiceSettings.voiceName || ''}
+                                    onChange={(e) => saveVoiceSettings({ ...voiceSettings, voiceName: e.target.value || null })}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="">Varsayılan (Otomatik Seçim)</option>
+                                    {availableVoices
+                                        .filter(v => v.lang.startsWith('tr') || v.lang.startsWith('en'))
+                                        .map((voice) => (
+                                            <option key={voice.name} value={voice.name}>
+                                                {voice.name} ({voice.lang})
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+
+                            {/* Konuşma Hızı */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Konuşma Hızı: {voiceSettings.rate.toFixed(1)}x
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2"
+                                    step="0.1"
+                                    value={voiceSettings.rate}
+                                    onChange={(e) => saveVoiceSettings({ ...voiceSettings, rate: parseFloat(e.target.value) })}
+                                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <span>Yavaş</span>
+                                    <span>Hızlı</span>
+                                </div>
+                            </div>
+
+                            {/* Ses Tonu */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Ses Tonu: {voiceSettings.pitch.toFixed(1)}
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2"
+                                    step="0.1"
+                                    value={voiceSettings.pitch}
+                                    onChange={(e) => saveVoiceSettings({ ...voiceSettings, pitch: parseFloat(e.target.value) })}
+                                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <span>Düşük</span>
+                                    <span>Yüksek</span>
+                                </div>
+                            </div>
+
+                            {/* Ses Seviyesi */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Ses Seviyesi: {Math.round(voiceSettings.volume * 100)}%
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value={voiceSettings.volume}
+                                    onChange={(e) => saveVoiceSettings({ ...voiceSettings, volume: parseFloat(e.target.value) })}
+                                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <span>Sessiz</span>
+                                    <span>Yüksek</span>
+                                </div>
+                            </div>
+
+                            {/* Önizleme Butonu */}
+                            <div className="pt-2">
+                                <button
+                                    onClick={() => {
+                                        const testText = 'Merhaba, bu bir ses önizlemesidir. Ayarlarınızı test edebilirsiniz.'
+                                        speakMessage(testText, 'preview')
+                                    }}
+                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <PlayCircle className="w-4 h-4" />
+                                    Önizleme
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
