@@ -502,6 +502,138 @@ export default function Chatbot() {
     setTimeout(() => scrollToBottom(), 100)
   }
 
+  // Sipariş bilgilerini çek (kullanıcı için)
+  const fetchOrderInformation = async (userId?: number) => {
+    if (!userId) return null
+
+    try {
+      const { api } = await import('@/lib/api')
+      
+      // Tüm sipariş tiplerini paralel olarak çek
+      const [normalOrders, trendyolOrders, hepsiburadaOrders, ticimaxOrders] = await Promise.all([
+        api.get<any>('/admin/orders').catch(() => ({ success: false, data: [] })),
+        api.get<any>('/admin/marketplace-orders', { params: { provider: 'trendyol' } }).catch(() => ({ success: false, data: [] })),
+        api.get<any>('/admin/hepsiburada-orders').catch(() => ({ success: false, data: [] })),
+        api.get<any>('/admin/ticimax-orders').catch(() => ({ success: false, data: [] }))
+      ])
+
+      // Kullanıcının siparişlerini filtrele (email veya phone ile eşleştir)
+      const userEmail = conversation.userEmail
+      const userPhone = conversation.userPhone
+
+      const allOrders: any[] = []
+
+      // Normal siparişler
+      if (normalOrders.success && normalOrders.data) {
+        const filtered = normalOrders.data.filter((order: any) => {
+          return order.userId === userId || 
+                 (userEmail && order.customerEmail === userEmail) ||
+                 (userPhone && order.customerPhone === userPhone)
+        })
+        allOrders.push(...filtered.map((order: any) => ({
+          type: 'normal',
+          id: order.id,
+          orderNumber: order.orderNumber || order.id,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          items: order.items || [],
+          createdAt: order.createdAt
+        })))
+      }
+
+      // Trendyol siparişleri
+      if (trendyolOrders.success && trendyolOrders.data) {
+        const filtered = trendyolOrders.data.filter((order: any) => {
+          return (userEmail && order.customerEmail === userEmail) ||
+                 (userPhone && order.customerPhone === userPhone)
+        })
+        allOrders.push(...filtered.map((order: any) => ({
+          type: 'trendyol',
+          id: order.id,
+          orderNumber: order.externalOrderId,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          items: order.items || [],
+          createdAt: order.createdAt
+        })))
+      }
+
+      // Hepsiburada siparişleri
+      if (hepsiburadaOrders.success && hepsiburadaOrders.data) {
+        const filtered = hepsiburadaOrders.data.filter((order: any) => {
+          return (userEmail && order.customerEmail === userEmail) ||
+                 (userPhone && order.customerPhone === userPhone)
+        })
+        allOrders.push(...filtered.map((order: any) => ({
+          type: 'hepsiburada',
+          id: order.id,
+          orderNumber: order.externalOrderId,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          items: order.items || [],
+          createdAt: order.createdAt
+        })))
+      }
+
+      // Ticimax siparişleri
+      if (ticimaxOrders.success && ticimaxOrders.data) {
+        const filtered = ticimaxOrders.data.filter((order: any) => {
+          return (userEmail && order.customerEmail === userEmail) ||
+                 (userPhone && order.customerPhone === userPhone)
+        })
+        allOrders.push(...filtered.map((order: any) => ({
+          type: 'ticimax',
+          id: order.id,
+          orderNumber: order.externalOrderId || order.orderNumber,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          items: order.items || [],
+          createdAt: order.createdAt
+        })))
+      }
+
+      // Son 10 siparişi döndür (en yeni önce)
+      return allOrders
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10)
+    } catch (error) {
+      console.error('❌ Sipariş bilgileri çekilemedi:', error)
+      return null
+    }
+  }
+
+  // Sipariş bilgilerini formatla (Gemini için)
+  const formatOrderInfoForGemini = (orders: any[] | null): string => {
+    if (!orders || orders.length === 0) {
+      return 'Müşterinin henüz siparişi bulunmamaktadır.'
+    }
+
+    let formatted = `\n\nMÜŞTERİNİN SİPARİŞLERİ (${orders.length} adet):\n\n`
+    
+    orders.forEach((order, index) => {
+      formatted += `${index + 1}. ${order.type.toUpperCase()} Siparişi\n`
+      formatted += `   - Sipariş No: ${order.orderNumber}\n`
+      formatted += `   - Durum: ${order.status}\n`
+      formatted += `   - Toplam: ${order.totalAmount.toLocaleString('tr-TR')} TL\n`
+      
+      if (order.items && order.items.length > 0) {
+        formatted += `   - Paket İçeriği (${order.items.length} ürün):\n`
+        order.items.forEach((item: any, itemIndex: number) => {
+          formatted += `     ${itemIndex + 1}. ${item.productName || 'Ürün'}\n`
+          formatted += `        - Adet: ${item.quantity || 1}\n`
+          if (item.productSku) formatted += `        - SKU: ${item.productSku}\n`
+          if (item.price) formatted += `        - Birim Fiyat: ${item.price.toLocaleString('tr-TR')} TL\n`
+          if (item.productSize) formatted += `        - Beden: ${item.productSize}\n`
+          if (item.productColor) formatted += `        - Renk: ${item.productColor}\n`
+          if (item.merchantSku) formatted += `        - Merchant SKU: ${item.merchantSku}\n`
+        })
+      }
+      formatted += '\n'
+    })
+
+    return formatted
+  }
+
   // Gemini ile otomatik yanıt üretme
   const generateGeminiResponse = async (
     conversationId: number,
@@ -522,6 +654,10 @@ export default function Chatbot() {
         return
       }
 
+      // Sipariş bilgilerini çek
+      const orders = await fetchOrderInformation(conversation.userId)
+      const orderInfo = formatOrderInfoForGemini(orders)
+
       // Müşteri hizmetleri system prompt'u
       const systemPrompt = `Sen Huglu Outdoor'un profesyonel ve dost canlısı müşteri hizmetleri temsilcisisin. 
 
@@ -534,9 +670,12 @@ KURALLAR:
 - Ürün bilgisi istiyorsa detaylı bilgi ver
 - Sipariş durumu soruyorsa yardımcı ol
 - Şikayet varsa özür dileyip çözüm öner
+- Sipariş içeriği sorulduğunda paket içeriğini detaylı açıkla
 - Müşteri adı: ${conversation.userName || conversation.customer || 'Değerli Müşterimiz'}
 ${conversation.productName ? `- İlgili ürün: ${conversation.productName}` : ''}
 ${conversation.productPrice ? `- Ürün fiyatı: ${conversation.productPrice} TL` : ''}
+
+${orderInfo}
 
 TONE: Dost canlısı, yardımsever, profesyonel ama samimi`
 

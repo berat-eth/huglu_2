@@ -1,5 +1,8 @@
 // Gemini AI Service - Next.js API route'ları üzerinden SDK kullanarak
 // Not: CSP kuralları nedeniyle SDK server-side'da çalışıyor
+// Config ve sessions artık veritabanında saklanıyor
+
+import { api } from '../api';
 
 export interface GeminiConfig {
   enabled: boolean;
@@ -41,7 +44,7 @@ export interface GeminiResponse {
 }
 
 export class GeminiService {
-  private static readonly CONFIG_KEY = 'gemini_config';
+  private static readonly CONFIG_KEY = 'gemini_config'; // Fallback için
   private static readonly DEFAULT_CONFIG: GeminiConfig = {
     enabled: true,
     apiKey: '',
@@ -51,22 +54,63 @@ export class GeminiService {
   };
 
   // Not: SDK artık server-side'da çalışıyor (Next.js API route'ları üzerinden)
+  // Config ve sessions artık veritabanında saklanıyor
 
-  // Konfigürasyonu al
+  // Konfigürasyonu al (veritabanından)
   static async getConfig(): Promise<GeminiConfig> {
     try {
       if (typeof window === 'undefined') return this.DEFAULT_CONFIG;
       
-      // Önce localStorage'dan dene
-      const stored = localStorage.getItem(this.CONFIG_KEY);
-      if (stored) {
-        return { ...this.DEFAULT_CONFIG, ...JSON.parse(stored) };
-      }
-      
-      // localStorage'da yoksa sessionStorage'dan dene
-      const sessionStored = sessionStorage.getItem(this.CONFIG_KEY);
-      if (sessionStored) {
-        return { ...this.DEFAULT_CONFIG, ...JSON.parse(sessionStored) };
+      try {
+        // Backend'den config'i al
+        const response = await api.get<{ success: boolean; config: any }>('/admin/gemini/config');
+        
+        if (response.success && response.config) {
+          const dbConfig = response.config;
+          
+          // Eğer API key maskelenmişse, localStorage'dan gerçek key'i al (migration için)
+          let apiKey = dbConfig.apiKey;
+          if (dbConfig.apiKeyMasked && apiKey.includes('...')) {
+            const localConfig = localStorage.getItem(this.CONFIG_KEY);
+            if (localConfig) {
+              try {
+                const parsed = JSON.parse(localConfig);
+                if (parsed.apiKey && !parsed.apiKey.includes('...')) {
+                  apiKey = parsed.apiKey;
+                  // Gerçek key'i backend'e kaydet
+                  await this.saveConfig({ apiKey });
+                }
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+          
+          return {
+            enabled: dbConfig.enabled ?? this.DEFAULT_CONFIG.enabled,
+            apiKey: apiKey || this.DEFAULT_CONFIG.apiKey,
+            model: dbConfig.model || this.DEFAULT_CONFIG.model,
+            temperature: dbConfig.temperature ?? this.DEFAULT_CONFIG.temperature,
+            maxTokens: dbConfig.maxTokens ?? this.DEFAULT_CONFIG.maxTokens
+          };
+        }
+      } catch (error) {
+        console.warn('⚠️ Backend\'den config alınamadı, localStorage\'dan deneniyor:', error);
+        
+        // Fallback: localStorage'dan dene (migration için)
+        const stored = localStorage.getItem(this.CONFIG_KEY);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            // Eğer localStorage'da gerçek bir key varsa, backend'e kaydet
+            if (parsed.apiKey && !parsed.apiKey.includes('...')) {
+              await this.saveConfig(parsed).catch(() => {});
+            }
+            return { ...this.DEFAULT_CONFIG, ...parsed };
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
       }
       
       return this.DEFAULT_CONFIG;
@@ -76,101 +120,50 @@ export class GeminiService {
     }
   }
 
-  // Konfigürasyonu kaydet
+  // Konfigürasyonu kaydet (veritabanına)
   static async saveConfig(config: Partial<GeminiConfig>): Promise<void> {
     try {
       if (typeof window === 'undefined') return;
       
-      const currentConfig = await this.getConfig();
-      const newConfig = { ...currentConfig, ...config };
-      
-      // Sadece gerekli verileri sakla (localStorage quota için)
-      const configToSave = {
-        enabled: newConfig.enabled,
-        apiKey: newConfig.apiKey,
-        model: newConfig.model,
-        temperature: newConfig.temperature,
-        maxTokens: newConfig.maxTokens
-      };
-      
-      localStorage.setItem(this.CONFIG_KEY, JSON.stringify(configToSave));
-      console.log('✅ Gemini config kaydedildi:', { ...configToSave, apiKey: configToSave.apiKey ? '***' : '' });
-    } catch (error: any) {
-      // QuotaExceededError durumunda localStorage'ı temizle ve tekrar dene
-      if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
-        console.warn('⚠️ localStorage quota aşıldı, temizleniyor...');
-        try {
-          // Sadece gemini_config'i temizle, diğer önemli verileri koru
-          this.clearOldData();
+      try {
+        // Backend'e kaydet
+        const response = await api.post<{ success: boolean; config: any }>('/admin/gemini/config', config);
+        
+        if (response.success) {
+          console.log('✅ Gemini config veritabanına kaydedildi');
           
-          // Tekrar kaydetmeyi dene
+          // localStorage'dan eski config'i temizle (artık gerek yok)
+          try {
+            localStorage.removeItem(this.CONFIG_KEY);
+          } catch (e) {
+            // Ignore
+          }
+        } else {
+          throw new Error('Config kaydedilemedi');
+        }
+      } catch (error: any) {
+        console.error('❌ Gemini config backend\'e kaydedilemedi:', error);
+        
+        // Fallback: localStorage'a kaydet (geçici)
+        try {
           const currentConfig = await this.getConfig();
           const newConfig = { ...currentConfig, ...config };
-          const configToSave = {
+          localStorage.setItem(this.CONFIG_KEY, JSON.stringify({
             enabled: newConfig.enabled,
             apiKey: newConfig.apiKey,
             model: newConfig.model,
             temperature: newConfig.temperature,
             maxTokens: newConfig.maxTokens
-          };
-          
-          localStorage.setItem(this.CONFIG_KEY, JSON.stringify(configToSave));
-          console.log('✅ Gemini config temizleme sonrası kaydedildi');
-        } catch (retryError) {
-          console.error('❌ Gemini config kaydedilemedi (temizleme sonrası):', retryError);
-          // Son çare: sessionStorage kullan
-          try {
-            const fallbackConfig = await this.getConfig();
-            sessionStorage.setItem(this.CONFIG_KEY, JSON.stringify({
-              enabled: config.enabled ?? fallbackConfig.enabled,
-              apiKey: config.apiKey ?? fallbackConfig.apiKey,
-              model: config.model ?? fallbackConfig.model,
-              temperature: config.temperature ?? fallbackConfig.temperature,
-              maxTokens: config.maxTokens ?? fallbackConfig.maxTokens
-            }));
-            console.log('✅ Gemini config sessionStorage\'a kaydedildi');
-          } catch (sessionError) {
-            console.error('❌ sessionStorage\'a da kaydedilemedi:', sessionError);
-            throw new Error('Config kaydedilemedi. Lütfen tarayıcı ayarlarını kontrol edin.');
-          }
-        }
-      } else {
-        console.error('❌ Gemini config kaydedilemedi:', error);
-        throw error;
-      }
-    }
-  }
-
-  // Eski/büyük verileri temizle
-  private static clearOldData(): void {
-    try {
-      if (typeof window === 'undefined') return;
-      
-      // localStorage'daki tüm key'leri kontrol et
-      const keysToCheck = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          keysToCheck.push(key);
+          }));
+          console.warn('⚠️ Config localStorage\'a kaydedildi (fallback)');
+        } catch (fallbackError) {
+          console.error('❌ Config hiçbir yere kaydedilemedi:', fallbackError);
+          throw new Error('Config kaydedilemedi. Lütfen internet bağlantınızı kontrol edin.');
         }
       }
-      
-      // Büyük verileri temizle (gemini_config hariç)
-      keysToCheck.forEach(key => {
-        if (key !== this.CONFIG_KEY && key.startsWith('gemini_')) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value && value.length > 10000) { // 10KB'dan büyük veriler
-              console.log(`🗑️ Büyük veri temizleniyor: ${key} (${value.length} bytes)`);
-              localStorage.removeItem(key);
-            }
-          } catch (e) {
-            // Hata durumunda devam et
-          }
-        }
-      });
     } catch (error) {
-      console.error('❌ Eski veriler temizlenirken hata:', error);
+      console.error('❌ Gemini config kaydedilemedi:', error);
+      throw error;
     }
   }
 
@@ -582,6 +575,124 @@ export class GeminiService {
     } catch (error) {
       console.error('❌ Gemini models alınamadı:', error);
       return ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    }
+  }
+
+  // ==================== SESSION MANAGEMENT ====================
+
+  // Session'ları listele
+  static async getSessions(limit: number = 50, offset: number = 0): Promise<Array<{
+    id: number;
+    sessionId: string;
+    title: string;
+    messageCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>> {
+    try {
+      if (typeof window === 'undefined') return [];
+      
+      const response = await api.get<{ success: boolean; sessions: any[] }>('/admin/gemini/sessions', {
+        params: { limit, offset }
+      });
+      
+      if (response.success && response.sessions) {
+        return response.sessions;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Gemini sessions alınamadı:', error);
+      return [];
+    }
+  }
+
+  // Belirli bir session'ı getir
+  static async getSession(sessionId: string): Promise<{
+    id: number;
+    sessionId: string;
+    title: string;
+    messages: GeminiMessage[];
+    messageCount: number;
+    createdAt: string;
+    updatedAt: string;
+  } | null> {
+    try {
+      if (typeof window === 'undefined') return null;
+      
+      const response = await api.get<{ success: boolean; session: any }>(`/admin/gemini/sessions/${sessionId}`);
+      
+      if (response.success && response.session) {
+        return response.session;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Gemini session alınamadı:', error);
+      return null;
+    }
+  }
+
+  // Session'ı kaydet veya güncelle
+  static async saveSession(sessionId: string, title: string, messages: GeminiMessage[]): Promise<boolean> {
+    try {
+      if (typeof window === 'undefined') return false;
+      
+      const response = await api.post<{ success: boolean }>('/admin/gemini/sessions', {
+        sessionId,
+        title,
+        messages
+      });
+      
+      if (response.success) {
+        console.log('✅ Gemini session kaydedildi:', sessionId);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Gemini session kaydedilemedi:', error);
+      return false;
+    }
+  }
+
+  // Session mesajlarını güncelle
+  static async updateSessionMessages(sessionId: string, messages: GeminiMessage[]): Promise<boolean> {
+    try {
+      if (typeof window === 'undefined') return false;
+      
+      const response = await api.put<{ success: boolean }>(`/admin/gemini/sessions/${sessionId}/messages`, {
+        messages
+      });
+      
+      if (response.success) {
+        console.log('✅ Gemini session mesajları güncellendi:', sessionId);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Gemini session mesajları güncellenemedi:', error);
+      return false;
+    }
+  }
+
+  // Session'ı sil
+  static async deleteSession(sessionId: string): Promise<boolean> {
+    try {
+      if (typeof window === 'undefined') return false;
+      
+      const response = await api.delete<{ success: boolean }>(`/admin/gemini/sessions/${sessionId}`);
+      
+      if (response.success) {
+        console.log('✅ Gemini session silindi:', sessionId);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Gemini session silinemedi:', error);
+      return false;
     }
   }
 }

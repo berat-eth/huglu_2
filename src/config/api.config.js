@@ -6,10 +6,10 @@
 // Mac/Linux: ifconfig -> inet
 export const API_CONFIG = {
   // Development - Production URL kullan (local backend yoksa)
-  LOCAL: 'https://api.huglutekstil.com/api',
+  LOCAL: 'https://huglutekstil.com/api',
   
   // Production
-  PRODUCTION: 'https://api.huglutekstil.com/api',
+  PRODUCTION: 'https://huglutekstil.com/api',
   
   // API Key
   API_KEY: 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f',

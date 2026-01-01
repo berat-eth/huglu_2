@@ -130,3 +130,4 @@ chmod -R 755 server/data/archives/
 - Her gün için ayrı bir JSON dosyası oluşturulur
 
 
+

@@ -45,6 +45,7 @@ const { createDatabaseSchema } = require('./database-schema');
 const userDataRoutes = require('./routes/user-data');
 const userSpecificDataRoutes = require('./routes/user-specific-data');
 const chatSessionsRoutes = require('./routes/chat-sessions');
+const adminGeminiRoutes = require('./routes/admin-gemini');
 const segmentsRoutes = require('./routes/segments');
 const { RecommendationService } = require('./services/recommendation-service');
 const { authenticateTenant } = require('./middleware/auth');
@@ -2016,6 +2017,9 @@ app.use('/api/user-specific', userSpecificDataRoutes);
 
 // Chat Sessions Routes
 app.use('/api/chat/sessions', chatSessionsRoutes);
+
+// Admin Gemini Routes
+app.use('/api/admin/gemini', adminGeminiRoutes);
 
 // Segments Routes
 app.use('/api', segmentsRoutes);

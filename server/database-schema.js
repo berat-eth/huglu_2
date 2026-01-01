@@ -63,7 +63,9 @@ async function createDatabaseSchema(pool) {
           // Integrations
           'integrations',
           // Invoices
-          'invoices'
+          'invoices',
+          // Gemini AI
+          'gemini_config', 'gemini_sessions'
       ];
       const missingTables = requiredTables.filter(table => !existingTables.includes(table));
 
@@ -3522,6 +3524,39 @@ async function createDatabaseSchema(pool) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
       console.log('✅ platform_brain_decisions table ready');
+
+      // Gemini Config table - Admin panel API key ve ayarları
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS gemini_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          enabled TINYINT(1) DEFAULT 1,
+          apiKey VARCHAR(500) NOT NULL,
+          model VARCHAR(100) DEFAULT 'gemini-2.5-flash',
+          temperature DECIMAL(3,2) DEFAULT 0.70,
+          maxTokens INT DEFAULT 8192,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_enabled (enabled)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ gemini_config table ready');
+
+      // Gemini Sessions table - Konuşma geçmişi session'ları
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS gemini_sessions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          sessionId VARCHAR(100) UNIQUE NOT NULL,
+          title VARCHAR(255),
+          messages JSON NOT NULL,
+          messageCount INT DEFAULT 0,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_session_id (sessionId),
+          INDEX idx_created (createdAt DESC),
+          INDEX idx_updated (updatedAt DESC)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ gemini_sessions table ready');
 
       // Insert default feature flags if they don't exist
       await pool.execute(`

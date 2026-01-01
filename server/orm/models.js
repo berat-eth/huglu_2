@@ -153,6 +153,76 @@ ChatMessage.belongsTo(ChatSession, {
   as: 'session' 
 });
 
+// Gemini Config Model
+const GeminiConfig = sequelize.define('gemini_config', {
+  id: { 
+    type: DataTypes.INTEGER, 
+    primaryKey: true, 
+    autoIncrement: true 
+  },
+  enabled: { 
+    type: DataTypes.BOOLEAN, 
+    defaultValue: true 
+  },
+  apiKey: { 
+    type: DataTypes.STRING(500), 
+    allowNull: false 
+  },
+  model: { 
+    type: DataTypes.STRING(100), 
+    defaultValue: 'gemini-2.5-flash' 
+  },
+  temperature: { 
+    type: DataTypes.DECIMAL(3, 2), 
+    defaultValue: 0.70 
+  },
+  maxTokens: { 
+    type: DataTypes.INTEGER, 
+    defaultValue: 8192 
+  },
+  createdAt: { 
+    type: DataTypes.DATE, 
+    defaultValue: DataTypes.NOW 
+  },
+  updatedAt: { 
+    type: DataTypes.DATE, 
+    defaultValue: DataTypes.NOW 
+  }
+});
+
+// Gemini Session Model
+const GeminiSession = sequelize.define('gemini_sessions', {
+  id: { 
+    type: DataTypes.INTEGER, 
+    primaryKey: true, 
+    autoIncrement: true 
+  },
+  sessionId: { 
+    type: DataTypes.STRING(100), 
+    allowNull: false, 
+    unique: true 
+  },
+  title: { 
+    type: DataTypes.STRING(255) 
+  },
+  messages: { 
+    type: DataTypes.JSON, 
+    allowNull: false 
+  },
+  messageCount: { 
+    type: DataTypes.INTEGER, 
+    defaultValue: 0 
+  },
+  createdAt: { 
+    type: DataTypes.DATE, 
+    defaultValue: DataTypes.NOW 
+  },
+  updatedAt: { 
+    type: DataTypes.DATE, 
+    defaultValue: DataTypes.NOW 
+  }
+});
+
 module.exports = { 
   sequelize, 
   Tenant, 
@@ -164,7 +234,9 @@ module.exports = {
   GmapsJob, 
   GmapsLead,
   ChatSession,
-  ChatMessage
+  ChatMessage,
+  GeminiConfig,
+  GeminiSession
 };
 
 

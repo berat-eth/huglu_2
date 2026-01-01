@@ -1,7 +1,7 @@
 // API Test Utility - Detaylı Network Debugging
 import axios from 'axios';
 
-const API_URL = 'https://api.huglutekstil.com/api';
+const API_URL = 'https://huglutekstil.com/api';
 const API_KEY = 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f';
 
 // Belirli bir ürünün detayını test et
@@ -87,7 +87,7 @@ export const testAPI = async () => {
     // Test 0: Basic connectivity test
     console.log('0️⃣ Testing basic HTTPS connectivity...');
     try {
-      const basicTest = await testAxios.get('https://api.huglutekstil.com', {
+      const basicTest = await testAxios.get('https://huglutekstil.com', {
         timeout: 5000,
       });
       console.log('✅ Basic HTTPS works:', basicTest.status);
@@ -218,7 +218,7 @@ export const testAPI = async () => {
     
     console.error('\n🔧 Troubleshooting steps:');
     console.error('   1. Check if you have internet connection');
-    console.error('   2. Try opening https://api.huglutekstil.com/api/health in browser');
+    console.error('   2. Try opening https://huglutekstil.com/api/health in browser');
     console.error('   3. Check if backend server is running');
     console.error('   4. Verify API key is correct');
     console.error('   5. Check Android network permissions');
