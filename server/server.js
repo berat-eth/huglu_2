@@ -4096,7 +4096,7 @@ app.get('/api/admin/reports', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Admin - Snort IDS logs (reads from filesystem)
+// Admin - Snort IDS logs (reads from database first, then filesystem as fallback)
 app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 1000; // Varsayılan 1000 log
@@ -4105,7 +4105,74 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
     const filterIPs = req.query.ip ? (Array.isArray(req.query.ip) ? req.query.ip : [req.query.ip]) : null;
     const useRegex = req.query.regex === 'true';
     const searchTerm = req.query.search || '';
+    const useDatabase = req.query.useDatabase !== 'false'; // Varsayılan olarak veritabanından oku
     
+    // Önce veritabanından logları çek (eğer varsa)
+    if (useDatabase && poolWrapper) {
+      try {
+        let query = 'SELECT * FROM snort_logs WHERE 1=1';
+        const params = [];
+        
+        // Tarih filtresi
+        if (startDate) {
+          query += ' AND timestamp >= ?';
+          params.push(startDate);
+        }
+        if (endDate) {
+          query += ' AND timestamp <= ?';
+          params.push(endDate);
+        }
+        
+        // IP filtresi
+        if (filterIPs && filterIPs.length > 0) {
+          query += ' AND (src_ip IN (?) OR dst_ip IN (?))';
+          params.push(filterIPs, filterIPs);
+        }
+        
+        // Arama filtresi
+        if (searchTerm) {
+          if (useRegex) {
+            query += ' AND (message REGEXP ? OR classification REGEXP ? OR src_ip REGEXP ? OR dst_ip REGEXP ?)';
+            params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+          } else {
+            query += ' AND (message LIKE ? OR classification LIKE ? OR src_ip LIKE ? OR dst_ip LIKE ?)';
+            const searchPattern = `%${searchTerm}%`;
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+          }
+        }
+        
+        query += ' ORDER BY timestamp DESC LIMIT ?';
+        params.push(limit);
+        
+        const [dbLogs] = await poolWrapper.execute(query, params);
+        
+        if (dbLogs && dbLogs.length > 0) {
+          // Veritabanı formatını frontend formatına çevir
+          const formattedLogs = dbLogs.map((log, index) => ({
+            id: index + 1,
+            timestamp: log.timestamp,
+            priority: log.priority,
+            classification: log.classification,
+            sourceIp: log.src_ip,
+            sourcePort: log.src_port,
+            destIp: log.dst_ip,
+            destPort: log.dst_port,
+            protocol: log.protocol,
+            message: log.message,
+            signature: log.sid ? `[${log.sid}:${log.gid || 0}:${log.rev || 0}]` : 'N/A',
+            action: log.action
+          }));
+          
+          console.log(`✅ Snort logları veritabanından okundu: ${formattedLogs.length} log`);
+          return res.json({ success: true, data: formattedLogs, source: 'database' });
+        }
+      } catch (dbError) {
+        console.warn('⚠️ Veritabanından Snort logları okunamadı, dosya sisteminden okunuyor:', dbError.message);
+        // Veritabanı hatası durumunda dosya sisteminden oku
+      }
+    }
+    
+    // Dosya sisteminden okuma (fallback veya useDatabase=false ise)
     // Snort log dosyası yolu - direkt bilinen yol
     const snortLogPath = '/var/log/snort/alert_fast.txt';
     
@@ -4215,7 +4282,7 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
             timestamp = new Date(`${currentYear}-${month}-${day}T${time}.${microseconds.substring(0, 3)}Z`).toISOString();
           }
 
-          parsedLogs.push({
+          const logEntry = {
             id: logId++,
             timestamp,
             priority,
@@ -4227,8 +4294,12 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
             protocol: protocol.toUpperCase(),
             message: message.trim(),
             signature: `[${sid}:${gid}:${rev}]`,
-            action
-          });
+            action,
+            sid: parseInt(sid),
+            gid: parseInt(gid),
+            rev: parseInt(rev)
+          };
+          parsedLogs.push(logEntry);
         } else {
           // Alternatif format: Basit alert satırları
           const simpleMatch = line.match(/(\d{2}\/\d{2}-\d{2}:\d{2}:\d{2}\.\d+)\s+\[.*?\]\s+(.+?)\s+\{(\w+)\}\s+(\d+\.\d+\.\d+\.\d+):(\d+)\s*->\s*(\d+\.\d+\.\d+\.\d+):(\d+)/);
@@ -4358,9 +4429,9 @@ app.get('/api/admin/snort/logs', authenticateAdmin, async (req, res) => {
               log.destPort || null,
               log.protocol,
               log.action,
-              log.signature ? parseInt(log.signature.match(/\d+/)?.[0] || '0') : null,
-              null, // gid
-              null, // rev
+              log.sid || null,
+              log.gid || null,
+              log.rev || null,
               JSON.stringify(log) // raw_log
             ]).catch(err => {
               console.warn('⚠️ Snort log kaydedilemedi:', err.message);

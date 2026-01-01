@@ -862,9 +862,10 @@ export default function ProjectAjax() {
                     lowerInput.includes('ids') || lowerInput.includes('security') ||
                     lowerInput.includes('uyarı') || lowerInput.includes('alert') || lowerInput.includes('engellenen')) {
                     try {
-                        // Son 24 saatteki logları getir (limit ile)
+                        // Veritabanından Snort loglarını getir (useDatabase=true varsayılan)
                         const snortResponse = await api.get<any>('/admin/snort/logs', { 
                             limit: 20,
+                            useDatabase: 'true',
                             _t: Date.now()
                         })
                         
