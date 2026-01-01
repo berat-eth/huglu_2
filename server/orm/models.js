@@ -166,7 +166,8 @@ const GeminiConfig = sequelize.define('gemini_config', {
   },
   apiKey: { 
     type: DataTypes.STRING(500), 
-    allowNull: false 
+    allowNull: true,
+    defaultValue: ''
   },
   model: { 
     type: DataTypes.STRING(100), 
@@ -188,6 +189,10 @@ const GeminiConfig = sequelize.define('gemini_config', {
     type: DataTypes.DATE, 
     defaultValue: DataTypes.NOW 
   }
+}, {
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
 // Gemini Session Model
@@ -207,7 +212,8 @@ const GeminiSession = sequelize.define('gemini_sessions', {
   },
   messages: { 
     type: DataTypes.JSON, 
-    allowNull: false 
+    allowNull: false,
+    defaultValue: []
   },
   messageCount: { 
     type: DataTypes.INTEGER, 
@@ -221,6 +227,10 @@ const GeminiSession = sequelize.define('gemini_sessions', {
     type: DataTypes.DATE, 
     defaultValue: DataTypes.NOW 
   }
+}, {
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
 module.exports = { 

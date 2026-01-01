@@ -1,39 +1,83 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
 const crypto = require('crypto');
+
+// poolWrapper'ı almak için
+let poolWrapper = null;
+
+// poolWrapper'ı set etmek için middleware
+router.use((req, res, next) => {
+  if (!poolWrapper) {
+    poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+  }
+  next();
+});
 
 // ==================== GEMINI CONFIG ROUTES ====================
 
 // GET /api/admin/gemini/config - Gemini config'i getir
 router.get('/config', async (req, res) => {
     try {
-        const { GeminiConfig } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
         
         // Tek bir config kaydı olmalı (id=1 veya ilk kayıt)
-        let config = await GeminiConfig.findOne({
-            order: [['id', 'ASC']]
-        });
+        const [configs] = await poolWrapper.execute(`
+            SELECT id, enabled, apiKey, model, temperature, maxTokens, createdAt, updatedAt
+            FROM gemini_config
+            ORDER BY id ASC
+            LIMIT 1
+        `);
+
+        let config = configs[0];
 
         // Eğer config yoksa varsayılan oluştur
         if (!config) {
-            config = await GeminiConfig.create({
-                enabled: true,
-                apiKey: '',
-                model: 'gemini-2.5-flash',
-                temperature: 0.70,
-                maxTokens: 8192
-            });
+            try {
+                const [result] = await poolWrapper.execute(`
+                    INSERT INTO gemini_config (enabled, apiKey, model, temperature, maxTokens, createdAt, updatedAt)
+                    VALUES (1, '', 'gemini-2.5-flash', 0.70, 8192, NOW(), NOW())
+                `);
+                
+                const [newConfigs] = await poolWrapper.execute(`
+                    SELECT id, enabled, apiKey, model, temperature, maxTokens, createdAt, updatedAt
+                    FROM gemini_config
+                    WHERE id = ?
+                `, [result.insertId]);
+                
+                config = newConfigs[0];
+            } catch (createError) {
+                console.error('❌ Config oluşturulamadı:', createError);
+                // Eğer oluşturulamazsa varsayılan değerleri döndür
+                return res.json({
+                    success: true,
+                    config: {
+                        enabled: true,
+                        apiKey: '',
+                        apiKeyMasked: true,
+                        model: 'gemini-2.5-flash',
+                        temperature: 0.70,
+                        maxTokens: 8192
+                    }
+                });
+            }
         }
 
         // API key'i güvenlik için maskelenmiş olarak döndür
+        const apiKey = config.apiKey || '';
         const configResponse = {
-            enabled: config.enabled,
-            apiKey: config.apiKey ? (config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4)) : '',
-            apiKeyMasked: true,
-            model: config.model,
-            temperature: parseFloat(config.temperature),
-            maxTokens: config.maxTokens
+            enabled: config.enabled ? true : false,
+            apiKey: apiKey && apiKey.length > 12 
+                ? (apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4)) 
+                : '',
+            apiKeyMasked: apiKey && apiKey.length > 12,
+            model: config.model || 'gemini-2.5-flash',
+            temperature: parseFloat(config.temperature) || 0.70,
+            maxTokens: parseInt(config.maxTokens) || 8192
         };
 
         res.json({
@@ -42,10 +86,12 @@ router.get('/config', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Gemini config alınamadı:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Config alınamadı',
-            error: error.message
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -53,41 +99,103 @@ router.get('/config', async (req, res) => {
 // POST /api/admin/gemini/config - Gemini config'i kaydet
 router.post('/config', async (req, res) => {
     try {
-        const { GeminiConfig } = require('../orm/models');
-        const { enabled, apiKey, model, temperature, maxTokens } = req.body;
-
-        // Mevcut config'i bul veya oluştur
-        let config = await GeminiConfig.findOne({
-            order: [['id', 'ASC']]
-        });
-
-        const configData = {};
-        if (enabled !== undefined) configData.enabled = enabled;
-        if (apiKey !== undefined) configData.apiKey = apiKey;
-        if (model !== undefined) configData.model = model;
-        if (temperature !== undefined) configData.temperature = temperature;
-        if (maxTokens !== undefined) configData.maxTokens = maxTokens;
-
-        if (config) {
-            await config.update(configData);
-        } else {
-            config = await GeminiConfig.create({
-                enabled: enabled !== undefined ? enabled : true,
-                apiKey: apiKey || '',
-                model: model || 'gemini-2.5-flash',
-                temperature: temperature !== undefined ? temperature : 0.70,
-                maxTokens: maxTokens !== undefined ? maxTokens : 8192
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
             });
         }
 
+        const { enabled, apiKey, model, temperature, maxTokens } = req.body;
+
+        // Mevcut config'i bul
+        const [configs] = await poolWrapper.execute(`
+            SELECT id, enabled, apiKey, model, temperature, maxTokens
+            FROM gemini_config
+            ORDER BY id ASC
+            LIMIT 1
+        `);
+
+        let config = configs[0];
+
+        if (config) {
+            // Mevcut config'i güncelle
+            const updateFields = [];
+            const updateValues = [];
+            
+            if (enabled !== undefined) {
+                updateFields.push('enabled = ?');
+                updateValues.push(enabled ? 1 : 0);
+            }
+            if (apiKey !== undefined) {
+                updateFields.push('apiKey = ?');
+                updateValues.push(apiKey);
+            }
+            if (model !== undefined) {
+                updateFields.push('model = ?');
+                updateValues.push(model);
+            }
+            if (temperature !== undefined) {
+                updateFields.push('temperature = ?');
+                updateValues.push(temperature);
+            }
+            if (maxTokens !== undefined) {
+                updateFields.push('maxTokens = ?');
+                updateValues.push(maxTokens);
+            }
+            
+            updateFields.push('updatedAt = NOW()');
+            updateValues.push(config.id);
+            
+            if (updateFields.length > 1) {
+                await poolWrapper.execute(`
+                    UPDATE gemini_config
+                    SET ${updateFields.join(', ')}
+                    WHERE id = ?
+                `, updateValues);
+            }
+            
+            // Güncellenmiş config'i al
+            const [updatedConfigs] = await poolWrapper.execute(`
+                SELECT id, enabled, apiKey, model, temperature, maxTokens
+                FROM gemini_config
+                WHERE id = ?
+            `, [config.id]);
+            
+            config = updatedConfigs[0];
+        } else {
+            // Yeni config oluştur
+            const [result] = await poolWrapper.execute(`
+                INSERT INTO gemini_config (enabled, apiKey, model, temperature, maxTokens, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+            `, [
+                enabled !== undefined ? (enabled ? 1 : 0) : 1,
+                apiKey || '',
+                model || 'gemini-2.5-flash',
+                temperature !== undefined ? temperature : 0.70,
+                maxTokens !== undefined ? maxTokens : 8192
+            ]);
+            
+            const [newConfigs] = await poolWrapper.execute(`
+                SELECT id, enabled, apiKey, model, temperature, maxTokens
+                FROM gemini_config
+                WHERE id = ?
+            `, [result.insertId]);
+            
+            config = newConfigs[0];
+        }
+
         // API key'i maskelenmiş olarak döndür
+        const apiKeyValue = config.apiKey || '';
         const configResponse = {
-            enabled: config.enabled,
-            apiKey: config.apiKey ? (config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4)) : '',
-            apiKeyMasked: true,
-            model: config.model,
-            temperature: parseFloat(config.temperature),
-            maxTokens: config.maxTokens
+            enabled: config.enabled ? true : false,
+            apiKey: apiKeyValue && apiKeyValue.length > 12 
+                ? (apiKeyValue.substring(0, 8) + '...' + apiKeyValue.substring(apiKeyValue.length - 4)) 
+                : '',
+            apiKeyMasked: apiKeyValue && apiKeyValue.length > 12,
+            model: config.model || 'gemini-2.5-flash',
+            temperature: parseFloat(config.temperature) || 0.70,
+            maxTokens: parseInt(config.maxTokens) || 8192
         };
 
         res.json({
@@ -97,10 +205,12 @@ router.post('/config', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Gemini config kaydedilemedi:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Config kaydedilemedi',
-            error: error.message
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -108,11 +218,21 @@ router.post('/config', async (req, res) => {
 // GET /api/admin/gemini/config/raw - Ham API key'i getir (sadece backend kullanımı için)
 router.get('/config/raw', async (req, res) => {
     try {
-        const { GeminiConfig } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
         
-        const config = await GeminiConfig.findOne({
-            order: [['id', 'ASC']]
-        });
+        const [configs] = await poolWrapper.execute(`
+            SELECT apiKey
+            FROM gemini_config
+            ORDER BY id ASC
+            LIMIT 1
+        `);
+
+        const config = configs[0];
 
         if (!config || !config.apiKey) {
             return res.status(404).json({
@@ -141,14 +261,21 @@ router.get('/config/raw', async (req, res) => {
 // GET /api/admin/gemini/sessions - Tüm session'ları getir
 router.get('/sessions', async (req, res) => {
     try {
-        const { GeminiSession } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+        
         const { limit = 50, offset = 0 } = req.query;
         
-        const sessions = await GeminiSession.findAll({
-            order: [['updatedAt', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
+        const [sessions] = await poolWrapper.execute(`
+            SELECT id, sessionId, title, messageCount, createdAt, updatedAt
+            FROM gemini_sessions
+            ORDER BY updatedAt DESC
+            LIMIT ? OFFSET ?
+        `, [parseInt(limit), parseInt(offset)]);
 
         const formattedSessions = sessions.map(session => ({
             id: session.id,
@@ -177,12 +304,22 @@ router.get('/sessions', async (req, res) => {
 // GET /api/admin/gemini/sessions/:sessionId - Belirli bir session'ı getir
 router.get('/sessions/:sessionId', async (req, res) => {
     try {
-        const { GeminiSession } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+        
         const { sessionId } = req.params;
 
-        const session = await GeminiSession.findOne({
-            where: { sessionId }
-        });
+        const [sessions] = await poolWrapper.execute(`
+            SELECT id, sessionId, title, messages, messageCount, createdAt, updatedAt
+            FROM gemini_sessions
+            WHERE sessionId = ?
+        `, [sessionId]);
+
+        const session = sessions[0];
 
         if (!session) {
             return res.status(404).json({
@@ -191,13 +328,23 @@ router.get('/sessions/:sessionId', async (req, res) => {
             });
         }
 
+        // JSON alanını parse et
+        let messages = [];
+        try {
+            messages = typeof session.messages === 'string' 
+                ? JSON.parse(session.messages) 
+                : (session.messages || []);
+        } catch (e) {
+            messages = [];
+        }
+
         res.json({
             success: true,
             session: {
                 id: session.id,
                 sessionId: session.sessionId,
                 title: session.title,
-                messages: session.messages || [],
+                messages: messages,
                 messageCount: session.messageCount || 0,
                 createdAt: session.createdAt,
                 updatedAt: session.updatedAt
@@ -216,7 +363,13 @@ router.get('/sessions/:sessionId', async (req, res) => {
 // POST /api/admin/gemini/sessions - Yeni session oluştur veya güncelle
 router.post('/sessions', async (req, res) => {
     try {
-        const { GeminiSession } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+        
         const { sessionId, title, messages = [] } = req.body;
 
         if (!sessionId) {
@@ -227,23 +380,46 @@ router.post('/sessions', async (req, res) => {
         }
 
         // Session var mı kontrol et
-        let session = await GeminiSession.findOne({
-            where: { sessionId }
-        });
+        const [existingSessions] = await poolWrapper.execute(`
+            SELECT id, sessionId, title, messageCount
+            FROM gemini_sessions
+            WHERE sessionId = ?
+        `, [sessionId]);
 
-        const sessionData = {
-            sessionId,
-            title: title || `Sohbet ${new Date().toLocaleDateString('tr-TR')}`,
-            messages: messages,
-            messageCount: messages.length
-        };
+        const existingSession = existingSessions[0];
+        const sessionTitle = title || `Sohbet ${new Date().toLocaleDateString('tr-TR')}`;
+        const messagesJson = JSON.stringify(messages);
 
-        if (session) {
+        let session;
+
+        if (existingSession) {
             // Mevcut session'ı güncelle
-            await session.update(sessionData);
+            await poolWrapper.execute(`
+                UPDATE gemini_sessions
+                SET title = ?, messages = ?, messageCount = ?, updatedAt = NOW()
+                WHERE sessionId = ?
+            `, [sessionTitle, messagesJson, messages.length, sessionId]);
+            
+            session = {
+                id: existingSession.id,
+                sessionId: existingSession.sessionId,
+                title: sessionTitle,
+                messageCount: messages.length
+            };
         } else {
             // Yeni session oluştur
-            session = await GeminiSession.create(sessionData);
+            const [result] = await poolWrapper.execute(`
+                INSERT INTO gemini_sessions (sessionId, title, messages, messageCount, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, NOW(), NOW())
+            `, [sessionId, sessionTitle, messagesJson, messages.length]);
+            
+            const [newSessions] = await poolWrapper.execute(`
+                SELECT id, sessionId, title, messageCount
+                FROM gemini_sessions
+                WHERE id = ?
+            `, [result.insertId]);
+            
+            session = newSessions[0];
         }
 
         res.json({
@@ -254,7 +430,7 @@ router.post('/sessions', async (req, res) => {
                 title: session.title,
                 messageCount: session.messageCount
             },
-            message: session ? 'Session güncellendi' : 'Session oluşturuldu'
+            message: existingSession ? 'Session güncellendi' : 'Session oluşturuldu'
         });
     } catch (error) {
         console.error('❌ Gemini session kaydedilemedi:', error);
@@ -269,13 +445,23 @@ router.post('/sessions', async (req, res) => {
 // PUT /api/admin/gemini/sessions/:sessionId/messages - Session mesajlarını güncelle
 router.put('/sessions/:sessionId/messages', async (req, res) => {
     try {
-        const { GeminiSession } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+        
         const { sessionId } = req.params;
         const { messages = [] } = req.body;
 
-        const session = await GeminiSession.findOne({
-            where: { sessionId }
-        });
+        const [sessions] = await poolWrapper.execute(`
+            SELECT id
+            FROM gemini_sessions
+            WHERE sessionId = ?
+        `, [sessionId]);
+
+        const session = sessions[0];
 
         if (!session) {
             return res.status(404).json({
@@ -284,11 +470,13 @@ router.put('/sessions/:sessionId/messages', async (req, res) => {
             });
         }
 
-        await session.update({
-            messages: messages,
-            messageCount: messages.length,
-            updatedAt: new Date()
-        });
+        const messagesJson = JSON.stringify(messages);
+        
+        await poolWrapper.execute(`
+            UPDATE gemini_sessions
+            SET messages = ?, messageCount = ?, updatedAt = NOW()
+            WHERE sessionId = ?
+        `, [messagesJson, messages.length, sessionId]);
 
         res.json({
             success: true,
@@ -308,12 +496,22 @@ router.put('/sessions/:sessionId/messages', async (req, res) => {
 // DELETE /api/admin/gemini/sessions/:sessionId - Session sil
 router.delete('/sessions/:sessionId', async (req, res) => {
     try {
-        const { GeminiSession } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+        
         const { sessionId } = req.params;
 
-        const session = await GeminiSession.findOne({
-            where: { sessionId }
-        });
+        const [sessions] = await poolWrapper.execute(`
+            SELECT id
+            FROM gemini_sessions
+            WHERE sessionId = ?
+        `, [sessionId]);
+
+        const session = sessions[0];
 
         if (!session) {
             return res.status(404).json({
@@ -322,7 +520,10 @@ router.delete('/sessions/:sessionId', async (req, res) => {
             });
         }
 
-        await session.destroy();
+        await poolWrapper.execute(`
+            DELETE FROM gemini_sessions
+            WHERE sessionId = ?
+        `, [sessionId]);
 
         res.json({
             success: true,
