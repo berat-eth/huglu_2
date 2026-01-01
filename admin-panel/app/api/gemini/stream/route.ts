@@ -5,14 +5,21 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 async function getApiKeyFromBackend(): Promise<string | null> {
   try {
     // Development ortamında localhost, production'da production URL
+    // Next.js API route'ları server-side'da çalıştığı için NODE_ENV kullanabiliriz
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const API_BASE_URL = isDevelopment 
-      ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api')
-      : (process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api');
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (isDevelopment 
+      ? 'http://localhost:3001/api'
+      : 'https://api.huglutekstil.com/api');
     const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f';
     const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS';
     
-    const response = await fetch(`${API_BASE_URL}/admin/gemini/config/raw`, {
+    const url = `${API_BASE_URL}/admin/gemini/config/raw`;
+    console.log('🔑 Backend\'den API key çekiliyor:', url);
+    console.log('🔑 API_BASE_URL:', API_BASE_URL);
+    console.log('🔑 NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔑 isDevelopment:', isDevelopment);
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
