@@ -302,7 +302,16 @@ export default function Chatbot() {
                     messageMap.set(m.id, m)
                   }
                 } else {
-                  messageMap.set(m.id, m)
+                  // Aynı text ve sender'a sahip mesaj varsa (duplicate), ekleme
+                  const isDuplicate = Array.from(messageMap.values()).some(existing => 
+                    existing.text === m.text && 
+                    existing.sender === m.sender &&
+                    Math.abs((existing.timestamp || existing.id) - (m.timestamp || m.id)) < 2000 // 2 saniye içinde
+                  )
+                  
+                  if (!isDuplicate) {
+                    messageMap.set(m.id, m)
+                  }
                 }
               })
               
@@ -729,37 +738,22 @@ TONE: Dost canlısı, yardımsever, profesyonel ama samimi`
           .replace(/\*/g, '')
           .trim()
 
-        // Backend'e gönder
+        // Backend'e gönder ve backend'den gelen mesajı kullan
         const { api } = await import('@/lib/api')
-        await api.post('/admin/chatbot/send-message', {
+        const response = await api.post('/admin/chatbot/send-message', {
           userId: conversation.userId,
           message: aiResponse,
           conversationId: conversation.id
         })
 
-        // UI'da göster
-        const aiMessage: Message = {
-          id: Date.now(),
-          sender: 'agent',
-          text: aiResponse,
-          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          read: true,
-          timestamp: Date.now()
-        }
-
+        // Backend'den gelen mesaj ID'sini kullan (eğer varsa)
+        // Backend'den gelen mesaj WebSocket veya polling ile gelecek
+        // Bu yüzden UI'da manuel ekleme yapmıyoruz, backend'den gelen mesajı bekliyoruz
+        // Sadece conversation'ı güncelle
         setConversations(prev => {
           const newConvs = [...prev]
           const convIndex = newConvs.findIndex(c => c.id === conversationId)
           if (convIndex !== -1 && newConvs[convIndex]) {
-            if (!newConvs[convIndex].messages) {
-              newConvs[convIndex].messages = []
-            }
-            newConvs[convIndex].messages.push(aiMessage)
-            newConvs[convIndex].messages.sort((a, b) => {
-              const aTime = a.timestamp || a.id
-              const bTime = b.timestamp || b.id
-              return aTime - bTime
-            })
             newConvs[convIndex].lastMessage = aiResponse
             newConvs[convIndex].time = 'Şimdi'
           }

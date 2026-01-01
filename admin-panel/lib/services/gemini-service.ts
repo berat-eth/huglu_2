@@ -176,6 +176,11 @@ export class GeminiService {
         return { status: 'offline' };
       }
 
+      // Eğer API key maskelenmiş görünüyorsa, Next.js API route'u backend'den çekecek
+      const apiKeyToSend = (config.apiKey && !config.apiKey.includes('...') && config.apiKey.length > 20) 
+        ? config.apiKey 
+        : ''; // Next.js route backend'den çekecek
+
       // Next.js API route üzerinden kontrol et
       try {
         const response = await fetch('/api/gemini/health', {
@@ -184,7 +189,7 @@ export class GeminiService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            apiKey: config.apiKey,
+            apiKey: apiKeyToSend,
             model: config.model
           }),
           signal: AbortSignal.timeout(10000)
@@ -367,7 +372,7 @@ export class GeminiService {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              apiKey: config.apiKey,
+              apiKey: apiKeyToSend,
               model: modelName,
               messages: messages,
               temperature,
@@ -499,6 +504,11 @@ export class GeminiService {
         );
       }
 
+      // Eğer API key maskelenmiş görünüyorsa, Next.js API route'u backend'den çekecek
+      const apiKeyToSend = (config.apiKey && !config.apiKey.includes('...') && config.apiKey.length > 20) 
+        ? config.apiKey 
+        : ''; // Next.js route backend'den çekecek
+
       // Next.js API route üzerinden streaming
       const response = await fetch('/api/gemini/stream', {
         method: 'POST',
@@ -506,7 +516,7 @@ export class GeminiService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          apiKey: config.apiKey,
+          apiKey: apiKeyToSend,
           model: modelName,
           messages: messages,
           temperature,

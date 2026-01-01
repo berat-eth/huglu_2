@@ -1,15 +1,66 @@
 import { NextRequest } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Backend'den API key'i çek
+async function getApiKeyFromBackend(): Promise<string | null> {
+  try {
+    // Development ortamında localhost, production'da production URL
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const API_BASE_URL = isDevelopment 
+      ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api')
+      : (process.env.NEXT_PUBLIC_API_URL || 'https://api.huglutekstil.com/api');
+    const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f';
+    const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS';
+    
+    const response = await fetch(`${API_BASE_URL}/admin/gemini/config/raw`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY,
+        'X-Admin-Key': ADMIN_KEY,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.apiKey) {
+        return data.apiKey;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Backend\'den API key alınamadı:', error);
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { apiKey, model, messages, temperature, maxTokens, files } = body;
+    // Request body'yi güvenli şekilde parse et
+    let body: any = {};
+    try {
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Request body parse edilemedi, boş body kullanılıyor:', parseError);
+      body = {};
+    }
+    
+    let { apiKey, model, messages, temperature, maxTokens, files } = body;
+
+    // Eğer API key maskelenmiş görünüyorsa veya boşsa, backend'den çek
+    if (!apiKey || apiKey.includes('...') || apiKey.length < 20) {
+      const backendApiKey = await getApiKeyFromBackend();
+      if (backendApiKey) {
+        apiKey = backendApiKey;
+      }
+    }
 
     // Validasyon
-    if (!apiKey) {
+    if (!apiKey || apiKey.length < 20) {
       return new Response(
-        JSON.stringify({ error: 'API key is required' }),
+        JSON.stringify({ error: 'API key is required and must be valid' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
