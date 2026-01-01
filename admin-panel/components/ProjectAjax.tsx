@@ -156,7 +156,7 @@ export default function ProjectAjax() {
         return false
     })
     
-    // ElevenLabs config'i yükle
+    // ElevenLabs config'i yükle ve otomatik aktif et
     useEffect(() => {
         const loadElevenLabsConfig = async () => {
             try {
@@ -169,6 +169,19 @@ export default function ProjectAjax() {
                     } else if (config.apiKey) {
                         // Maskelenmiş key varsa boş bırak
                         setElevenLabsApiKeyLocal('')
+                    }
+                    
+                    // Eğer config enabled ve API key varsa, otomatik olarak ElevenLabs'i aktif et
+                    if (config.enabled && config.apiKey) {
+                        setUseElevenLabs(true)
+                        if (typeof window !== 'undefined') {
+                            try {
+                                localStorage.setItem('ajax_use_elevenlabs', 'true')
+                            } catch (error: any) {
+                                console.warn('⚠️ localStorage kayıt hatası:', error)
+                            }
+                        }
+                        console.log('✅ ElevenLabs otomatik olarak aktif edildi')
                     }
                 }
             } catch (error) {
@@ -1565,92 +1578,20 @@ export default function ProjectAjax() {
                 enabled: elevenLabsConfig?.enabled, 
                 hasApiKey: !!elevenLabsConfig?.apiKey 
             })
+            
+            // ElevenLabs config varsa ama toggle kapalıysa, kullanıcıya bilgi ver
+            if (elevenLabsConfig?.enabled && elevenLabsConfig?.apiKey) {
+                console.warn('⚠️ ElevenLabs config mevcut ama toggle kapalı. Lütfen toggle butonuna tıklayın.')
+                // Web Speech API kullanma, sadece bilgi ver
+                alert('ElevenLabs API key mevcut. Premium ses için toggle butonuna (🧠) tıklayın.')
+                return
+            }
         }
 
-        // Web Speech API kullan (fallback veya varsayılan)
-        if (!('speechSynthesis' in window)) {
-            alert('Tarayıcınız text-to-speech özelliğini desteklemiyor')
-            return
-        }
-
-        try {
-            // Önceki konuşmayı durdur
-            window.speechSynthesis.cancel()
-
-            // Yeni utterance oluştur
-            const utterance = new SpeechSynthesisUtterance(cleanContent)
-            utterance.lang = voiceSettings.lang || 'tr-TR'
-            utterance.rate = voiceSettings.rate || 1.0
-            utterance.pitch = voiceSettings.pitch || 1.0
-            utterance.volume = voiceSettings.volume || 1.0
-
-            // Ses seçimi
-            const voices = window.speechSynthesis.getVoices()
-            if (voiceSettings.voiceName) {
-                const selectedVoice = voices.find(v => v.name === voiceSettings.voiceName)
-                if (selectedVoice) {
-                    utterance.voice = selectedVoice
-                } else {
-                    // Seçilen ses bulunamazsa Türkçe ses ara
-                    const turkishVoice = voices.find(voice => 
-                        voice.lang.startsWith('tr') || 
-                        voice.name.toLowerCase().includes('turkish') ||
-                        voice.name.toLowerCase().includes('türkçe')
-                    )
-                    if (turkishVoice) {
-                        utterance.voice = turkishVoice
-                    }
-                }
-            } else {
-                // Varsayılan olarak Türkçe ses seç
-                const turkishVoice = voices.find(voice => 
-                    voice.lang.startsWith('tr') || 
-                    voice.name.toLowerCase().includes('turkish') ||
-                    voice.name.toLowerCase().includes('türkçe')
-                )
-                if (turkishVoice) {
-                    utterance.voice = turkishVoice
-                }
-            }
-
-            // Event handler'lar
-            utterance.onstart = () => {
-                setIsSpeaking(true)
-                setIsPaused(false)
-                setSpeakingMessageId(messageId)
-                speechSynthesisRef.current = utterance
-            }
-
-            utterance.onend = () => {
-                setIsSpeaking(false)
-                setIsPaused(false)
-                setSpeakingMessageId(null)
-                speechSynthesisRef.current = null
-            }
-
-            utterance.onpause = () => {
-                setIsPaused(true)
-            }
-
-            utterance.onresume = () => {
-                setIsPaused(false)
-            }
-
-            utterance.onerror = (error) => {
-                console.error('❌ Speech synthesis hatası:', error)
-                setIsSpeaking(false)
-                setIsPaused(false)
-                setSpeakingMessageId(null)
-                speechSynthesisRef.current = null
-                alert('Seslendirme sırasında bir hata oluştu')
-            }
-
-            // Konuşmayı başlat
-            window.speechSynthesis.speak(utterance)
-        } catch (error) {
-            console.error('❌ Speech synthesis başlatma hatası:', error)
-            alert('Seslendirme başlatılamadı')
-        }
+        // Web Speech API kaldırıldı - Sadece ElevenLabs kullanılıyor
+        // Eğer ElevenLabs yoksa veya hata olursa, seslendirme yapılmaz
+        console.warn('⚠️ Seslendirme yapılamadı: ElevenLabs aktif değil veya config eksik')
+        alert('Seslendirme için ElevenLabs API key gerekli. Lütfen ayarlardan API key\'inizi girin ve toggle butonunu aktif edin.')
     }
 
     // Mikrofon izni kontrolü ve isteme
