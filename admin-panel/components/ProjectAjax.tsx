@@ -1480,7 +1480,13 @@ export default function ProjectAjax() {
         }
 
         // ElevenLabs kullanılıyorsa
-        if (useElevenLabs && elevenLabsConfig?.enabled) {
+        if (useElevenLabs && elevenLabsConfig?.enabled && elevenLabsConfig?.apiKey) {
+            console.log('🎙️ ElevenLabs kullanılıyor...', { 
+                useElevenLabs, 
+                enabled: elevenLabsConfig.enabled, 
+                hasApiKey: !!elevenLabsConfig.apiKey 
+            })
+            
             try {
                 setIsSpeaking(true)
                 setSpeakingMessageId(messageId)
@@ -1493,13 +1499,17 @@ export default function ProjectAjax() {
                 })
 
                 if (response && response.audio) {
+                    console.log('✅ ElevenLabs audio alındı, oynatılıyor...')
                     const audio = new Audio(response.audio)
                     
                     // Audio element'ini DOM'a ekle (stopSpeaking için)
                     audio.id = `elevenlabs-audio-${messageId}`
-                    document.body.appendChild(audio)
+                    if (!document.getElementById(audio.id)) {
+                        document.body.appendChild(audio)
+                    }
                     
                     audio.onended = () => {
+                        console.log('✅ ElevenLabs audio tamamlandı')
                         setIsSpeaking(false)
                         setIsPaused(false)
                         setSpeakingMessageId(null)
@@ -1520,7 +1530,9 @@ export default function ProjectAjax() {
                         if (audioEl) {
                             audioEl.remove()
                         }
-                        alert('Seslendirme sırasında bir hata oluştu')
+                        // Fallback'e geç
+                        console.log('🔄 ElevenLabs playback hatası, Web Speech API\'ye geçiliyor...')
+                        // Fallback için aşağıdaki Web Speech API koduna devam et
                     }
 
                     audio.onpause = () => {
@@ -1532,6 +1544,9 @@ export default function ProjectAjax() {
                     }
 
                     await audio.play()
+                    console.log('✅ ElevenLabs audio oynatılıyor')
+                    // Başarılı oldu, Web Speech API'ye gitme
+                    return
                 } else {
                     throw new Error('ElevenLabs yanıt alınamadı')
                 }
@@ -1540,15 +1555,16 @@ export default function ProjectAjax() {
                 setIsSpeaking(false)
                 setIsPaused(false)
                 setSpeakingMessageId(null)
-                alert('ElevenLabs seslendirme başarısız: ' + (error.message || 'Bilinmeyen hata'))
-                
-                // Fallback: Web Speech API kullan (aşağıdaki kod devam edecek)
-                console.log('🔄 Web Speech API\'ye geri dönülüyor...')
+                // Hata mesajını göster ama fallback'e geç
+                console.log('🔄 ElevenLabs başarısız, Web Speech API\'ye geri dönülüyor...')
+                // Fallback için aşağıdaki Web Speech API koduna devam et
             }
-            // Fallback için Web Speech API'ye devam et
-            if (!('speechSynthesis' in window)) {
-                return
-            }
+        } else {
+            console.log('ℹ️ ElevenLabs kullanılmıyor:', { 
+                useElevenLabs, 
+                enabled: elevenLabsConfig?.enabled, 
+                hasApiKey: !!elevenLabsConfig?.apiKey 
+            })
         }
 
         // Web Speech API kullan (fallback veya varsayılan)
