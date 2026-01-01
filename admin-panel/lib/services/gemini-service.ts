@@ -350,6 +350,11 @@ export class GeminiService {
         messageCount: contents.length
       });
 
+      // Eğer API key maskelenmiş görünüyorsa, Next.js API route'u backend'den çekecek
+      const apiKeyToSend = (config.apiKey && !config.apiKey.includes('...') && config.apiKey.length > 20) 
+        ? config.apiKey 
+        : ''; // Next.js route backend'den çekecek
+
       // Dosyaları base64'e çevir (eğer varsa)
       let fileData: any[] | undefined = undefined;
       if (options?.files && options.files.length > 0) {
