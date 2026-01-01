@@ -7,6 +7,7 @@ import { api } from '../api';
 export interface GeminiConfig {
   enabled: boolean;
   apiKey: string;
+  apiKeyMasked?: boolean; // Backend'den maskelenmiş key gelirse true
   model: string;
   temperature?: number;
   maxTokens?: number;
@@ -89,6 +90,7 @@ export class GeminiService {
           return {
             enabled: dbConfig.enabled ?? this.DEFAULT_CONFIG.enabled,
             apiKey: apiKey || this.DEFAULT_CONFIG.apiKey,
+            apiKeyMasked: dbConfig.apiKeyMasked || false,
             model: dbConfig.model || this.DEFAULT_CONFIG.model,
             temperature: dbConfig.temperature ?? this.DEFAULT_CONFIG.temperature,
             maxTokens: dbConfig.maxTokens ?? this.DEFAULT_CONFIG.maxTokens

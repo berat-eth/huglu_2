@@ -166,10 +166,18 @@ export default function ProjectAjax() {
                     // API key'i maskelenmiş formatta göster
                     if (config.apiKey && !config.apiKeyMasked) {
                         setElevenLabsApiKeyLocal(config.apiKey)
-                    } else if (config.apiKey) {
-                        // Maskelenmiş key varsa boş bırak
+                    } else if (config.apiKey && config.apiKeyMasked) {
+                        // Maskelenmiş key varsa boş bırak ama placeholder'da bilgi göster
+                        setElevenLabsApiKeyLocal('')
+                    } else {
                         setElevenLabsApiKeyLocal('')
                     }
+                    
+                    console.log('✅ ElevenLabs config yüklendi:', { 
+                        hasApiKey: !!config.apiKey, 
+                        masked: config.apiKeyMasked,
+                        enabled: config.enabled
+                    })
                     
                     // Eğer config enabled ve API key varsa, otomatik olarak ElevenLabs'i aktif et
                     if (config.enabled && config.apiKey) {
@@ -272,11 +280,28 @@ export default function ProjectAjax() {
         try {
             const config = await GeminiService.getConfig()
             setGeminiConfig(config)
-            setAiApiKeyLocal(config.apiKey || '')
+            // Maskelenmiş key varsa boş bırak, yoksa göster
+            if (config.apiKey && !config.apiKeyMasked) {
+                setAiApiKeyLocal(config.apiKey)
+            } else if (config.apiKey && config.apiKeyMasked) {
+                // Maskelenmiş key varsa boş bırak ama placeholder'da bilgi göster
+                setAiApiKeyLocal('')
+            } else {
+                setAiApiKeyLocal('')
+            }
+            console.log('✅ Gemini config yüklendi:', { 
+                hasApiKey: !!config.apiKey, 
+                masked: config.apiKeyMasked 
+            })
         } catch (error) {
             console.error('❌ Gemini config yüklenemedi:', error)
         }
     }
+    
+    // Sayfa yüklendiğinde config'leri yükle
+    useEffect(() => {
+        loadGeminiConfig()
+    }, [])
 
     const checkGeminiStatus = async () => {
         setGeminiStatus('checking')
@@ -307,6 +332,8 @@ export default function ProjectAjax() {
             await GeminiService.saveConfig({ apiKey: aiApiKeyLocal.trim() })
             const updatedConfig = await GeminiService.getConfig()
             setGeminiConfig(updatedConfig)
+            // Input'u temizle (güvenlik için)
+            setAiApiKeyLocal('')
             
             // Durumu kontrol et
             await checkGeminiStatus()
@@ -1497,100 +1524,176 @@ export default function ProjectAjax() {
             console.log('🎙️ ElevenLabs kullanılıyor...', { 
                 useElevenLabs, 
                 enabled: elevenLabsConfig.enabled, 
-                hasApiKey: !!elevenLabsConfig.apiKey 
+                hasApiKey: !!elevenLabsConfig.apiKey,
+                textLength: cleanContent.length
+            })
+            
+            // ElevenLabs karakter limiti: 5000 karakter (güvenli limit: 4000)
+            const MAX_CHUNK_SIZE = 4000
+            
+            // Metni parçalara böl (cümle sonlarında böl)
+            const splitTextIntoChunks = (text: string, maxSize: number): string[] => {
+                if (text.length <= maxSize) {
+                    return [text]
+                }
+                
+                const chunks: string[] = []
+                let currentChunk = ''
+                
+                // Cümle sonlarını bul (. ! ? ile biten cümleler)
+                const sentences = text.split(/([.!?]\s+)/)
+                
+                for (let i = 0; i < sentences.length; i++) {
+                    const sentence = sentences[i]
+                    const testChunk = currentChunk + sentence
+                    
+                    if (testChunk.length <= maxSize) {
+                        currentChunk = testChunk
+                    } else {
+                        // Mevcut chunk'ı kaydet
+                        if (currentChunk.trim()) {
+                            chunks.push(currentChunk.trim())
+                        }
+                        // Yeni chunk başlat
+                        if (sentence.length > maxSize) {
+                            // Cümle çok uzunsa kelime bazlı böl
+                            const words = sentence.split(/(\s+)/)
+                            let wordChunk = ''
+                            for (const word of words) {
+                                if ((wordChunk + word).length <= maxSize) {
+                                    wordChunk += word
+                                } else {
+                                    if (wordChunk.trim()) {
+                                        chunks.push(wordChunk.trim())
+                                    }
+                                    wordChunk = word
+                                }
+                            }
+                            currentChunk = wordChunk
+                        } else {
+                            currentChunk = sentence
+                        }
+                    }
+                }
+                
+                // Son chunk'ı ekle
+                if (currentChunk.trim()) {
+                    chunks.push(currentChunk.trim())
+                }
+                
+                return chunks.filter(chunk => chunk.length > 0)
+            }
+            
+            const textChunks = splitTextIntoChunks(cleanContent, MAX_CHUNK_SIZE)
+            console.log(`📝 Metin ${textChunks.length} parçaya bölündü`, { 
+                totalLength: cleanContent.length,
+                chunks: textChunks.map(c => c.length)
             })
             
             try {
                 setIsSpeaking(true)
                 setSpeakingMessageId(messageId)
+                
+                // Her parçayı sırayla oynat
+                for (let i = 0; i < textChunks.length; i++) {
+                    const chunk = textChunks[i]
+                    console.log(`🎵 Parça ${i + 1}/${textChunks.length} oynatılıyor...`, { 
+                        length: chunk.length 
+                    })
 
-                const response = await ElevenLabsService.textToSpeech({
-                    text: cleanContent,
-                    voiceId: elevenLabsConfig.defaultVoiceId,
-                    modelId: elevenLabsConfig.defaultModelId,
-                    outputFormat: elevenLabsConfig.defaultOutputFormat
-                })
+                    const response = await ElevenLabsService.textToSpeech({
+                        text: chunk,
+                        voiceId: elevenLabsConfig.defaultVoiceId,
+                        modelId: elevenLabsConfig.defaultModelId,
+                        outputFormat: elevenLabsConfig.defaultOutputFormat
+                    })
 
-                if (response && response.audio) {
-                    console.log('✅ ElevenLabs audio alındı, oynatılıyor...')
-                    
-                    // Data URL'den blob oluştur (CSP uyumluluğu için)
-                    let audioUrl = response.audio
-                    if (audioUrl.startsWith('data:')) {
-                        try {
-                            // Data URL'den base64'i çıkar
-                            const base64Data = audioUrl.split(',')[1]
-                            const binaryString = atob(base64Data)
-                            const bytes = new Uint8Array(binaryString.length)
-                            for (let i = 0; i < binaryString.length; i++) {
-                                bytes[i] = binaryString.charCodeAt(i)
+                    if (response && response.audio) {
+                        console.log(`✅ Parça ${i + 1}/${textChunks.length} audio alındı, oynatılıyor...`)
+                        
+                        // Data URL'den blob oluştur (CSP uyumluluğu için)
+                        let audioUrl = response.audio
+                        if (audioUrl.startsWith('data:')) {
+                            try {
+                                // Data URL'den base64'i çıkar
+                                const base64Data = audioUrl.split(',')[1]
+                                const binaryString = atob(base64Data)
+                                const bytes = new Uint8Array(binaryString.length)
+                                for (let j = 0; j < binaryString.length; j++) {
+                                    bytes[j] = binaryString.charCodeAt(j)
+                                }
+                                const blob = new Blob([bytes], { type: 'audio/mpeg' })
+                                audioUrl = URL.createObjectURL(blob)
+                                console.log(`✅ Parça ${i + 1} blob URL oluşturuldu`)
+                            } catch (error) {
+                                console.error('❌ Blob oluşturma hatası:', error)
+                                // Fallback: data URL kullan
                             }
-                            const blob = new Blob([bytes], { type: 'audio/mpeg' })
-                            audioUrl = URL.createObjectURL(blob)
-                            console.log('✅ Audio blob URL oluşturuldu:', audioUrl)
-                        } catch (error) {
-                            console.error('❌ Blob oluşturma hatası:', error)
-                            // Fallback: data URL kullan
                         }
-                    }
-                    
-                    const audio = new Audio(audioUrl)
-                    
-                    // Audio element'ini DOM'a ekle (stopSpeaking için)
-                    audio.id = `elevenlabs-audio-${messageId}`
-                    if (!document.getElementById(audio.id)) {
-                        document.body.appendChild(audio)
-                    }
-                    
-                    // Blob URL'yi sakla (temizleme için)
-                    const audioBlobUrl = audioUrl.startsWith('blob:') ? audioUrl : null
-                    
-                    audio.onended = () => {
-                        console.log('✅ ElevenLabs audio tamamlandı')
-                        setIsSpeaking(false)
-                        setIsPaused(false)
-                        setSpeakingMessageId(null)
-                        // Audio element'ini temizle
-                        const audioEl = document.getElementById(audio.id)
-                        if (audioEl) {
-                            audioEl.remove()
+                        
+                        const audio = new Audio(audioUrl)
+                        
+                        // Audio element'ini DOM'a ekle (stopSpeaking için)
+                        audio.id = `elevenlabs-audio-${messageId}-${i}`
+                        if (!document.getElementById(audio.id)) {
+                            document.body.appendChild(audio)
                         }
-                        // Blob URL'yi temizle
-                        if (audioBlobUrl) {
-                            URL.revokeObjectURL(audioBlobUrl)
-                        }
+                        
+                        // Blob URL'yi sakla (temizleme için)
+                        const audioBlobUrl = audioUrl.startsWith('blob:') ? audioUrl : null
+                        
+                        // Promise ile audio'nun bitmesini bekle
+                        await new Promise<void>((resolve, reject) => {
+                            audio.onended = () => {
+                                console.log(`✅ Parça ${i + 1}/${textChunks.length} tamamlandı`)
+                                // Audio element'ini temizle
+                                const audioEl = document.getElementById(audio.id)
+                                if (audioEl) {
+                                    audioEl.remove()
+                                }
+                                // Blob URL'yi temizle
+                                if (audioBlobUrl) {
+                                    URL.revokeObjectURL(audioBlobUrl)
+                                }
+                                resolve()
+                            }
+                            
+                            audio.onerror = (error) => {
+                                console.error(`❌ Parça ${i + 1} playback hatası:`, error)
+                                // Audio element'ini temizle
+                                const audioEl = document.getElementById(audio.id)
+                                if (audioEl) {
+                                    audioEl.remove()
+                                }
+                                // Blob URL'yi temizle
+                                if (audioBlobUrl) {
+                                    URL.revokeObjectURL(audioBlobUrl)
+                                }
+                                reject(error)
+                            }
+                            
+                            audio.onpause = () => {
+                                setIsPaused(true)
+                            }
+                            
+                            audio.onplay = () => {
+                                setIsPaused(false)
+                            }
+                            
+                            // Audio'yu oynat
+                            audio.play().catch(reject)
+                        })
+                    } else {
+                        throw new Error(`Parça ${i + 1} için ElevenLabs yanıt alınamadı`)
                     }
-
-                    audio.onerror = (error) => {
-                        console.error('❌ ElevenLabs audio playback hatası:', error)
-                        setIsSpeaking(false)
-                        setIsPaused(false)
-                        setSpeakingMessageId(null)
-                        // Audio element'ini temizle
-                        const audioEl = document.getElementById(audio.id)
-                        if (audioEl) {
-                            audioEl.remove()
-                        }
-                        // Fallback'e geç
-                        console.log('🔄 ElevenLabs playback hatası, Web Speech API\'ye geçiliyor...')
-                        // Fallback için aşağıdaki Web Speech API koduna devam et
-                    }
-
-                    audio.onpause = () => {
-                        setIsPaused(true)
-                    }
-
-                    audio.onplay = () => {
-                        setIsPaused(false)
-                    }
-
-                    await audio.play()
-                    console.log('✅ ElevenLabs audio oynatılıyor')
-                    // Başarılı oldu, Web Speech API'ye gitme
-                    return
-                } else {
-                    throw new Error('ElevenLabs yanıt alınamadı')
                 }
+                
+                // Tüm parçalar tamamlandı
+                console.log('✅ Tüm parçalar oynatıldı')
+                setIsSpeaking(false)
+                setIsPaused(false)
+                setSpeakingMessageId(null)
+                return
             } catch (error: any) {
                 console.error('❌ ElevenLabs text-to-speech hatası:', error)
                 setIsSpeaking(false)

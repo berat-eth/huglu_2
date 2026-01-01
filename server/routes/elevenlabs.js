@@ -271,6 +271,15 @@ router.post('/text-to-speech', async (req, res) => {
       });
     }
 
+    // ElevenLabs karakter limiti kontrolü (5000 karakter, güvenli limit: 4000)
+    const MAX_TEXT_LENGTH = 5000;
+    if (text.length > MAX_TEXT_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed, got ${text.length}. Please split the text into smaller chunks.`
+      });
+    }
+
     // Config'i al
     const [configs] = await poolWrapper.execute(`
       SELECT enabled, apiKey, defaultVoiceId, defaultModelId, defaultOutputFormat
