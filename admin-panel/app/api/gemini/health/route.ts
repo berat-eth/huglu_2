@@ -26,6 +26,8 @@ async function getApiKeyFromBackend(): Promise<string | null> {
         'X-API-Key': API_KEY,
         'X-Admin-Key': ADMIN_KEY,
       },
+      // Next.js'in fetch caching'ini devre dışı bırak
+      cache: 'no-store',
     });
 
     console.log('🔑 Backend response status:', response.status);
@@ -41,10 +43,10 @@ async function getApiKeyFromBackend(): Promise<string | null> {
       }
     } else {
       const errorText = await response.text();
-      console.error('❌ API key alınamadı, status:', response.status, errorText);
+      console.error('❌ API key alınamadı, status:', response.status, errorText.substring(0, 200));
     }
   } catch (error: any) {
-    console.error('❌ Backend\'den API key alınamadı:', error.message || error);
+    console.error('❌ Backend\'den API key alınamadı:', error?.message || error);
   }
   return null;
 }

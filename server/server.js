@@ -46,6 +46,7 @@ const userDataRoutes = require('./routes/user-data');
 const userSpecificDataRoutes = require('./routes/user-specific-data');
 const chatSessionsRoutes = require('./routes/chat-sessions');
 const adminGeminiRoutes = require('./routes/admin-gemini');
+const elevenlabsRoutes = require('./routes/elevenlabs');
 const segmentsRoutes = require('./routes/segments');
 const { RecommendationService } = require('./services/recommendation-service');
 const { authenticateTenant } = require('./middleware/auth');
@@ -2021,6 +2022,9 @@ app.use('/api/chat/sessions', chatSessionsRoutes);
 // Admin Gemini Routes
 // authenticateAdmin zaten dosyada tanımlı (satır 3796)
 app.use('/api/admin/gemini', authenticateAdmin, adminGeminiRoutes);
+
+// ElevenLabs Routes (admin authentication required)
+app.use('/api/admin/elevenlabs', authenticateAdmin, elevenlabsRoutes);
 
 // Segments Routes
 app.use('/api', segmentsRoutes);

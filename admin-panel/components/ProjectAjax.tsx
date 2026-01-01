@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Copy, User, Bot, Loader2, TrendingUp, FileText, Code, Lightbulb, Database, Table, Search, Play, Download, Eye, Settings, BarChart3, Activity, Brain, TestTube2, Volume2, VolumeX, Mic, MicOff, Trash2, Upload, X, Plus, Pause, PlayCircle, Sliders } from 'lucide-react'
 import { GeminiService, GeminiConfig, GeminiMessage } from '@/lib/services/gemini-service'
+import { ElevenLabsService, ElevenLabsConfig } from '@/lib/services/elevenlabs-service'
 import { productService, orderService } from '@/lib/services'
 import { api } from '@/lib/api'
 
@@ -77,6 +78,9 @@ export default function ProjectAjax() {
     const [aiTesting, setAiTesting] = useState(false)
     const [aiTestMessage, setAiTestMessage] = useState<string | null>(null)
     const [aiApiKeyLocal, setAiApiKeyLocal] = useState('')
+    // ElevenLabs API Key
+    const [elevenLabsApiKeyLocal, setElevenLabsApiKeyLocal] = useState('')
+    const [elevenLabsSaving, setElevenLabsSaving] = useState(false)
     // Dosya yükleme
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
 
@@ -134,6 +138,15 @@ export default function ProjectAjax() {
         }
     })
     
+    // ElevenLabs settings
+    const [useElevenLabs, setUseElevenLabs] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('ajax_use_elevenlabs') === 'true'
+        }
+        return false
+    })
+    const [elevenLabsConfig, setElevenLabsConfig] = useState<ElevenLabsConfig | null>(null)
+    
     // Auto-speak setting (ses motoru ayarı)
     const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -142,6 +155,54 @@ export default function ProjectAjax() {
         }
         return false
     })
+    
+    // ElevenLabs config'i yükle
+    useEffect(() => {
+        const loadElevenLabsConfig = async () => {
+            try {
+                const config = await ElevenLabsService.getConfig()
+                if (config) {
+                    setElevenLabsConfig(config)
+                    // API key'i maskelenmiş formatta göster
+                    if (config.apiKey && !config.apiKeyMasked) {
+                        setElevenLabsApiKeyLocal(config.apiKey)
+                    } else if (config.apiKey) {
+                        // Maskelenmiş key varsa boş bırak
+                        setElevenLabsApiKeyLocal('')
+                    }
+                }
+            } catch (error) {
+                console.error('❌ ElevenLabs config yüklenemedi:', error)
+            }
+        }
+        loadElevenLabsConfig()
+    }, [])
+    
+    // ElevenLabs API key kaydet
+    const handleSaveElevenLabsApiKey = async () => {
+        if (!elevenLabsApiKeyLocal.trim()) {
+            alert('Lütfen ElevenLabs API key girin')
+            return
+        }
+
+        setElevenLabsSaving(true)
+        try {
+            await ElevenLabsService.saveConfig({ 
+                apiKey: elevenLabsApiKeyLocal.trim(),
+                enabled: true
+            })
+            const updatedConfig = await ElevenLabsService.getConfig()
+            setElevenLabsConfig(updatedConfig)
+            
+            alert('✅ ElevenLabs API key başarıyla kaydedildi!')
+            setElevenLabsApiKeyLocal('') // Güvenlik için temizle
+        } catch (error: any) {
+            console.error('❌ ElevenLabs API key kaydedilemedi:', error)
+            alert('❌ API key kaydedilemedi: ' + (error.message || 'Bilinmeyen hata'))
+        } finally {
+            setElevenLabsSaving(false)
+        }
+    }
     
     // Speech Recognition (Voice Input) States
     const [isListening, setIsListening] = useState(false)
@@ -1065,7 +1126,29 @@ export default function ProjectAjax() {
         const newValue = !autoSpeakEnabled
         setAutoSpeakEnabled(newValue)
         if (typeof window !== 'undefined') {
-            localStorage.setItem('ajax_auto_speak', String(newValue))
+            try {
+                localStorage.setItem('ajax_auto_speak', String(newValue))
+            } catch (error: any) {
+                console.warn('⚠️ localStorage kayıt hatası (auto_speak):', error)
+            }
+        }
+    }
+    
+    // ElevenLabs kullanımını toggle et
+    const toggleElevenLabs = async () => {
+        const newValue = !useElevenLabs
+        setUseElevenLabs(newValue)
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('ajax_use_elevenlabs', String(newValue))
+            } catch (error: any) {
+                console.warn('⚠️ localStorage kayıt hatası (use_elevenlabs):', error)
+            }
+        }
+        
+        if (newValue) {
+            const config = await ElevenLabsService.getConfig()
+            setElevenLabsConfig(config)
         }
     }
 
@@ -1292,7 +1375,45 @@ export default function ProjectAjax() {
     // Ses ayarlarını kaydet
     const saveVoiceSettings = (settings: typeof voiceSettings) => {
         setVoiceSettings(settings)
-        localStorage.setItem('ajax_voice_settings', JSON.stringify(settings))
+        
+        // Sadece gerekli alanları kaydet (büyük verileri temizle)
+        const cleanSettings = {
+            rate: settings.rate || 1.0,
+            pitch: settings.pitch || 1.0,
+            volume: settings.volume || 1.0,
+            voiceName: settings.voiceName || null,
+            lang: settings.lang || 'tr-TR'
+        }
+        
+        try {
+            localStorage.setItem('ajax_voice_settings', JSON.stringify(cleanSettings))
+        } catch (error: any) {
+            // Quota hatası durumunda localStorage'ı temizle ve tekrar dene
+            if (error.name === 'QuotaExceededError' || error.code === 22) {
+                console.warn('⚠️ localStorage quota aşıldı, temizleniyor...')
+                try {
+                    // Sadece ajax ile ilgili eski verileri temizle
+                    const keysToRemove = []
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i)
+                        if (key && key.startsWith('ajax_') && key !== 'ajax_voice_settings') {
+                            keysToRemove.push(key)
+                        }
+                    }
+                    keysToRemove.forEach(key => localStorage.removeItem(key))
+                    
+                    // Tekrar dene
+                    localStorage.setItem('ajax_voice_settings', JSON.stringify(cleanSettings))
+                    console.log('✅ localStorage temizlendi ve ayarlar kaydedildi')
+                } catch (retryError) {
+                    console.error('❌ localStorage temizleme hatası:', retryError)
+                    // Hata devam ederse sadece state'te tut, localStorage'a kaydetme
+                    console.warn('⚠️ Ayarlar sadece session için kaydedildi (localStorage dolu)')
+                }
+            } else {
+                console.error('❌ localStorage kayıt hatası:', error)
+            }
+        }
     }
 
     // Seslendirmeyi duraklat/devam ettir
@@ -1310,17 +1431,28 @@ export default function ProjectAjax() {
 
     // Seslendirmeyi durdur
     const stopSpeaking = () => {
+        // Web Speech API'yi durdur
         if (window.speechSynthesis) {
             window.speechSynthesis.cancel()
         }
+        
+        // ElevenLabs audio'yu durdur (eğer çalıyorsa)
+        const audioElements = document.querySelectorAll('audio[id^="elevenlabs-audio-"]')
+        audioElements.forEach(audioEl => {
+            const audio = audioEl as HTMLAudioElement
+            audio.pause()
+            audio.currentTime = 0
+            audio.remove()
+        })
+        
         setIsSpeaking(false)
         setIsPaused(false)
         setSpeakingMessageId(null)
         speechSynthesisRef.current = null
     }
 
-    // Text-to-Speech fonksiyonu (geliştirilmiş)
-    const speakMessage = (content: string, messageId: string) => {
+    // Text-to-Speech fonksiyonu (ElevenLabs veya Web Speech API)
+    const speakMessage = async (content: string, messageId: string) => {
         // Eğer aynı mesaj konuşuyorsa durdur
         if (isSpeaking && speakingMessageId === messageId) {
             stopSpeaking()
@@ -1347,7 +1479,79 @@ export default function ProjectAjax() {
             return
         }
 
-        // Web Speech API kontrolü
+        // ElevenLabs kullanılıyorsa
+        if (useElevenLabs && elevenLabsConfig?.enabled) {
+            try {
+                setIsSpeaking(true)
+                setSpeakingMessageId(messageId)
+
+                const response = await ElevenLabsService.textToSpeech({
+                    text: cleanContent,
+                    voiceId: elevenLabsConfig.defaultVoiceId,
+                    modelId: elevenLabsConfig.defaultModelId,
+                    outputFormat: elevenLabsConfig.defaultOutputFormat
+                })
+
+                if (response && response.audio) {
+                    const audio = new Audio(response.audio)
+                    
+                    // Audio element'ini DOM'a ekle (stopSpeaking için)
+                    audio.id = `elevenlabs-audio-${messageId}`
+                    document.body.appendChild(audio)
+                    
+                    audio.onended = () => {
+                        setIsSpeaking(false)
+                        setIsPaused(false)
+                        setSpeakingMessageId(null)
+                        // Audio element'ini temizle
+                        const audioEl = document.getElementById(audio.id)
+                        if (audioEl) {
+                            audioEl.remove()
+                        }
+                    }
+
+                    audio.onerror = (error) => {
+                        console.error('❌ ElevenLabs audio playback hatası:', error)
+                        setIsSpeaking(false)
+                        setIsPaused(false)
+                        setSpeakingMessageId(null)
+                        // Audio element'ini temizle
+                        const audioEl = document.getElementById(audio.id)
+                        if (audioEl) {
+                            audioEl.remove()
+                        }
+                        alert('Seslendirme sırasında bir hata oluştu')
+                    }
+
+                    audio.onpause = () => {
+                        setIsPaused(true)
+                    }
+
+                    audio.onplay = () => {
+                        setIsPaused(false)
+                    }
+
+                    await audio.play()
+                } else {
+                    throw new Error('ElevenLabs yanıt alınamadı')
+                }
+            } catch (error: any) {
+                console.error('❌ ElevenLabs text-to-speech hatası:', error)
+                setIsSpeaking(false)
+                setIsPaused(false)
+                setSpeakingMessageId(null)
+                alert('ElevenLabs seslendirme başarısız: ' + (error.message || 'Bilinmeyen hata'))
+                
+                // Fallback: Web Speech API kullan (aşağıdaki kod devam edecek)
+                console.log('🔄 Web Speech API\'ye geri dönülüyor...')
+            }
+            // Fallback için Web Speech API'ye devam et
+            if (!('speechSynthesis' in window)) {
+                return
+            }
+        }
+
+        // Web Speech API kullan (fallback veya varsayılan)
         if (!('speechSynthesis' in window)) {
             alert('Tarayıcınız text-to-speech özelliğini desteklemiyor')
             return
@@ -1803,6 +2007,17 @@ export default function ProjectAjax() {
                         >
                             {autoSpeakEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                         </button>
+                        <button
+                            onClick={toggleElevenLabs}
+                            className={`p-2 rounded-lg transition-colors ${
+                                useElevenLabs 
+                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' 
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
+                            title={useElevenLabs ? 'ElevenLabs aktif (Premium ses)' : 'ElevenLabs pasif (Web Speech API)'}
+                        >
+                            <Brain className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 
@@ -1901,6 +2116,52 @@ export default function ProjectAjax() {
                             </button>
                         </div>
                     </div>
+                    
+                    {/* ElevenLabs API Key */}
+                    <div>
+                        <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
+                            ElevenLabs API Key {elevenLabsConfig?.enabled && <span className="text-green-500">✓</span>}
+                        </label>
+                        <div className="flex gap-2">
+                            <input 
+                                type="password"
+                                value={elevenLabsApiKeyLocal} 
+                                onChange={(e)=> setElevenLabsApiKeyLocal(e.target.value)} 
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSaveElevenLabsApiKey()
+                                    }
+                                }}
+                                className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400" 
+                                placeholder={elevenLabsConfig?.apiKeyMasked ? "API key kayıtlı (yeni key girin)" : "ElevenLabs API Key girin"} 
+                            />
+                            <button
+                                onClick={handleSaveElevenLabsApiKey}
+                                disabled={elevenLabsSaving || !elevenLabsApiKeyLocal.trim()}
+                                className="px-4 py-2 bg-purple-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-700 transition-colors flex items-center gap-2"
+                            >
+                                {elevenLabsSaving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Kaydediliyor...</span>
+                                    </>
+                                ) : (
+                                    <span>Kaydet</span>
+                                )}
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                                ElevenLabs API Key almak için tıklayın
+                            </a>
+                        </p>
+                        {elevenLabsConfig?.defaultVoiceId && (
+                            <p className="text-xs text-gray-500 mt-1">
+                                Varsayılan Ses: {elevenLabsConfig.defaultVoiceId}
+                            </p>
+                        )}
+                    </div>
+                    
                     <div className="md:col-span-2">
                         <label className="text-xs text-gray-500 dark:text-slate-400 block mb-2">Ses Motoru Ayarları</label>
                         <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600">
@@ -2058,11 +2319,56 @@ export default function ProjectAjax() {
                                     <Database className="w-6 h-6 mx-auto mb-2 text-gray-400 dark:text-slate-500" />
                                     <p className="text-sm text-gray-600 dark:text-slate-300">Lütfen bir oturum seçin</p>
                                 </div>
-                            )}
+                        )}
+                    </div>
+                    
+                    {/* ElevenLabs API Key */}
+                    <div>
+                        <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
+                            ElevenLabs API Key {elevenLabsConfig?.enabled && <span className="text-green-500">✓</span>}
+                        </label>
+                        <div className="flex gap-2">
+                            <input 
+                                type="password"
+                                value={elevenLabsApiKeyLocal} 
+                                onChange={(e)=> setElevenLabsApiKeyLocal(e.target.value)} 
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSaveElevenLabsApiKey()
+                                    }
+                                }}
+                                className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400" 
+                                placeholder={elevenLabsConfig?.apiKeyMasked ? "API key kayıtlı (yeni key girin)" : "ElevenLabs API Key girin"} 
+                            />
+                            <button
+                                onClick={handleSaveElevenLabsApiKey}
+                                disabled={elevenLabsSaving || !elevenLabsApiKeyLocal.trim()}
+                                className="px-4 py-2 bg-purple-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-700 transition-colors flex items-center gap-2"
+                            >
+                                {elevenLabsSaving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Kaydediliyor...</span>
+                                    </>
+                                ) : (
+                                    <span>Kaydet</span>
+                                )}
+                            </button>
                         </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                                ElevenLabs API Key almak için tıklayın
+                            </a>
+                        </p>
+                        {elevenLabsConfig?.defaultVoiceId && (
+                            <p className="text-xs text-gray-500 mt-1">
+                                Varsayılan Ses: {elevenLabsConfig.defaultVoiceId}
+                            </p>
+                        )}
                     </div>
                 </div>
-                )}
+                </div>
+            )}
 
                 {/* API Analysis Interface - Sadeleştirilmiş */}
                 {showApiAnalysis && (

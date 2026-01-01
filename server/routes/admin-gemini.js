@@ -660,5 +660,133 @@ router.delete('/sessions/:sessionId', async (req, res) => {
     }
 });
 
+// POST /api/admin/gemini/analyze-snort-logs - Snort loglarını Gemini ile analiz et
+router.post('/analyze-snort-logs', async (req, res) => {
+    try {
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
+        // Gemini config'i al
+        const [configs] = await poolWrapper.execute(`
+            SELECT enabled, apiKey, model, temperature, maxTokens
+            FROM gemini_config
+            WHERE enabled = 1
+            LIMIT 1
+        `);
+
+        if (!configs || configs.length === 0 || !configs[0].apiKey) {
+            return res.status(400).json({
+                success: false,
+                message: 'Gemini API key not configured'
+            });
+        }
+
+        const config = configs[0];
+        const axios = require('axios');
+        const modelName = config.model || 'gemini-2.5-flash';
+
+        // Son 100 snort logunu al (son 24 saat)
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+        const [logs] = await poolWrapper.execute(`
+            SELECT 
+                id, timestamp, src_ip, dst_ip, protocol, 
+                message, classification, priority, action
+            FROM snort_logs
+            WHERE timestamp >= ?
+            ORDER BY timestamp DESC
+            LIMIT 100
+        `, [oneDayAgo]);
+
+        if (!logs || logs.length === 0) {
+            return res.json({
+                success: true,
+                analysis: 'Son 24 saatte snort log kaydı bulunamadı. Sistem güvenli görünüyor.',
+                summary: {
+                    totalLogs: 0,
+                    highPriority: 0,
+                    mediumPriority: 0,
+                    lowPriority: 0
+                }
+            });
+        }
+
+        // Logları Gemini'ye göndermek için formatla
+        const logsSummary = logs.map(log => ({
+            timestamp: log.timestamp,
+            src_ip: log.src_ip,
+            dst_ip: log.dst_ip,
+            protocol: log.protocol,
+            message: log.message,
+            classification: log.classification,
+            priority: log.priority,
+            action: log.action
+        }));
+
+        // Gemini'ye analiz için prompt hazırla
+        const prompt = `Aşağıda bir güvenlik duvarı (Snort) log kayıtlarının özeti var. Bu logları analiz et ve Türkçe olarak şunları sağla:
+
+1. Genel güvenlik durumu değerlendirmesi (kısa ve öz)
+2. En önemli tehditler veya uyarılar (varsa)
+3. Öneriler (varsa)
+
+Log Özeti:
+${JSON.stringify(logsSummary.slice(0, 50), null, 2)}
+
+Yanıtını kısa ve öz tut, maksimum 200 kelime. Önemli tehditler varsa vurgula, yoksa sistemin güvenli olduğunu belirt.`;
+
+        // Gemini API'yi axios ile çağır
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+        const response = await axios.post(url, {
+            contents: [{
+                role: 'user',
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                temperature: parseFloat(config.temperature) || 0.7,
+                maxOutputTokens: parseInt(config.maxTokens) || 8192
+            }
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': config.apiKey
+            },
+            timeout: 60000
+        });
+
+        const analysisText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz tamamlandı ancak yanıt alınamadı.';
+
+        // Öncelik istatistikleri
+        const highPriority = logs.filter(l => l.priority === 'high' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('high'))).length;
+        const mediumPriority = logs.filter(l => l.priority === 'medium' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('medium'))).length;
+        const lowPriority = logs.filter(l => l.priority === 'low' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('low'))).length;
+
+        res.json({
+            success: true,
+            analysis: analysisText,
+            summary: {
+                totalLogs: logs.length,
+                highPriority,
+                mediumPriority,
+                lowPriority,
+                analyzedAt: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Snort log analizi hatası:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Snort logları analiz edilemedi',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;
 

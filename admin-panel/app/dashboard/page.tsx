@@ -71,6 +71,7 @@ import BehaviorAnalytics from '@/components/BehaviorAnalytics'
 import AnalyticsReports from '@/components/AnalyticsReports'
 import AnalyticsSettings from '@/components/AnalyticsSettings'
 import Community from '@/components/Community'
+import Snackbar, { SnackbarMessage } from '@/components/Snackbar'
 
 
 export default function DashboardPage() {
@@ -81,6 +82,7 @@ export default function DashboardPage() {
   const [healthLoading, setHealthLoading] = useState(false)
   const [health, setHealth] = useState<any | null>(null)
   const [healthError, setHealthError] = useState<string | null>(null)
+  const [snackbarMessage, setSnackbarMessage] = useState<SnackbarMessage | null>(null)
 
   // İlk yüklemede ekran genişliğine göre sidebar durumunu ayarla
   useEffect(() => {
@@ -146,8 +148,61 @@ export default function DashboardPage() {
       })
   }, [])
 
+  // İlk girişte snort loglarını analiz et
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const shouldAnalyze = sessionStorage.getItem('analyzeSnortLogsOnLoad')
+    if (!shouldAnalyze) return
+
+    // Flag'i temizle
+    sessionStorage.removeItem('analyzeSnortLogsOnLoad')
+
+    // Snort loglarını analiz et
+    const analyzeSnortLogs = async () => {
+      try {
+        setSnackbarMessage({
+          id: Date.now().toString(),
+          message: 'Snort logları analiz ediliyor...',
+          type: 'info',
+          duration: 3000
+        })
+
+        const response = await api.post<any>('/admin/gemini/analyze-snort-logs')
+        
+        if (response?.success && response?.analysis) {
+          setSnackbarMessage({
+            id: Date.now().toString(),
+            message: response.analysis.substring(0, 200) + (response.analysis.length > 200 ? '...' : ''),
+            type: response.summary?.highPriority > 0 ? 'warning' : 'success',
+            duration: 10000
+          })
+        } else {
+          setSnackbarMessage({
+            id: Date.now().toString(),
+            message: 'Snort log analizi tamamlandı',
+            type: 'info',
+            duration: 5000
+          })
+        }
+      } catch (error: any) {
+        console.error('Snort log analizi hatası:', error)
+        setSnackbarMessage({
+          id: Date.now().toString(),
+          message: 'Snort log analizi yapılamadı: ' + (error?.message || 'Bilinmeyen hata'),
+          type: 'error',
+          duration: 7000
+        })
+      }
+    }
+
+    // Biraz bekle (sayfa yüklensin)
+    setTimeout(analyzeSnortLogs, 2000)
+  }, [])
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <Snackbar message={snackbarMessage} onClose={() => setSnackbarMessage(null)} />
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />

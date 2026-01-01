@@ -7,12 +7,14 @@ async function getApiKeyFromBackend(): Promise<string | null> {
     // Development ortamında localhost, production'da production URL
     // Next.js API route'ları server-side'da çalıştığı için NODE_ENV kullanabiliriz
     const isDevelopment = process.env.NODE_ENV === 'development';
+    // Backend URL'ini direkt kullan, Next.js API route'u değil
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (isDevelopment 
       ? 'http://localhost:3001/api'
       : 'https://api.huglutekstil.com/api');
     const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f';
     const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS';
     
+    // Backend URL'ini direkt kullan (Next.js API route değil)
     const url = `${API_BASE_URL}/admin/gemini/config/raw`;
     console.log('🔑 Backend\'den API key çekiliyor:', url);
     console.log('🔑 API_BASE_URL:', API_BASE_URL);
@@ -26,16 +28,27 @@ async function getApiKeyFromBackend(): Promise<string | null> {
         'X-API-Key': API_KEY,
         'X-Admin-Key': ADMIN_KEY,
       },
+      // Next.js'in fetch caching'ini devre dışı bırak
+      cache: 'no-store',
     });
+
+    console.log('🔑 Backend response status:', response.status);
 
     if (response.ok) {
       const data = await response.json();
+      console.log('🔑 Backend response data:', { success: data.success, hasApiKey: !!data.apiKey });
       if (data.success && data.apiKey) {
+        console.log('✅ API key backend\'den başarıyla alındı');
         return data.apiKey;
+      } else {
+        console.error('❌ API key response formatı hatalı:', data);
       }
+    } else {
+      const errorText = await response.text();
+      console.error('❌ API key alınamadı, status:', response.status, errorText.substring(0, 200));
     }
-  } catch (error) {
-    console.error('❌ Backend\'den API key alınamadı:', error);
+  } catch (error: any) {
+    console.error('❌ Backend\'den API key alınamadı:', error?.message || error);
   }
   return null;
 }

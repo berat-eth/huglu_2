@@ -43,6 +43,13 @@ export default function LoginPage() {
           sessionStorage.setItem('adminLoggedIn', '1')
           // 2FA devre dışı - direkt dashboard'a yönlendir
           sessionStorage.setItem('twoFAValidated', '1')
+          
+          // İlk giriş kontrolü - snort loglarını analiz et
+          const isFirstLogin = !sessionStorage.getItem('hasAnalyzedSnortLogs')
+          if (isFirstLogin) {
+            sessionStorage.setItem('analyzeSnortLogsOnLoad', 'true')
+            sessionStorage.setItem('hasAnalyzedSnortLogs', 'true')
+          }
         } catch {}
         router.push('/dashboard')
       } else {
