@@ -310,6 +310,10 @@ router.post('/config', async (req, res) => {
 router.get('/config/raw', async (req, res) => {
     try {
         console.log('🔑 /config/raw endpoint\'ine istek geldi');
+        console.log('🔑 Request headers:', {
+            'x-api-key': req.headers['x-api-key'] ? 'present' : 'missing',
+            'x-admin-key': req.headers['x-admin-key'] ? 'present' : 'missing'
+        });
         
         if (!poolWrapper) {
             console.error('❌ poolWrapper mevcut değil');
@@ -364,6 +368,7 @@ router.get('/config/raw', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Gemini API key alınamadı:', error);
+        console.error('❌ Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'API key alınamadı',

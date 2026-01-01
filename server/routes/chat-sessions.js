@@ -1,22 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
+const crypto = require('crypto');
+
+// UUID oluşturma fonksiyonu
+function generateId() {
+    return crypto.randomBytes(16).toString('hex');
+}
+
+// poolWrapper'ı almak için
+let poolWrapper = null;
+
+// poolWrapper'ı set etmek için middleware
+router.use((req, res, next) => {
+  if (!poolWrapper) {
+    poolWrapper = req.app.locals.poolWrapper || require('../database-schema').poolWrapper;
+  }
+  next();
+});
 
 // Chat Sessions Route
 // GET /api/chat/sessions - Tüm sessionları getir
 router.get('/', async (req, res) => {
     try {
-        const { ChatSession } = require('../orm/models');
-        
-        const sessions = await ChatSession.findAll({
-            order: [['updatedAt', 'DESC']],
-            include: [{
-                model: require('../orm/models').ChatMessage,
-                as: 'messages',
-                limit: 1,
-                order: [['createdAt', 'DESC']]
-            }]
-        });
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
+        // Session'ları ve son mesajlarını getir
+        const [sessions] = await poolWrapper.execute(`
+            SELECT 
+                s.id,
+                s.name,
+                s.messageCount,
+                s.createdAt,
+                s.updatedAt,
+                (
+                    SELECT content 
+                    FROM chat_messages 
+                    WHERE sessionId = s.id 
+                    ORDER BY timestamp DESC 
+                    LIMIT 1
+                ) as lastMessage
+            FROM chat_sessions s
+            ORDER BY s.updatedAt DESC
+        `);
 
         const formattedSessions = sessions.map(session => ({
             id: session.id,
@@ -24,8 +54,8 @@ router.get('/', async (req, res) => {
             createdAt: session.createdAt,
             updatedAt: session.updatedAt,
             messageCount: session.messageCount || 0,
-            lastMessage: session.messages && session.messages.length > 0 
-                ? session.messages[0].content.substring(0, 100) + '...'
+            lastMessage: session.lastMessage 
+                ? (session.lastMessage.length > 100 ? session.lastMessage.substring(0, 100) + '...' : session.lastMessage)
                 : null
         }));
 
@@ -46,31 +76,43 @@ router.get('/', async (req, res) => {
 // POST /api/chat/sessions - Yeni session oluştur
 router.post('/', async (req, res) => {
     try {
-        const { ChatSession, ChatMessage } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
         const { name, messages = [] } = req.body;
+        const sessionId = generateId();
 
         // Yeni session oluştur
-        const session = await ChatSession.create({
-            name: name || `Sohbet ${new Date().toLocaleDateString('tr-TR')}`,
-            messageCount: messages.length
-        });
+        await poolWrapper.execute(`
+            INSERT INTO chat_sessions (id, name, messageCount, createdAt, updatedAt)
+            VALUES (?, ?, ?, NOW(), NOW())
+        `, [sessionId, name || `Sohbet ${new Date().toLocaleDateString('tr-TR')}`, messages.length]);
 
         // Eğer mesajlar varsa kaydet
         if (messages.length > 0) {
-            const messagePromises = messages.map(msg => 
-                ChatMessage.create({
-                    sessionId: session.id,
-                    role: msg.role,
-                    content: msg.content,
-                    timestamp: msg.timestamp || new Date()
-                })
-            );
+            const messagePromises = messages.map(msg => {
+                const messageId = generateId();
+                return poolWrapper.execute(`
+                    INSERT INTO chat_messages (id, sessionId, role, content, timestamp, createdAt)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                `, [
+                    messageId,
+                    sessionId,
+                    msg.role || 'user',
+                    msg.content || '',
+                    msg.timestamp ? new Date(msg.timestamp) : new Date()
+                ]);
+            });
             await Promise.all(messagePromises);
         }
 
         res.json({
             success: true,
-            sessionId: session.id,
+            sessionId: sessionId,
             message: 'Session başarıyla oluşturuldu'
         });
     } catch (error) {
@@ -86,13 +128,21 @@ router.post('/', async (req, res) => {
 // GET /api/chat/sessions/:id/messages - Session mesajlarını getir
 router.get('/:id/messages', async (req, res) => {
     try {
-        const { ChatMessage } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
         const { id } = req.params;
 
-        const messages = await ChatMessage.findAll({
-            where: { sessionId: id },
-            order: [['createdAt', 'ASC']]
-        });
+        const [messages] = await poolWrapper.execute(`
+            SELECT id, role, content, timestamp, createdAt
+            FROM chat_messages
+            WHERE sessionId = ?
+            ORDER BY createdAt ASC
+        `, [id]);
 
         const formattedMessages = messages.map(msg => ({
             id: msg.id,
@@ -118,13 +168,22 @@ router.get('/:id/messages', async (req, res) => {
 // POST /api/chat/sessions/:id/messages - Session mesajlarını kaydet
 router.post('/:id/messages', async (req, res) => {
     try {
-        const { ChatSession, ChatMessage } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
         const { id } = req.params;
         const { messages } = req.body;
 
         // Session'ın var olduğunu kontrol et
-        const session = await ChatSession.findByPk(id);
-        if (!session) {
+        const [sessions] = await poolWrapper.execute(`
+            SELECT id FROM chat_sessions WHERE id = ?
+        `, [id]);
+
+        if (sessions.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Session bulunamadı'
@@ -132,28 +191,34 @@ router.post('/:id/messages', async (req, res) => {
         }
 
         // Mevcut mesajları sil
-        await ChatMessage.destroy({
-            where: { sessionId: id }
-        });
+        await poolWrapper.execute(`
+            DELETE FROM chat_messages WHERE sessionId = ?
+        `, [id]);
 
         // Yeni mesajları kaydet
         if (messages && messages.length > 0) {
-            const messagePromises = messages.map(msg => 
-                ChatMessage.create({
-                    sessionId: id,
-                    role: msg.role,
-                    content: msg.content,
-                    timestamp: msg.timestamp || new Date()
-                })
-            );
+            const messagePromises = messages.map(msg => {
+                const messageId = generateId();
+                return poolWrapper.execute(`
+                    INSERT INTO chat_messages (id, sessionId, role, content, timestamp, createdAt)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                `, [
+                    messageId,
+                    id,
+                    msg.role || 'user',
+                    msg.content || '',
+                    msg.timestamp || new Date()
+                ]);
+            });
             await Promise.all(messagePromises);
         }
 
         // Session'ı güncelle
-        await session.update({
-            messageCount: messages ? messages.length : 0,
-            updatedAt: new Date()
-        });
+        await poolWrapper.execute(`
+            UPDATE chat_sessions
+            SET messageCount = ?, updatedAt = NOW()
+            WHERE id = ?
+        `, [messages ? messages.length : 0, id]);
 
         res.json({
             success: true,
@@ -172,18 +237,27 @@ router.post('/:id/messages', async (req, res) => {
 // DELETE /api/chat/sessions/:id - Session sil
 router.delete('/:id', async (req, res) => {
     try {
-        const { ChatSession, ChatMessage } = require('../orm/models');
+        if (!poolWrapper) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection not available'
+            });
+        }
+
         const { id } = req.params;
 
-        // Önce mesajları sil
-        await ChatMessage.destroy({
-            where: { sessionId: id }
-        });
+        // Foreign key cascade olduğu için mesajlar otomatik silinecek
+        // Önce session'ı sil
+        const [result] = await poolWrapper.execute(`
+            DELETE FROM chat_sessions WHERE id = ?
+        `, [id]);
 
-        // Sonra session'ı sil
-        await ChatSession.destroy({
-            where: { id }
-        });
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Session bulunamadı'
+            });
+        }
 
         res.json({
             success: true,
