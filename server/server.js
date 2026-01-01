@@ -2019,8 +2019,7 @@ app.use('/api/user-specific', userSpecificDataRoutes);
 app.use('/api/chat/sessions', chatSessionsRoutes);
 
 // Admin Gemini Routes
-// Gemini routes için authentication ekle
-const { authenticateAdmin } = require('./middleware/auth');
+// authenticateAdmin zaten dosyada tanımlı (satır 3796)
 app.use('/api/admin/gemini', authenticateAdmin, adminGeminiRoutes);
 
 // Segments Routes
