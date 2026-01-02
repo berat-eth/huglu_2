@@ -3822,6 +3822,89 @@ function authenticateAdmin(req, res, next) {
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
+    
+    // GÜVENLİK: SQL Injection koruması - Input validation
+    const InputValidation = require('./security/input-validation');
+    const validator = new InputValidation();
+    
+    // Username ve password için SQL injection kontrolü
+    if (username && typeof username === 'string') {
+      // Email formatı kontrolü (eğer email ise)
+      if (username.includes('@')) {
+        try {
+          username = validator.validateEmail(username);
+        } catch (error) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid email format or potentially dangerous input detected'
+          });
+        }
+      } else {
+        // Username için SQL injection pattern kontrolü
+        const sqlInjectionPatterns = [
+          /union\s+select/gi,
+          /or\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+          /and\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+          /;\s*--/g,
+          /--\s*$/gm,
+          /\/\*[\s\S]*?\*\//g,
+          /select\s+.*\s+from/gi,
+          /sleep\s*\(/gi,
+          /waitfor\s+delay/gi
+        ];
+        
+        const usernameLower = username.toLowerCase();
+        for (const pattern of sqlInjectionPatterns) {
+          if (pattern.test(usernameLower)) {
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid input detected'
+            });
+          }
+        }
+      }
+      
+      // Username uzunluk kontrolü
+      if (username.length > 255) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username too long'
+        });
+      }
+    }
+    
+    // Password için SQL injection kontrolü
+    if (password && typeof password === 'string') {
+      if (password.length > 255) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password too long'
+        });
+      }
+      
+      const sqlInjectionPatterns = [
+        /union\s+select/gi,
+        /or\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+        /and\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+        /;\s*--/g,
+        /--\s*$/gm,
+        /\/\*[\s\S]*?\*\//g,
+        /select\s+.*\s+from/gi,
+        /sleep\s*\(/gi,
+        /waitfor\s+delay/gi
+      ];
+      
+      const passwordLower = password.toLowerCase();
+      for (const pattern of sqlInjectionPatterns) {
+        if (pattern.test(passwordLower)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid input detected'
+          });
+        }
+      }
+    }
+    
     // ===== Brute-force koruması (kullanıcı+IP bazlı) =====
     // Hafif, sunucu restartında sıfırlanan in-memory kayıt. Üretimde kalıcı storage önerilir.
     if (!global.__ADMIN_BRUTE_FORCE) global.__ADMIN_BRUTE_FORCE = new Map();
@@ -3898,10 +3981,11 @@ app.post('/api/admin/login', async (req, res) => {
       }
 
       // Giriş kontrolü: username email ise direkt o email ile, değilse sabit kullanıcı adı ile doğrula
+      // GÜVENLİK: Prepared statement kullanılıyor, sanitized username kullanılıyor
       let ok = false;
       let checkEmail = ADMIN_EMAIL;
       if (typeof username === 'string' && username.includes('@')) {
-        checkEmail = username.toLowerCase();
+        checkEmail = username.toLowerCase().trim();
       }
       const [adminRows] = await poolWrapper.execute('SELECT id, password FROM users WHERE email = ? AND role = "admin" LIMIT 1', [checkEmail]);
       const stored = adminRows[0]?.password || '';
@@ -15428,15 +15512,33 @@ app.get('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Use default tenant ID if not provided
-    const tenantId = req.tenant?.id || 1;
+    // GÜVENLİK: SQL Injection koruması - id parametresini validate et
+    // Sadece sayısal değerler kabul edilir
+    const userId = parseInt(id, 10);
+    if (isNaN(userId) || userId <= 0 || !/^\d+$/.test(String(id))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format. Only positive integers are allowed.'
+      });
+    }
+
+    // GÜVENLİK: API key veya JWT token zorunlu
+    // API key middleware'den geçmişse req.tenant olmalı
+    if (!req.tenant || !req.tenant.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const tenantId = req.tenant.id;
 
     // GÜVENLİK: Yetkilendirme kontrolü - Kullanıcı sadece kendi bilgilerine erişebilir
     // JWT token varsa, token'daki userId ile istenen id'yi karşılaştır
     const authenticatedUserId = req.user?.userId;
     if (authenticatedUserId) {
       // JWT token ile giriş yapılmışsa, sadece kendi bilgilerine erişebilir
-      if (parseInt(id) !== parseInt(authenticatedUserId)) {
+      if (userId !== parseInt(authenticatedUserId)) {
         // Admin kontrolü - admin ise tüm kullanıcılara erişebilir
         const [adminCheck] = await poolWrapper.execute(
           'SELECT role FROM users WHERE id = ? AND tenantId = ?',
@@ -15452,16 +15554,17 @@ app.get('/api/users/:id', async (req, res) => {
     }
     // JWT token yoksa, sadece tenant kontrolü yapılır (API key ile korunuyor)
 
+    // GÜVENLİK: Prepared statement kullanılıyor, userId integer olarak parse edildi
     // Try with birthDate first, fallback to without it
     let [rows] = await poolWrapper.execute(
       'SELECT id, name, email, phone, birthDate, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
-      [id, tenantId]
+      [userId, tenantId]
     ).catch(async (error) => {
       if (error.code === 'ER_BAD_FIELD_ERROR') {
         console.log('⚠️ birthDate column missing, using fallback query');
         return await poolWrapper.execute(
           'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
-          [id, tenantId]
+          [userId, tenantId]
         );
       }
       throw error;
@@ -15520,22 +15623,70 @@ app.post('/api/users/login', async (req, res) => {
       });
     }
 
+    // GÜVENLİK: SQL Injection koruması - Input validation
+    const InputValidation = require('./security/input-validation');
+    const validator = new InputValidation();
+    
+    // Email formatını ve SQL injection'ı kontrol et
+    let sanitizedEmail;
+    try {
+      sanitizedEmail = validator.validateEmail(email);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format or potentially dangerous input detected'
+      });
+    }
+    
+    // Password için SQL injection kontrolü
+    if (typeof password !== 'string' || password.length > 255) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid password format'
+      });
+    }
+    
+    // SQL injection pattern kontrolü password için
+    const sqlInjectionPatterns = [
+      /union\s+select/gi,
+      /or\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+      /and\s+['"]?1['"]?\s*=\s*['"]?1['"]?/gi,
+      /;\s*--/g,
+      /--\s*$/gm,
+      /\/\*[\s\S]*?\*\//g,
+      /select\s+.*\s+from/gi,
+      /sleep\s*\(/gi,
+      /waitfor\s+delay/gi
+    ];
+    
+    const passwordLower = password.toLowerCase();
+    for (const pattern of sqlInjectionPatterns) {
+      if (pattern.test(passwordLower)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid input detected'
+        });
+      }
+    }
+
     // Store plain email (no encryption needed)
 
     // Use default tenant ID if not provided
     const tenantId = req.tenant?.id || 1;
 
     // Get user with hashed password - Try with company fields first, fallback if columns don't exist
+    // GÜVENLİK: Prepared statement kullanılıyor, sanitizedEmail kullanılıyor
     let [rows] = await poolWrapper.execute(
       'SELECT id, name, email, phone, address, password, companyName, taxOffice, taxNumber, tradeRegisterNumber, website, createdAt, tenantId FROM users WHERE email = ? AND tenantId = ?',
-      [email, tenantId]
+      [sanitizedEmail, tenantId]
     ).catch(async (error) => {
       if (error.code === 'ER_BAD_FIELD_ERROR') {
         console.log('⚠️ Company columns missing, using fallback query');
         // Fallback: sadece mevcut kolonları seç
+        // GÜVENLİK: Prepared statement kullanılıyor, sanitizedEmail kullanılıyor
         return await poolWrapper.execute(
           'SELECT id, name, email, phone, address, password, createdAt, tenantId FROM users WHERE email = ? AND tenantId = ?',
-          [email, tenantId]
+          [sanitizedEmail, tenantId]
         );
       }
       throw error;
