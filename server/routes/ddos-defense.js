@@ -518,43 +518,64 @@ router.get('/metrics', authenticateAdmin, async (req, res) => {
       groupBy = 'DATE_FORMAT(timestamp, "%Y-%m-%d %H:00:00")';
     }
     
-    // Metrikleri al
-    const [metrics] = await poolWrapper.execute(`
-      SELECT 
-        ${groupBy} as timeSlot,
-        COUNT(*) as requestCount,
-        COUNT(CASE WHEN responseCode >= 400 THEN 1 END) as errorCount,
-        AVG(responseTime) as avgResponseTime,
-        COUNT(DISTINCT ip) as uniqueIPs
-      FROM attack_logs
-      WHERE tenantId = ? AND timestamp >= ? AND timestamp <= ?
-      GROUP BY ${groupBy}
-      ORDER BY timeSlot ASC
-    `, [tenantId, start, end]);
+    // Metrikleri al (attack_logs tablosu varsa)
+    let metrics = [];
+    try {
+      const [metricsResult] = await poolWrapper.execute(`
+        SELECT 
+          ${groupBy} as timeSlot,
+          COUNT(*) as requestCount,
+          COUNT(CASE WHEN responseCode >= 400 THEN 1 END) as errorCount,
+          AVG(COALESCE(responseTime, 0)) as avgResponseTime,
+          COUNT(DISTINCT ip) as uniqueIPs
+        FROM attack_logs
+        WHERE tenantId = ? AND timestamp >= ? AND timestamp <= ?
+        GROUP BY ${groupBy}
+        ORDER BY timeSlot ASC
+      `, [tenantId, start, end]);
+      metrics = metricsResult || [];
+    } catch (error) {
+      console.warn('attack_logs tablosu sorgusu hatası (tablo yoksa normal):', error.message);
+      metrics = [];
+    }
     
-    // Saldırı sayılarını al
-    const [attacks] = await poolWrapper.execute(`
-      SELECT 
-        ${groupBy} as timeSlot,
-        COUNT(*) as attackCount,
-        COUNT(CASE WHEN severity = 'critical' THEN 1 END) as criticalAttacks,
-        COUNT(CASE WHEN blocked = 1 THEN 1 END) as blockedAttacks
-      FROM ddos_attacks
-      WHERE tenantId = ? AND startTime >= ? AND startTime <= ?
-      GROUP BY ${groupBy}
-      ORDER BY timeSlot ASC
-    `, [tenantId, start, end]);
+    // Saldırı sayılarını al (ddos_attacks tablosu varsa)
+    let attacks = [];
+    try {
+      const [attacksResult] = await poolWrapper.execute(`
+        SELECT 
+          ${groupBy} as timeSlot,
+          COUNT(*) as attackCount,
+          COUNT(CASE WHEN severity = 'critical' THEN 1 END) as criticalAttacks,
+          COUNT(CASE WHEN blocked = 1 THEN 1 END) as blockedAttacks
+        FROM ddos_attacks
+        WHERE tenantId = ? AND startTime >= ? AND startTime <= ?
+        GROUP BY ${groupBy}
+        ORDER BY timeSlot ASC
+      `, [tenantId, start, end]);
+      attacks = attacksResult || [];
+    } catch (error) {
+      console.warn('ddos_attacks tablosu sorgusu hatası (tablo yoksa normal):', error.message);
+      attacks = [];
+    }
     
-    // Engellenen IP sayılarını al
-    const [blocked] = await poolWrapper.execute(`
-      SELECT 
-        ${groupBy} as timeSlot,
-        COUNT(*) as blockedCount
-      FROM blocked_ips
-      WHERE tenantId = ? AND blockedAt >= ? AND blockedAt <= ?
-      GROUP BY ${groupBy}
-      ORDER BY timeSlot ASC
-    `, [tenantId, start, end]);
+    // Engellenen IP sayılarını al (blocked_ips tablosu varsa)
+    let blocked = [];
+    try {
+      const [blockedResult] = await poolWrapper.execute(`
+        SELECT 
+          ${groupBy} as timeSlot,
+          COUNT(*) as blockedCount
+        FROM blocked_ips
+        WHERE tenantId = ? AND blockedAt >= ? AND blockedAt <= ?
+        GROUP BY ${groupBy}
+        ORDER BY timeSlot ASC
+      `, [tenantId, start, end]);
+      blocked = blockedResult || [];
+    } catch (error) {
+      console.warn('blocked_ips tablosu sorgusu hatası (tablo yoksa normal):', error.message);
+      blocked = [];
+    }
     
     // Time slot'lara göre birleştir
     const metricsMap = new Map();
@@ -607,14 +628,19 @@ router.get('/metrics', authenticateAdmin, async (req, res) => {
       metricsMap.set(b.timeSlot, existing);
     });
     
-    const formattedMetrics = Array.from(metricsMap.values()).sort((a, b) => 
-      new Date(a.timeSlot) - new Date(b.timeSlot)
-    );
+    const formattedMetrics = Array.from(metricsMap.values()).sort((a, b) => {
+      try {
+        return new Date(a.timeSlot).getTime() - new Date(b.timeSlot).getTime();
+      } catch {
+        return 0;
+      }
+    });
     
+    // Eğer hiç veri yoksa boş array döndür
     res.json({
       success: true,
       data: {
-        metrics: formattedMetrics,
+        metrics: formattedMetrics || [],
         interval,
         startDate: start,
         endDate: end
@@ -622,10 +648,15 @@ router.get('/metrics', authenticateAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('DDoS metrics hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Metrikler alınamadı',
-      error: error.message
+    // Hata durumunda boş metrics döndür
+    res.json({
+      success: true,
+      data: {
+        metrics: [],
+        interval: req.query.interval || 'hour',
+        startDate: req.query.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        endDate: req.query.endDate || new Date().toISOString()
+      }
     });
   }
 });

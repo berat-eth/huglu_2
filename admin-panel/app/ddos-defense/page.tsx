@@ -83,7 +83,10 @@ export default function DDoSDefensePage() {
       }
       
       if (metricsRes.success && metricsRes.data) {
-        setMetrics(metricsRes.data.metrics)
+        setMetrics(metricsRes.data.metrics || [])
+      } else {
+        // Metrics yüklenemezse boş array set et
+        setMetrics([])
       }
       
       if (topAttackersRes.success && topAttackersRes.data) {
@@ -173,7 +176,7 @@ export default function DDoSDefensePage() {
           </div>
 
           {/* Genel Durum Kartları */}
-          {status && (
+          {status && status.attacks && status.blocked && status.requests && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -184,7 +187,7 @@ export default function DDoSDefensePage() {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Toplam Saldırı</p>
                     <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                      {status.attacks.totalAttacks}
+                      {status.attacks?.totalAttacks || 0}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                       Son 24 saat
@@ -206,7 +209,7 @@ export default function DDoSDefensePage() {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Engellenen IP</p>
                     <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                      {status.blocked.activeBlocks}
+                      {status.blocked?.activeBlocks || 0}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                       Aktif engellemeler
@@ -228,7 +231,7 @@ export default function DDoSDefensePage() {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Kritik Saldırı</p>
                     <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                      {status.attacks.criticalAttacks}
+                      {status.attacks?.criticalAttacks || 0}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                       Son 24 saat
@@ -250,7 +253,7 @@ export default function DDoSDefensePage() {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Toplam İstek</p>
                     <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                      {status.requests.totalRequests.toLocaleString()}
+                      {(status.requests?.totalRequests || 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                       Son 1 saat
