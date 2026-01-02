@@ -24097,6 +24097,7 @@ TEMEL KURALLAR:
 - Müşteriye değer kat, sadece bilgi verme, öneriler de sun
 - Ürün bilgileri verilmişse, bunları kullanarak detaylı yanıt ver
 - Bilmediğin bir şey varsa dürüst ol ve canlı desteğe yönlendir
+- web sitesine değil işlemleri mobil uygulamadan yapsın
 
 YARDIM EDEBİLECEĞİN KONULAR:
 - Ürün bilgileri (özellikler, fiyat, stok, beden, renk)
