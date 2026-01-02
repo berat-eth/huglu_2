@@ -24027,11 +24027,11 @@ async function startServer() {
 
       if (geminiConfigs && geminiConfigs.length > 0 && geminiConfigs[0].apiKey && geminiConfigs[0].apiKey.trim() !== '') {
         const config = geminiConfigs[0];
-        // Geçerli Gemini modelleri: gemini-1.5-flash, gemini-1.5-pro, gemini-pro
+        // Geçerli Gemini modelleri: gemini-2.5-flash, gemini-1.5-pro, gemini-pro
         // Eski model adlarını yeni adlara dönüştür
-        let modelName = config.model || 'gemini-1.5-flash';
+        let modelName = config.model || 'gemini-2.5-flash';
         if (modelName === 'gemini-2.5-flash' || modelName === 'gemini-2.0-flash') {
-          modelName = 'gemini-1.5-flash';
+          modelName = 'gemini-2.5-flash';
         }
         const temperature = parseFloat(config.temperature) || 0.70;
         const maxTokens = parseInt(config.maxTokens) || 8192;
@@ -24933,7 +24933,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     let models = [];
     if (provider === 'openai') models = ['gpt-4o-mini','gpt-4o','gpt-4.1'];
     else if (provider === 'anthropic') models = ['claude-3-5-sonnet','claude-3-haiku'];
-    else if (provider === 'google') models = ['gemini-1.5-flash','gemini-1.5-pro'];
+    else if (provider === 'google') models = ['gemini-2.5-flash','gemini-1.5-pro'];
     res.json({ models });
   });
 
