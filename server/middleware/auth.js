@@ -1,4 +1,76 @@
 const { poolWrapper } = require('../database-schema');
+const JWTAuth = require('../security/jwt-auth');
+
+// JWT Authentication middleware
+// JWT token'dan userId çıkarır ve req.authenticatedUserId olarak set eder
+async function authenticateJWT(req, res, next) {
+  try {
+    // Authorization header'dan token al
+    const authHeader = req.headers['authorization'];
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // JWT yoksa, public endpoint'ler için devam et
+      // Ama authenticated endpoint'ler için hata döndürülecek
+      req.authenticatedUserId = null;
+      return next();
+    }
+
+    const token = authHeader.substring(7); // "Bearer " kısmını çıkar
+
+    if (!token) {
+      req.authenticatedUserId = null;
+      return next();
+    }
+
+    // JWT token'ı doğrula
+    const jwtAuth = new JWTAuth();
+    const decoded = await jwtAuth.verifyAccessToken(token);
+
+    // UserId'yi request'e ekle
+    if (decoded.userId) {
+      req.authenticatedUserId = parseInt(decoded.userId);
+      req.user = {
+        userId: parseInt(decoded.userId),
+        tenantId: decoded.tenantId,
+        role: decoded.role
+      };
+    } else {
+      req.authenticatedUserId = null;
+    }
+
+    next();
+  } catch (error) {
+    // Token geçersizse veya expire olmuşsa
+    console.warn('⚠️ JWT authentication failed:', error.message);
+    req.authenticatedUserId = null;
+    // Public endpoint'ler için devam et, authenticated endpoint'ler için hata döndürülecek
+    next();
+  }
+}
+
+// JWT Authentication zorunlu middleware
+// JWT token zorunlu, yoksa 401 döndürür
+async function requireJWT(req, res, next) {
+  try {
+    // Önce JWT'yi doğrula
+    await authenticateJWT(req, res, () => {});
+
+    if (!req.authenticatedUserId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please provide a valid JWT token.'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('❌ JWT authentication error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Authentication failed'
+    });
+  }
+}
 
 // Admin authentication middleware
 async function authenticateAdmin(req, res, next) {
@@ -66,5 +138,7 @@ async function authenticateTenant(req, res, next) {
 
 module.exports = {
   authenticateAdmin,
-  authenticateTenant
+  authenticateTenant,
+  authenticateJWT,
+  requireJWT
 };

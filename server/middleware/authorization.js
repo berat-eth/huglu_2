@@ -233,18 +233,14 @@ function requireUserOwnership(resourceType, userIdSource = 'body') {
 
 /**
  * User ID validation middleware
- * Body'deki userId'nin authenticated user ile eşleştiğini kontrol eder
+ * JWT'den userId alır ve request'teki userId ile eşleştiğini kontrol eder
+ * JWT varsa mutlaka JWT'deki userId kullanılır (request'teki userId göz ardı edilir)
  */
 function validateUserIdMatch(userIdSource = 'body') {
   return async (req, res, next) => {
     try {
-      // JWT'den user ID al
+      // JWT'den user ID al (öncelikli)
       const authenticatedUserId = req.user?.userId || req.authenticatedUserId;
-
-      if (!authenticatedUserId) {
-        // Eğer JWT yoksa, body'deki userId'yi kabul et (eski sistem uyumluluğu)
-        return next();
-      }
 
       // Request'ten userId al
       let requestUserId;
@@ -256,19 +252,110 @@ function validateUserIdMatch(userIdSource = 'body') {
         requestUserId = req.query?.userId;
       }
 
-      if (!requestUserId) {
-        // UserId yoksa, authenticated user ID'yi kullan
-        req.body = req.body || {};
-        req.body.userId = authenticatedUserId;
-        return next();
+      // JWT varsa, mutlaka JWT'deki userId kullanılmalı
+      if (authenticatedUserId) {
+        // Request'te userId varsa ve JWT'deki ile eşleşmiyorsa hata
+        if (requestUserId && parseInt(requestUserId) !== parseInt(authenticatedUserId)) {
+          return res.status(403).json({
+            success: false,
+            message: 'User ID mismatch. You can only access your own resources.'
+          });
+        }
+
+        // JWT'deki userId'yi kullan (request'teki userId'yi override et)
+        if (userIdSource === 'body') {
+          req.body = req.body || {};
+          req.body.userId = authenticatedUserId;
+        } else if (userIdSource === 'params') {
+          if (req.params.userId) {
+            req.params.userId = authenticatedUserId.toString();
+          } else if (req.params.id) {
+            req.params.id = authenticatedUserId.toString();
+          }
+        } else if (userIdSource === 'query') {
+          req.query.userId = authenticatedUserId.toString();
+        }
+
+        // Tenant kontrolü
+        if (req.tenant && req.tenant.id) {
+          const userCacheKey = `user:${authenticatedUserId}:tenant`;
+          let userData = await getJson(userCacheKey);
+          
+          if (!userData) {
+            const [userRows] = await poolWrapper.execute(
+              'SELECT id, tenantId FROM users WHERE id = ?',
+              [authenticatedUserId]
+            );
+
+            if (userRows.length === 0) {
+              return res.status(404).json({
+                success: false,
+                message: 'User not found'
+              });
+            }
+
+            userData = {
+              id: userRows[0].id,
+              tenantId: userRows[0].tenantId
+            };
+            
+            await setJsonEx(userCacheKey, CACHE_TTL.SHORT, userData);
+          }
+
+          if (userData.tenantId !== req.tenant.id) {
+            return res.status(403).json({
+              success: false,
+              message: 'Access denied. User does not belong to this tenant.'
+            });
+          }
+        }
+
+        next();
+        return;
       }
 
-      // User ID'ler eşleşmeli
-      if (parseInt(requestUserId) !== parseInt(authenticatedUserId)) {
-        return res.status(403).json({
+      // JWT yoksa (eski sistem uyumluluğu için)
+      // Sadece public endpoint'ler için izin ver
+      // Kritik endpoint'ler için JWT zorunlu olmalı
+      if (!requestUserId) {
+        return res.status(401).json({
           success: false,
-          message: 'User ID mismatch. You can only access your own resources.'
+          message: 'Authentication required. Please provide a valid JWT token.'
         });
+      }
+
+      // Eski sistem: request'teki userId'yi kullan ama tenant kontrolü yap
+      if (req.tenant && req.tenant.id) {
+        const userCacheKey = `user:${requestUserId}:tenant`;
+        let userData = await getJson(userCacheKey);
+        
+        if (!userData) {
+          const [userRows] = await poolWrapper.execute(
+            'SELECT id, tenantId FROM users WHERE id = ?',
+            [requestUserId]
+          );
+
+          if (userRows.length === 0) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found'
+            });
+          }
+
+          userData = {
+            id: userRows[0].id,
+            tenantId: userRows[0].tenantId
+          };
+          
+          await setJsonEx(userCacheKey, CACHE_TTL.SHORT, userData);
+        }
+
+        if (userData.tenantId !== req.tenant.id) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. User does not belong to this tenant.'
+          });
+        }
       }
 
       next();

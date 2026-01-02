@@ -3537,7 +3537,7 @@ async function createDatabaseSchema(pool) {
           id INT AUTO_INCREMENT PRIMARY KEY,
           enabled TINYINT(1) DEFAULT 1,
           apiKey VARCHAR(500) DEFAULT '',
-          model VARCHAR(100) DEFAULT 'gemini-2.5-flash',
+          model VARCHAR(100) DEFAULT 'gemini-1.5-flash',
           temperature DECIMAL(3,2) DEFAULT 0.70,
           maxTokens INT DEFAULT 8192,
           createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

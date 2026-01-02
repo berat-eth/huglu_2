@@ -49,7 +49,7 @@ const adminGeminiRoutes = require('./routes/admin-gemini');
 const elevenlabsRoutes = require('./routes/elevenlabs');
 const segmentsRoutes = require('./routes/segments');
 const { RecommendationService } = require('./services/recommendation-service');
-const { authenticateTenant } = require('./middleware/auth');
+const { authenticateTenant, authenticateJWT, requireJWT } = require('./middleware/auth');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
@@ -2364,7 +2364,7 @@ app.get('/api/user-addresses', async (req, res) => {
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection.getTokenHandler.bind(csrfProtection));
 
-app.post('/api/user-addresses', validateUserIdMatch('body'), async (req, res) => {
+app.post('/api/user-addresses', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
   try {
     const { userId, addressType, fullName, phone, address, city, district, postalCode, isDefault } = req.body;
 
@@ -2407,7 +2407,7 @@ app.post('/api/user-addresses', validateUserIdMatch('body'), async (req, res) =>
 });
 
 // Update address
-app.put('/api/user-addresses/:id', requireUserOwnership('address', 'params'), async (req, res) => {
+app.put('/api/user-addresses/:id', authenticateJWT, requireUserOwnership('address', 'params'), async (req, res) => {
   try {
     const { id } = req.params;
     const { addressType, fullName, phone, address, city, district, postalCode, isDefault } = req.body;
@@ -2448,7 +2448,7 @@ app.put('/api/user-addresses/:id', requireUserOwnership('address', 'params'), as
 });
 
 // Delete address
-app.delete('/api/user-addresses/:id', requireUserOwnership('address', 'params'), async (req, res) => {
+app.delete('/api/user-addresses/:id', authenticateJWT, requireUserOwnership('address', 'params'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2465,7 +2465,7 @@ app.delete('/api/user-addresses/:id', requireUserOwnership('address', 'params'),
 });
 
 // Set default address
-app.put('/api/user-addresses/:id/set-default', async (req, res) => {
+app.put('/api/user-addresses/:id/set-default', authenticateJWT, requireUserOwnership('address', 'params'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2503,7 +2503,7 @@ app.put('/api/user-addresses/:id/set-default', async (req, res) => {
 // Wallet Transfer Endpoints
 
 // Transfer money between users
-app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) => {
+app.post('/api/wallet/transfer', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
   try {
     // Tenant kontrolü
     if (!req.tenant || !req.tenant.id) {
@@ -2679,7 +2679,7 @@ app.post('/api/wallet/transfer', validateUserIdMatch('body'), async (req, res) =
 });
 
 // Create gift card
-app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) => {
+app.post('/api/wallet/gift-card', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
   try {
     // Tenant kontrolü
     if (!req.tenant || !req.tenant.id) {
@@ -2804,7 +2804,7 @@ app.post('/api/wallet/gift-card', validateUserIdMatch('body'), async (req, res) 
 });
 
 // Use gift card
-app.post('/api/wallet/gift-card/use', validateUserIdMatch('body'), async (req, res) => {
+app.post('/api/wallet/gift-card/use', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
   try {
     // Tenant kontrolü
     if (!req.tenant || !req.tenant.id) {
@@ -3102,7 +3102,7 @@ app.post('/api/return-requests', validateUserIdMatch('body'), async (req, res) =
 
 // ========== Returns Endpoints (endpoint.md'ye göre) ==========
 // Get user's return requests
-app.get('/api/returns/user/:userId', async (req, res) => {
+app.get('/api/returns/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -3134,7 +3134,7 @@ app.get('/api/returns/user/:userId', async (req, res) => {
 });
 
 // Get returnable orders (sadece teslim edilmiş siparişler)
-app.get('/api/returns/returnable-orders/:userId', async (req, res) => {
+app.get('/api/returns/returnable-orders/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -3377,7 +3377,7 @@ app.put('/api/returns/:returnRequestId/cancel', async (req, res) => {
 });
 
 // Cancel return request (user can cancel pending requests)
-app.put('/api/return-requests/:id/cancel', requireUserOwnership('return_request', 'params'), async (req, res) => {
+app.put('/api/return-requests/:id/cancel', authenticateJWT, requireUserOwnership('return_request', 'params'), async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.body;
@@ -15882,7 +15882,7 @@ app.put('/api/users/:id', async (req, res) => {
 
 // ========== User Favorites Endpoints ==========
 // Get user favorites
-app.get('/api/favorites/user/:userId', async (req, res) => {
+app.get('/api/favorites/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -16126,7 +16126,7 @@ app.post('/api/favorites/toggle', async (req, res) => {
 
 // ========== User Lists Endpoints ==========
 // Get user lists
-app.get('/api/lists/user/:userId', async (req, res) => {
+app.get('/api/lists/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -16536,7 +16536,7 @@ app.put('/api/lists/:listId/items/:itemId', async (req, res) => {
 
 // ========== Support Tickets Endpoints ==========
 // Get user support tickets
-app.get('/api/support-tickets/user/:userId', async (req, res) => {
+app.get('/api/support-tickets/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -16644,7 +16644,7 @@ app.post('/api/support-tickets', async (req, res) => {
 });
 
 // Order endpoints (with tenant authentication)
-app.get('/api/orders/user/:userId', tenantCache, async (req, res) => {
+app.get('/api/orders/user/:userId', authenticateJWT, validateUserIdMatch('params'), tenantCache, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -16833,7 +16833,7 @@ app.get('/api/orders/:id', tenantCache, async (req, res) => {
 });
 
 // Kullanıcının belirli bir ürünü satın alıp almadığını kontrol et
-app.get('/api/users/:userId/purchases/:productId', tenantCache, async (req, res) => {
+app.get('/api/users/:userId/purchases/:productId', authenticateJWT, validateUserIdMatch('params'), tenantCache, async (req, res) => {
   try {
     const { userId, productId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -17385,7 +17385,7 @@ app.post('/api/web/orders', tenantCache, async (req, res) => {
 });
 
 // Get web orders for a user
-app.get('/api/web/orders/user/:userId', tenantCache, async (req, res) => {
+app.get('/api/web/orders/user/:userId', authenticateJWT, validateUserIdMatch('params'), tenantCache, async (req, res) => {
   try {
     const { userId } = req.params;
     const tenantId = req.tenant?.id || 1;
@@ -18701,7 +18701,7 @@ async function buildHomepagePayload(tenantId, userId) {
 }
 
 // Get homepage products for user (cached in DB)
-app.get('/api/users/:userId/homepage-products', async (req, res) => {
+app.get('/api/users/:userId/homepage-products', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     if (!Number.isInteger(userId) || userId <= 0) {
@@ -18739,7 +18739,7 @@ app.get('/api/users/:userId/homepage-products', async (req, res) => {
 });
 
 // Account summary (My Account) - Redis hot cache per user
-app.get('/api/users/:userId/account-summary', async (req, res) => {
+app.get('/api/users/:userId/account-summary', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     if (!Number.isInteger(userId) || userId <= 0) {
@@ -20814,7 +20814,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/cart', validateUserIdMatch('body'), async (req, res) => {
+  app.post('/api/cart', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
     try {
       const { userId, productId, quantity, variationString, selectedVariations, deviceId, price } = req.body;
       console.log(`🛒 Server: Adding to cart - User: ${userId}, Product: ${productId}, Quantity: ${quantity}, Price: ${price}`);
@@ -20988,7 +20988,7 @@ async function startServer() {
 
 
   // Check cart before logout and send notification if items exist
-  app.post('/api/cart/check-before-logout', async (req, res) => {
+  app.post('/api/cart/check-before-logout', authenticateJWT, validateUserIdMatch('body'), async (req, res) => {
     try {
       const { userId, deviceId } = req.body;
       const tenantId = req.tenant?.id || 1;
@@ -21080,7 +21080,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/cart/:cartItemId', requireUserOwnership('cart', 'query'), async (req, res) => {
+  app.delete('/api/cart/:cartItemId', authenticateJWT, requireUserOwnership('cart', 'query'), async (req, res) => {
     try {
       const { cartItemId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -21107,7 +21107,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/cart/user/:userId', async (req, res) => {
+  app.get('/api/cart/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { deviceId } = req.query;
@@ -21142,7 +21142,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/cart/user/:userId/total', async (req, res) => {
+  app.get('/api/cart/user/:userId/total', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { deviceId } = req.query;
@@ -21171,7 +21171,7 @@ async function startServer() {
   });
 
   // Detailed total with campaigns applied
-  app.get('/api/cart/user/:userId/total-detailed', async (req, res) => {
+  app.get('/api/cart/user/:userId/total-detailed', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { deviceId } = req.query;
@@ -21319,7 +21319,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/cart/user/:userId', validateUserIdMatch('params'), async (req, res) => {
+  app.delete('/api/cart/user/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { deviceId } = req.query;
@@ -21363,7 +21363,7 @@ async function startServer() {
   });
 
   // User profile endpoints
-  app.put('/api/users/:userId/profile', requireUserOwnership('user', 'params'), async (req, res) => {
+  app.put('/api/users/:userId/profile', authenticateJWT, requireUserOwnership('user', 'params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { name, email, phone, address, companyName, taxOffice, taxNumber, tradeRegisterNumber, website } = req.body;
@@ -21467,7 +21467,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/users/:userId/password', requireUserOwnership('user', 'params'), async (req, res) => {
+  app.put('/api/users/:userId/password', authenticateJWT, requireUserOwnership('user', 'params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { currentPassword, newPassword } = req.body;
@@ -21537,7 +21537,7 @@ async function startServer() {
   });
 
   // Wallet endpoints (simplified authentication for guest users)
-  app.get('/api/wallet/:userId', async (req, res) => {
+  app.get('/api/wallet/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       console.log(`💰 Getting wallet for user: ${userId}`);
@@ -21619,7 +21619,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/wallet/:userId/add-money', requireUserOwnership('wallet', 'params'), async (req, res) => {
+  app.post('/api/wallet/:userId/add-money', authenticateJWT, requireUserOwnership('wallet', 'params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { amount, paymentMethod, description } = req.body;
@@ -21669,7 +21669,7 @@ async function startServer() {
   });
 
 
-  app.get('/api/wallet/:userId/transactions', async (req, res) => {
+  app.get('/api/wallet/:userId/transactions', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
@@ -22838,7 +22838,7 @@ async function startServer() {
   });
 
   // Customer Analytics API
-  app.get('/api/campaigns/analytics/:userId', async (req, res) => {
+  app.get('/api/campaigns/analytics/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const internalUserId = await resolveInternalUserId(userId, req.tenant.id);
@@ -22921,7 +22921,7 @@ async function startServer() {
   });
 
   // Get available campaigns for user
-  app.get('/api/campaigns/available/:userId', async (req, res) => {
+  app.get('/api/campaigns/available/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -23071,7 +23071,7 @@ async function startServer() {
   });
 
   // Get user discount codes
-  app.get('/api/discount-codes/:userId', async (req, res) => {
+  app.get('/api/discount-codes/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -23522,7 +23522,7 @@ async function startServer() {
   });
 
   // Kullanıcı - Admin mesajlarını getir
-  app.get('/api/chatbot/admin-messages/:userId', async (req, res) => {
+  app.get('/api/chatbot/admin-messages/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (!userId || userId <= 0) {
@@ -23623,7 +23623,7 @@ async function startServer() {
   });
 
   // Canlı destek - Mesaj geçmişi getir
-  app.get('/api/chatbot/live-support/history/:userId', async (req, res) => {
+  app.get('/api/chatbot/live-support/history/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (!userId || userId <= 0) {
@@ -23666,7 +23666,7 @@ async function startServer() {
   });
 
   // Canlı destek - Kullanıcının tüm destek taleplerini getir (gruplanmış)
-  app.get('/api/chatbot/live-support/conversations/:userId', async (req, res) => {
+  app.get('/api/chatbot/live-support/conversations/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (!userId || userId <= 0) {
@@ -23876,7 +23876,12 @@ async function startServer() {
 
       if (geminiConfigs && geminiConfigs.length > 0 && geminiConfigs[0].apiKey && geminiConfigs[0].apiKey.trim() !== '') {
         const config = geminiConfigs[0];
-        const modelName = config.model || 'gemini-2.5-flash';
+        // Geçerli Gemini modelleri: gemini-1.5-flash, gemini-1.5-pro, gemini-pro
+        // Eski model adlarını yeni adlara dönüştür
+        let modelName = config.model || 'gemini-1.5-flash';
+        if (modelName === 'gemini-2.5-flash' || modelName === 'gemini-2.0-flash') {
+          modelName = 'gemini-1.5-flash';
+        }
         const temperature = parseFloat(config.temperature) || 0.70;
         const maxTokens = parseInt(config.maxTokens) || 8192;
 
@@ -23947,7 +23952,15 @@ YARDIM EDEBİLECEĞİN KONULAR:
 
         // Gemini API çağrısı
         const axios = require('axios');
+        // Gemini API v1beta endpoint - API key'i query parameter olarak gönder
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+        
+        console.log('🤖 Gemini API çağrısı:', { 
+          modelName, 
+          url: url,
+          hasApiKey: !!config.apiKey,
+          apiKeyLength: config.apiKey ? config.apiKey.length : 0
+        });
         
         const response = await axios.post(url, {
           contents: [
@@ -23993,7 +24006,14 @@ YARDIM EDEBİLECEĞİN KONULAR:
         }
       }
     } catch (geminiError) {
-      console.error('❌ Gemini API hatası:', geminiError.message);
+      console.error('❌ Gemini API hatası:', {
+        message: geminiError.message,
+        status: geminiError.response?.status,
+        statusText: geminiError.response?.statusText,
+        data: geminiError.response?.data,
+        url: geminiError.config?.url,
+        modelName: geminiError.config?.modelName
+      });
       // Gemini hatası durumunda fallback'e düş
     }
 
@@ -24874,7 +24894,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   // ==================== WALLET RECHARGE API ENDPOINTS ====================
 
   // Cüzdan bakiyesi sorgulama
-  app.get('/api/wallet/balance/:userId', async (req, res) => {
+  app.get('/api/wallet/balance/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       // Resolve to internal numeric users.id to satisfy FK
@@ -25080,7 +25100,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Cüzdan işlem geçmişi
-  app.get('/api/wallet/transactions/:userId', async (req, res) => {
+  app.get('/api/wallet/transactions/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { page = 1, limit = 20 } = req.query;
@@ -25127,7 +25147,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Kullanıcının hediye çekleri ve kuponları
-  app.get('/api/wallet/gift-cards/:userId', async (req, res) => {
+  app.get('/api/wallet/gift-cards/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -25279,7 +25299,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   // ==================== REFERRAL ENDPOINTS ====================
 
   // Get user referral info
-  app.get('/api/referral/:userId', async (req, res) => {
+  app.get('/api/referral/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -25464,7 +25484,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   }
 
   // Get user level information
-  app.get('/api/user-level/:userId', async (req, res) => {
+  app.get('/api/user-level/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -25670,7 +25690,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Add social share EXP
-  app.post('/api/user-level/:userId/social-share-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/social-share-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { platform, productId, expGain } = req.body;
@@ -25695,7 +25715,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get user EXP history
-  app.get('/api/user-level/:userId/history', async (req, res) => {
+  app.get('/api/user-level/:userId/history', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -25752,7 +25772,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get user level stats
-  app.get('/api/user-level/:userId/stats', async (req, res) => {
+  app.get('/api/user-level/:userId/stats', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -25859,7 +25879,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   }
 
   // Add purchase EXP
-  app.post('/api/user-level/:userId/purchase-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/purchase-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { orderAmount, orderId } = req.body;
@@ -25890,7 +25910,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Add invitation EXP
-  app.post('/api/user-level/:userId/invitation-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/invitation-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { invitedUserId } = req.body;
@@ -25920,7 +25940,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Claim level rewards
-  app.post('/api/user-level/:userId/claim-rewards', async (req, res) => {
+  app.post('/api/user-level/:userId/claim-rewards', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { levelId } = req.body;
@@ -25981,7 +26001,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   // ==================== ENHANCED EXP SYSTEM ====================
 
   // Add EXP for product view (with daily limit)
-  app.post('/api/user-level/:userId/product-view-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/product-view-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { productId } = req.body;
@@ -26049,7 +26069,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Add EXP for adding to cart
-  app.post('/api/user-level/:userId/add-to-cart-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/add-to-cart-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { productId } = req.body;
@@ -26096,7 +26116,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Add EXP for adding to favorites
-  app.post('/api/user-level/:userId/add-to-favorite-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/add-to-favorite-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { productId } = req.body;
@@ -26142,7 +26162,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Daily login bonus with streak system
-  app.post('/api/user-level/:userId/daily-login-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/daily-login-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26257,7 +26277,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get streak information
-  app.get('/api/user-level/:userId/streak', async (req, res) => {
+  app.get('/api/user-level/:userId/streak', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26325,7 +26345,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Community interaction EXP
-  app.post('/api/user-level/:userId/community-exp', async (req, res) => {
+  app.post('/api/user-level/:userId/community-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { type, postId, commentId } = req.body;
@@ -26394,7 +26414,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Check and award level up bonus
-  app.post('/api/user-level/:userId/check-level-up', async (req, res) => {
+  app.post('/api/user-level/:userId/check-level-up', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26470,7 +26490,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   // ==================== SOCIAL CAMPAIGNS API ====================
 
   // Get user social tasks
-  app.get('/api/social-tasks/:userId', async (req, res) => {
+  app.get('/api/social-tasks/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -26486,7 +26506,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Share to social media
-  app.post('/api/social-tasks/:userId/share', async (req, res) => {
+  app.post('/api/social-tasks/:userId/share', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { platform, productId, shareText } = req.body;
@@ -26508,7 +26528,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get group discounts
-  app.get('/api/group-discounts/:userId', async (req, res) => {
+  app.get('/api/group-discounts/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -26524,7 +26544,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get shopping competitions
-  app.get('/api/competitions/:userId', async (req, res) => {
+  app.get('/api/competitions/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -26540,7 +26560,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get shared carts
-  app.get('/api/cart-sharing/:userId', async (req, res) => {
+  app.get('/api/cart-sharing/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -26556,7 +26576,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Get buy together offers
-  app.get('/api/buy-together/:userId', async (req, res) => {
+  app.get('/api/buy-together/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -26638,7 +26658,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
 
   // ==================== GAMIFICATION ROUTES ====================
   // Daily Rewards
-  app.get('/api/gamification/daily-reward/:userId', async (req, res) => {
+  app.get('/api/gamification/daily-reward/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26678,7 +26698,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.post('/api/gamification/daily-reward/:userId/claim', async (req, res) => {
+  app.post('/api/gamification/daily-reward/:userId/claim', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26712,7 +26732,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.get('/api/gamification/daily-reward/:userId/streak', async (req, res) => {
+  app.get('/api/gamification/daily-reward/:userId/streak', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26730,7 +26750,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
   
   // Quests
-  app.get('/api/gamification/quests/:userId', async (req, res) => {
+  app.get('/api/gamification/quests/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26771,7 +26791,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
   
   // Badges
-  app.get('/api/gamification/badges/:userId', async (req, res) => {
+  app.get('/api/gamification/badges/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       res.json({
         success: true,
@@ -26789,7 +26809,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
   
   // ==================== WELCOME BONUS ROUTES ====================
-  app.get('/api/welcome-bonus/:userId/eligibility', async (req, res) => {
+  app.get('/api/welcome-bonus/:userId/eligibility', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26828,7 +26848,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.post('/api/welcome-bonus/:userId/claim', async (req, res) => {
+  app.post('/api/welcome-bonus/:userId/claim', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26880,7 +26900,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
   
   // ==================== VIP PROGRAM ROUTES ====================
-  app.get('/api/vip/:userId/status', async (req, res) => {
+  app.get('/api/vip/:userId/status', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
@@ -26908,7 +26928,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.get('/api/vip/:userId/benefits', async (req, res) => {
+  app.get('/api/vip/:userId/benefits', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       res.json({
         success: true,
@@ -26925,7 +26945,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.post('/api/vip/:userId/convert-exp', async (req, res) => {
+  app.post('/api/vip/:userId/convert-exp', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const { expAmount } = req.body;
@@ -26958,7 +26978,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
   
   // ==================== SUBSCRIPTION ROUTES ====================
-  app.get('/api/subscriptions/:userId', async (req, res) => {
+  app.get('/api/subscriptions/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       res.json({ success: true, data: { subscriptions: [] } });
     } catch (error) {
@@ -26967,7 +26987,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.get('/api/subscriptions/:userId/frequent-orders', async (req, res) => {
+  app.get('/api/subscriptions/:userId/frequent-orders', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       res.json({ success: true, data: { orders: [] } });
     } catch (error) {
@@ -26995,7 +27015,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
     }
   });
   
-  app.get('/api/social-sharing/:userId/rewards', async (req, res) => {
+  app.get('/api/social-sharing/:userId/rewards', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
