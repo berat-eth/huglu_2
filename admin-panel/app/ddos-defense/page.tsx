@@ -108,43 +108,6 @@ export default function DDoSDefensePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [realtimeEnabled])
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      
-      // Paralel istekler
-      const [statusRes, attacksRes, metricsRes, topAttackersRes] = await Promise.all([
-        DDoSAPI.getStatus(),
-        DDoSAPI.getAttacks({ page: 1, limit: 10 }),
-        DDoSAPI.getMetrics({ interval: 'hour' }),
-        DDoSAPI.getTopAttackers({ limit: 5 })
-      ])
-      
-      if (statusRes.success && statusRes.data) {
-        setStatus(statusRes.data)
-      }
-      
-      if (attacksRes.success && attacksRes.data) {
-        setAttacks(attacksRes.data.attacks)
-      }
-      
-      if (metricsRes.success && metricsRes.data) {
-        setMetrics(metricsRes.data.metrics || [])
-      } else {
-        // Metrics yüklenemezse boş array set et
-        setMetrics([])
-      }
-      
-      if (topAttackersRes.success && topAttackersRes.data) {
-        setTopAttackers(topAttackersRes.data.attackers)
-      }
-    } catch (error) {
-      console.error('DDoS veri yükleme hatası:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSSEEvent = (event: SSEEvent) => {
     // Gerçek zamanlı event'leri işle
     if (event.event === 'ip_blocked' || event.event === 'attack_detected') {
