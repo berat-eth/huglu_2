@@ -937,7 +937,7 @@ app.use('/api', (req, res, next) => {
 
   // Skip API key check for specific endpoints
   const skipApiKeyPaths = [
-    '/health',
+    // '/health', // GÜVENLİK: Health endpoint artık API key gerektiriyor
     '/admin/login',
     '/tenants', // Tenant creation doesn't require API key
     '/users', // User registration doesn't require API key
