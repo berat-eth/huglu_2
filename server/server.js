@@ -24155,6 +24155,122 @@ YARDIM EDEBİLECEĞİN KONULAR:
         const geminiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         
         if (geminiResponse && geminiResponse.trim()) {
+          // Gemini yanıtından ürün adlarını çıkar ve ürün kartlarını bul
+          let recommendedProducts = [];
+          try {
+            // Yanıttan ürün adlarını çıkarmaya çalış (bold, tırnak, veya özel formatlardan)
+            const productNamePatterns = [
+              /\*\*([^*]+)\*\*/g,  // **Ürün Adı** formatı
+              /"([^"]+)"/g,         // "Ürün Adı" formatı
+              /'([^']+)'/g,         // 'Ürün Adı' formatı
+              /Huğlu Outdoor\s+([^,\.\n]+)/gi,  // "Huğlu Outdoor Ürün Adı" formatı
+            ];
+            
+            const foundProductNames = new Set();
+            productNamePatterns.forEach(pattern => {
+              let match;
+              while ((match = pattern.exec(geminiResponse)) !== null) {
+                const productName = match[1]?.trim();
+                if (productName && productName.length > 3 && productName.length < 100) {
+                  foundProductNames.add(productName);
+                }
+              }
+            });
+            
+            // Eğer pattern'lerle bulunamazsa, yanıtın içinde "öner" veya "tavsiye" geçiyorsa tüm ürünleri kontrol et
+            if (foundProductNames.size === 0 && 
+                (geminiResponse.toLowerCase().includes('öner') || 
+                 geminiResponse.toLowerCase().includes('tavsiye') ||
+                 geminiResponse.toLowerCase().includes('ürün'))) {
+              // Yanıttan potansiyel ürün adlarını çıkar (satır başlarında veya liste formatında)
+              const lines = geminiResponse.split('\n');
+              lines.forEach(line => {
+                const trimmed = line.trim();
+                // Liste formatı: •, -, *, numara ile başlayan satırlar
+                if (/^[•\-\*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
+                  const productName = trimmed.replace(/^[•\-\*\d\.]\s+/, '').split('–')[0].split('-')[0].trim();
+                  if (productName && productName.length > 3 && productName.length < 100) {
+                    foundProductNames.add(productName);
+                  }
+                }
+              });
+            }
+            
+            // Bulunan ürün adlarını veritabanında ara
+            if (foundProductNames.size > 0) {
+              const productNamesArray = Array.from(foundProductNames);
+              console.log('🔍 Gemini yanıtından çıkarılan ürün adları:', productNamesArray);
+              
+              // Her ürün adı için veritabanında ara (LIKE ile)
+              for (const productName of productNamesArray.slice(0, 5)) { // Maksimum 5 ürün
+                try {
+                  const searchTerms = productName.split(' ').filter(term => term.length > 2);
+                  if (searchTerms.length > 0) {
+                    const searchQuery = searchTerms.map(term => `name LIKE '%${term}%'`).join(' AND ');
+                    const [products] = await poolWrapper.execute(
+                      `SELECT id, name, price, image, stock, brand, category, description 
+                       FROM products 
+                       WHERE tenantId = ? AND ${searchQuery} AND stock > 0
+                       ORDER BY 
+                         CASE WHEN name LIKE ? THEN 1 ELSE 2 END,
+                         stock DESC
+                       LIMIT 1`,
+                      [tenantId, `%${productName}%`]
+                    );
+                    
+                    if (products && products.length > 0) {
+                      const product = products[0];
+                      // Zaten eklenmemişse ekle
+                      if (!recommendedProducts.find(p => p.id === product.id)) {
+                        recommendedProducts.push({
+                          id: product.id,
+                          name: product.name,
+                          price: Number(product.price || 0),
+                          image: product.image,
+                          stock: product.stock || 0,
+                          brand: product.brand,
+                          category: product.category,
+                          description: product.description
+                        });
+                      }
+                    }
+                  }
+                } catch (searchError) {
+                  console.warn('⚠️ Ürün arama hatası:', searchError.message);
+                }
+              }
+            }
+            
+            // Eğer hala ürün bulunamadıysa ve yanıt ürün önerisi içeriyorsa, popüler ürünleri öner
+            if (recommendedProducts.length === 0 && 
+                (geminiResponse.toLowerCase().includes('öner') || 
+                 geminiResponse.toLowerCase().includes('tavsiye'))) {
+              const [popularProducts] = await poolWrapper.execute(
+                `SELECT id, name, price, image, stock, brand, category, description 
+                 FROM products 
+                 WHERE tenantId = ? AND stock > 0
+                 ORDER BY RAND()
+                 LIMIT 3`,
+                [tenantId]
+              );
+              
+              if (popularProducts && popularProducts.length > 0) {
+                recommendedProducts = popularProducts.map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  price: Number(p.price || 0),
+                  image: p.image,
+                  stock: p.stock || 0,
+                  brand: p.brand,
+                  category: p.category,
+                  description: p.description
+                }));
+              }
+            }
+          } catch (productError) {
+            console.warn('⚠️ Ürün kartları oluşturulurken hata:', productError.message);
+          }
+          
           // Intent'e göre hızlı yanıtlar ekle
           let quickReplies = [];
           if (intent === 'unknown' || intent === 'greeting') {
@@ -24166,13 +24282,20 @@ YARDIM EDEBİLECEĞİN KONULAR:
             ];
           }
 
+          // Ürün kartları varsa data objesine ekle
+          const responseData = recommendedProducts.length > 0 ? {
+            products: recommendedProducts,
+            totalCount: recommendedProducts.length
+          } : undefined;
+
           return {
             id: messageId,
             text: geminiResponse.trim(),
             isBot: true,
             timestamp,
             type: quickReplies.length > 0 ? 'quick_reply' : 'text',
-            quickReplies: quickReplies
+            quickReplies: quickReplies,
+            data: responseData
           };
         }
       }
@@ -24524,6 +24647,18 @@ YARDIM EDEBİLECEĞİN KONULAR:
       }
 
       const productList = rows.map(p => `• ${p.name} – ₺${Number(p.price || 0).toFixed(2)}`).join('\n');
+      
+      // Ürün kartları için formatla
+      const productCards = rows.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price || 0),
+        image: p.image,
+        stock: p.stock || 0,
+        brand: p.brand,
+        category: p.category,
+        description: p.description
+      }));
 
       return {
         id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -24531,6 +24666,10 @@ YARDIM EDEBİLECEĞİN KONULAR:
         isBot: true,
         timestamp: new Date(),
         type: 'quick_reply',
+        data: {
+          products: productCards,
+          totalCount: rows.length
+        },
         quickReplies: [
           { id: '1', text: '👀 Tümünü Gör', action: 'view_products' },
           { id: '2', text: '🎁 Kampanyalarım', action: 'check_campaign_eligibility' },

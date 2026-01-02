@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import CustomModal from '../components/CustomModal';
 import ModalOption from '../components/ModalOption';
 import ProductRecommendations from '../components/ProductRecommendations';
+import ProductCard from '../components/ProductCard';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { COLORS } from '../constants/colors';
@@ -2036,6 +2037,58 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Ionicons name="headset" size={18} color={COLORS.white} />
                       <Text style={styles.supportButtonText}>Müşteri Hizmetlerine Bağlan</Text>
                     </TouchableOpacity>
+                  )}
+
+                  {/* Ürün Kartları - Gemini önerileri için */}
+                  {message.data && message.data.products && message.data.products.length > 0 && (
+                    <View style={styles.chatbotProductsContainer}>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.chatbotProductsScroll}
+                      >
+                        {message.data.products.map((product) => (
+                          <View key={product.id} style={styles.chatbotProductCard}>
+                            <ProductCard
+                              product={product}
+                              onPress={() => {
+                                setShowChatbot(false);
+                                navigation.navigate('ProductDetail', { productId: product.id });
+                              }}
+                              onFavorite={async () => {
+                                // Favorilere ekleme işlemi
+                                try {
+                                  const userId = await AsyncStorage.getItem('userId');
+                                  if (!userId) {
+                                    setShowLoginRequiredModal(true);
+                                    setLoginRequiredMessage('Favorilere eklemek için lütfen giriş yapın');
+                                    return;
+                                  }
+                                  const isProductFavorite = favorites.includes(product.id);
+                                  if (isProductFavorite) {
+                                    const favoritesResponse = await wishlistAPI.get(userId);
+                                    if (favoritesResponse.data?.success) {
+                                      const favs = favoritesResponse.data.data || favoritesResponse.data.favorites || [];
+                                      const favorite = favs.find((fav: any) => (fav.productId || fav.id) === product.id);
+                                      if (favorite && (favorite.id || favorite._id)) {
+                                        await wishlistAPI.remove(favorite.id || favorite._id, userId);
+                                      }
+                                    }
+                                    setFavorites(favorites.filter(id => id !== product.id));
+                                  } else {
+                                    await wishlistAPI.add(userId, product.id);
+                                    setFavorites([...favorites, product.id]);
+                                  }
+                                } catch (error) {
+                                  console.error('Favori ekleme hatası:', error);
+                                  alert.show('Hata', 'Favori işlemi başarısız oldu');
+                                }
+                              }}
+                            />
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
                   )}
 
                   {/* Quick Replies */}
@@ -4206,6 +4259,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMain,
     fontWeight: '500',
+  },
+  chatbotProductsContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  chatbotProductsScroll: {
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  chatbotProductCard: {
+    width: 160,
+    marginRight: 12,
   },
   quickOrderButton: {
     flexDirection: 'row',
