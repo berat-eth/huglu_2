@@ -269,7 +269,7 @@ export default function ProjectAjax() {
         setAiModel('gemini-2.5-flash')
     }, [])
 
-    // Session değiştiğinde mesajları yükle
+    // Session değiştiğinde mesajları yükle (config'i yeniden yükleme)
     useEffect(() => {
         if (currentSessionId) {
             loadSessionMessages(currentSessionId)
@@ -502,7 +502,21 @@ export default function ProjectAjax() {
     }
 
     const deleteSession = async (sessionId: string) => {
+        // Onay mesajı
+        const sessionName = sessions.find(s => s.id === sessionId)?.name || 'Bu sohbet'
+        if (!confirm(`${sessionName} sohbetini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
+            return
+        }
+
         try {
+            // Önce GeminiService üzerinden sil (eğer backend'de kayıtlıysa)
+            try {
+                await GeminiService.deleteSession(sessionId)
+            } catch (geminiError) {
+                console.warn('⚠️ GeminiService üzerinden silinemedi, direkt API deneniyor:', geminiError)
+            }
+
+            // Backend API'den de sil
             const response = await fetch(`https://api.huglutekstil.com/api/chat/sessions/${sessionId}`, {
                 method: 'DELETE',
                 headers: {
@@ -512,20 +526,39 @@ export default function ProjectAjax() {
             })
             
             if (response.ok) {
+                // Session listesinden kaldır
                 setSessions(prev => prev.filter(s => s.id !== sessionId))
                 
-                // Eğer silinen session aktif session ise, ilk session'ı seç
+                // Eğer silinen session aktif session ise
                 if (currentSessionId === sessionId) {
                     const remainingSessions = sessions.filter(s => s.id !== sessionId)
+                    
+                    // Mesajları temizle
+                    setMessages([{
+                        id: '1',
+                        role: 'assistant',
+                        content: 'Merhaba! Ben Project Ajax, yapay zeka destekli iş asistanınızım. Size nasıl yardımcı olabilirim?',
+                        timestamp: new Date()
+                    }])
+                    
+                    // Başka session varsa onu seç, yoksa yeni oluştur
                     if (remainingSessions.length > 0) {
                         setCurrentSessionId(remainingSessions[0].id)
+                        await loadSessionMessages(remainingSessions[0].id)
                     } else {
+                        setCurrentSessionId(null)
                         await createNewSession()
                     }
                 }
+                
+                alert('✅ Sohbet başarıyla silindi')
+            } else {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || 'Sohbet silinemedi')
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Session silinemedi:', error)
+            alert(`❌ Sohbet silinemedi: ${error.message || 'Bilinmeyen hata'}`)
         }
     }
 
@@ -1018,8 +1051,8 @@ export default function ProjectAjax() {
             // System prompt'u ilk user mesajına ekle (Gemini system mesajı desteklemez)
             const firstUserMessage = enhancedPrompt + (enhancedPrompt ? '\n\n' : '') + userInput
 
-            // Son 10 mesajı al (Gemini daha fazla mesaj geçmişi destekler)
-            const recentMessages = messages.slice(-10)
+            // Son 2 mesajı al (sınırlamaya takılmamak için)
+            const recentMessages = messages.slice(-2)
             
             // Mesaj geçmişini ekle
             recentMessages.forEach(msg => {
@@ -1048,6 +1081,13 @@ export default function ProjectAjax() {
             // Model adını debug et
             console.log('🔍 Gönderilen model adı:', modelName)
             console.log('🔍 Gemini mesajları:', geminiMessages)
+            
+            // API key kontrolü - config'den kontrol et (maskelenmiş olsa bile backend'den çekilecek)
+            if (!geminiConfig.enabled || (!geminiConfig.apiKey && !geminiConfig.apiKeyMasked)) {
+                alert('⚠️ Gemini API key yapılandırılmamış. Lütfen AI Ayarları\'ndan API key\'inizi girin.')
+                setIsTyping(false)
+                return
+            }
             
             // Gemini'ye gönder (dosyalarla birlikte)
             const response = await GeminiService.sendMessage(geminiMessages, {
@@ -2017,29 +2057,42 @@ export default function ProjectAjax() {
                         </div>
                     ) : (
                         sessions.map((session) => (
-                            <button
+                            <div
                                 key={session.id}
-                                onClick={() => setCurrentSessionId(session.id)}
-                                className={`w-full px-3 py-2.5 rounded-lg text-left transition-colors ${
+                                className={`group w-full px-3 py-2.5 rounded-lg transition-colors ${
                                     currentSessionId === session.id
-                                        ? 'bg-gray-800 dark:bg-gray-700 text-white'
-                                        : 'text-gray-300 hover:bg-gray-800/50 dark:hover:bg-gray-700/50'
+                                        ? 'bg-gray-800 dark:bg-gray-700'
+                                        : 'hover:bg-gray-800/50 dark:hover:bg-gray-700/50'
                                 }`}
                             >
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm truncate flex-1">{session.name}</span>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            deleteSession(session.id)
-                                        }}
-                                        className="ml-2 p-1 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">{session.messageCount} mesaj</p>
-                            </button>
+                                <button
+                                    onClick={() => setCurrentSessionId(session.id)}
+                                    className="w-full text-left"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-sm truncate flex-1 ${
+                                            currentSessionId === session.id ? 'text-white' : 'text-gray-300'
+                                        }`}>
+                                            {session.name}
+                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                deleteSession(session.id)
+                                            }}
+                                            className="ml-2 p-1.5 hover:bg-gray-700 dark:hover:bg-gray-600 rounded transition-all opacity-0 group-hover:opacity-100"
+                                            title="Sohbeti Sil"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-400 transition-colors" />
+                                        </button>
+                                    </div>
+                                    <p className={`text-xs mt-1 ${
+                                        currentSessionId === session.id ? 'text-gray-400' : 'text-gray-500'
+                                    }`}>
+                                        {session.messageCount} mesaj
+                                    </p>
+                                </button>
+                            </div>
                         ))
                     )}
                 </div>
@@ -2075,6 +2128,15 @@ export default function ProjectAjax() {
                             <Database className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                         <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Ajax AI</h1>
+                        {currentSessionId && (
+                            <button
+                                onClick={() => deleteSession(currentSessionId)}
+                                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500 dark:text-red-400"
+                                title="Aktif Sohbeti Sil"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <span className={`text-xs px-2 py-1 rounded-full ${
@@ -2333,10 +2395,10 @@ export default function ProjectAjax() {
                                                         e.stopPropagation()
                                                         deleteSession(session.id)
                                                     }}
-                                                    className="p-1 text-gray-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
-                                                    title="Sil"
+                                                    className="p-1 text-gray-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                                    title="Sohbeti Sil"
                                                 >
-                                                    <Settings className="w-3 h-3" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             </div>
                                             <div className="text-xs text-gray-500 dark:text-slate-400">

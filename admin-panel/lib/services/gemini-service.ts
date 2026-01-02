@@ -285,7 +285,8 @@ export class GeminiService {
     try {
       const config = await this.getConfig();
       
-      if (!config.enabled || !config.apiKey) {
+      // API key kontrolü - maskelenmiş olsa bile backend'den çekilecek
+      if (!config.enabled || (!config.apiKey && !config.apiKeyMasked)) {
         throw new Error('Gemini is not enabled or API key is missing');
       }
 
@@ -447,7 +448,8 @@ export class GeminiService {
     try {
       const config = await this.getConfig();
       
-      if (!config.enabled || !config.apiKey) {
+      // API key kontrolü - maskelenmiş olsa bile backend'den çekilecek
+      if (!config.enabled || (!config.apiKey && !config.apiKeyMasked)) {
         throw new Error('Gemini is not enabled or API key is missing');
       }
 
