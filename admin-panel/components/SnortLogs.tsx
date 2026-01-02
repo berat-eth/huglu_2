@@ -395,8 +395,8 @@ export default function SnortLogs() {
                 return
             }
 
-            // Logları 200'er parçaya böl
-            const CHUNK_SIZE = 200
+            // Logları 50'şer parçaya böl (request size limit için)
+            const CHUNK_SIZE = 50
             const chunks: SnortLog[][] = []
             for (let i = 0; i < allLogsForAnalysis.length; i += CHUNK_SIZE) {
                 chunks.push(allLogsForAnalysis.slice(i, i + CHUNK_SIZE))

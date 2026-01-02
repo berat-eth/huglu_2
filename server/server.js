@@ -672,9 +672,9 @@ const dbSecurity = new DatabaseSecurity();
 const inputValidator = new InputValidation();
 const advancedSecurity = new AdvancedSecurity();
 
-// Basic request size limiting
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 50000 }));
+// Basic request size limiting - Gemini analiz için daha büyük limit
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb', parameterLimit: 50000 }));
 // XML gövdeleri için text parser (text/xml, application/xml)
 app.use(express.text({ type: ['text/xml', 'application/xml'], limit: '20mb' }));
 

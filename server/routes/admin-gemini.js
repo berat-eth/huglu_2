@@ -716,7 +716,7 @@ router.post('/analyze-snort-logs', async (req, res) => {
             }));
             analysisStats = requestStats || {};
         } else {
-            // Backend'den son 200 snort logunu al (son 24 saat)
+            // Backend'den son 200 snort logunu al (son 24 saat) - request size için sınırlı
             const oneDayAgo = new Date();
             oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
