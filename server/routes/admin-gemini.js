@@ -716,7 +716,7 @@ router.post('/analyze-snort-logs', async (req, res) => {
             }));
             analysisStats = requestStats || {};
         } else {
-            // Backend'den son 100 snort logunu al (son 24 saat)
+            // Backend'den son 200 snort logunu al (son 24 saat)
             const oneDayAgo = new Date();
             oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
@@ -727,7 +727,7 @@ router.post('/analyze-snort-logs', async (req, res) => {
                 FROM snort_logs
                 WHERE timestamp >= ?
                 ORDER BY timestamp DESC
-                LIMIT 100
+                LIMIT 200
             `, [oneDayAgo]);
 
             if (!dbLogs || dbLogs.length === 0) {
@@ -771,8 +771,8 @@ router.post('/analyze-snort-logs', async (req, res) => {
 2. En önemli tehditler veya uyarılar (varsa)
 3. Öneriler (varsa)
 
-Log Özeti:
-${JSON.stringify(logsSummary.slice(0, 50), null, 2)}
+Log Özeti (İlk 200 log):
+${JSON.stringify(logsSummary.slice(0, 200), null, 2)}
 
 Yanıtını kısa ve öz tut, maksimum 200 kelime. Önemli tehditler varsa vurgula, yoksa sistemin güvenli olduğunu belirt.`;
 
@@ -815,9 +815,9 @@ Yanıtını kısa ve öz tut, maksimum 200 kelime. Önemli tehditler varsa vurgu
             const logsForStats = logs.length > 0 ? logs : logsSummary;
             finalStats = {
                 totalLogs: logsSummary.length || logs.length,
-                highPriority: logsForStats.filter((l: any) => l.priority === 'high' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('high'))).length,
-                mediumPriority: logsForStats.filter((l: any) => l.priority === 'medium' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('medium'))).length,
-                lowPriority: logsForStats.filter((l: any) => l.priority === 'low' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('low'))).length
+                highPriority: logsForStats.filter((l) => l.priority === 'high' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('high'))).length,
+                mediumPriority: logsForStats.filter((l) => l.priority === 'medium' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('medium'))).length,
+                lowPriority: logsForStats.filter((l) => l.priority === 'low' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('low'))).length
             };
         }
 

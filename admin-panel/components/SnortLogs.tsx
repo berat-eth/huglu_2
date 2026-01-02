@@ -377,7 +377,7 @@ export default function SnortLogs() {
         }
     }
 
-    // Gemini ile Snort log analizi
+    // Gemini ile Snort log analizi - Parça parça gönder (200'er log)
     const analyzeWithGemini = async (logsToAnalyze?: SnortLog[]) => {
         try {
             setIsAnalyzing(true)
@@ -385,52 +385,95 @@ export default function SnortLogs() {
             setAnalysisResult(null)
 
             // Analiz edilecek logları belirle
-            const logsForAnalysis = logsToAnalyze || (selectedLogs.size > 0 
+            const allLogsForAnalysis = logsToAnalyze || (selectedLogs.size > 0 
                 ? Array.from(selectedLogs).map(id => logs.find(log => log.id === id)).filter((log): log is SnortLog => !!log)
-                : filteredLogs.slice(0, 50)) // Maksimum 50 log
+                : filteredLogs)
 
-            if (logsForAnalysis.length === 0) {
+            if (allLogsForAnalysis.length === 0) {
                 setAnalysisError('Analiz edilecek log bulunamadı')
                 setIsAnalyzing(false)
                 return
             }
 
-            // Logları formatla
-            const logsSummary = logsForAnalysis.map(log => ({
-                id: log.id,
-                timestamp: log.timestamp,
-                sourceIp: log.sourceIp,
-                destIp: log.destIp,
-                protocol: log.protocol,
-                message: log.message,
-                classification: log.classification,
-                priority: log.priority,
-                action: log.action,
-                signature: log.signature
-            }))
-
-            // İstatistikleri hesapla
-            const analysisStats = {
-                total: logsForAnalysis.length,
-                high: logsForAnalysis.filter(l => l.priority === 'high').length,
-                medium: logsForAnalysis.filter(l => l.priority === 'medium').length,
-                low: logsForAnalysis.filter(l => l.priority === 'low').length,
-                dropped: logsForAnalysis.filter(l => l.action === 'drop').length,
-                alerts: logsForAnalysis.filter(l => l.action === 'alert').length,
-                topSourceIPs: Array.from(new Set(logsForAnalysis.map(l => l.sourceIp))).slice(0, 5),
-                topClassifications: Object.entries(
-                    logsForAnalysis.reduce((acc: any, log) => {
-                        acc[log.classification] = (acc[log.classification] || 0) + 1
-                        return acc
-                    }, {})
-                ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5).map(([name, count]: any) => ({ name, count }))
+            // Logları 200'er parçaya böl
+            const CHUNK_SIZE = 200
+            const chunks: SnortLog[][] = []
+            for (let i = 0; i < allLogsForAnalysis.length; i += CHUNK_SIZE) {
+                chunks.push(allLogsForAnalysis.slice(i, i + CHUNK_SIZE))
             }
 
-            // Gemini'ye gönder
-            const response = await api.post('/admin/gemini/analyze-snort-logs', {
-                logs: logsSummary,
-                stats: analysisStats,
-                customPrompt: `Aşağıda Snort IDS güvenlik log kayıtlarının detaylı analizi var. Bu logları analiz et ve Türkçe olarak şunları sağla:
+            console.log(`📦 ${allLogsForAnalysis.length} log ${chunks.length} parçaya bölündü (her parça ${CHUNK_SIZE} log)`)
+
+            // Her parçayı analiz et ve sonuçları birleştir
+            const allAnalysisResults: string[] = []
+            const allStats: any[] = []
+
+            for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                const chunk = chunks[chunkIndex]
+                console.log(`🔄 Parça ${chunkIndex + 1}/${chunks.length} analiz ediliyor (${chunk.length} log)...`)
+
+                // Logları formatla
+                const logsSummary = chunk.map(log => ({
+                    id: log.id,
+                    timestamp: log.timestamp,
+                    sourceIp: log.sourceIp,
+                    destIp: log.destIp,
+                    protocol: log.protocol,
+                    message: log.message,
+                    classification: log.classification,
+                    priority: log.priority,
+                    action: log.action,
+                    signature: log.signature
+                }))
+
+                // İstatistikleri hesapla
+                const analysisStats = {
+                    total: chunk.length,
+                    high: chunk.filter(l => l.priority === 'high').length,
+                    medium: chunk.filter(l => l.priority === 'medium').length,
+                    low: chunk.filter(l => l.priority === 'low').length,
+                    dropped: chunk.filter(l => l.action === 'drop').length,
+                    alerts: chunk.filter(l => l.action === 'alert').length,
+                    topSourceIPs: Array.from(new Set(chunk.map(l => l.sourceIp))).slice(0, 5),
+                    topClassifications: Object.entries(
+                        chunk.reduce((acc: any, log) => {
+                            acc[log.classification] = (acc[log.classification] || 0) + 1
+                            return acc
+                        }, {})
+                    ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5).map(([name, count]: any) => ({ name, count }))
+                }
+
+                allStats.push(analysisStats)
+
+                // Gemini'ye gönder
+                const response = await api.post('/admin/gemini/analyze-snort-logs', {
+                    logs: logsSummary,
+                    stats: analysisStats,
+                    customPrompt: chunks.length > 1 
+                        ? `Aşağıda Snort IDS güvenlik log kayıtlarının ${chunkIndex + 1}. parçası var (Toplam ${chunks.length} parça). Bu logları analiz et ve Türkçe olarak şunları sağla:
+
+1. **Bu Parça İçin Güvenlik Durumu**: Bu parçadaki logların güvenlik durumunu değerlendir
+2. **Kritik Tehditler**: Bu parçadaki yüksek öncelikli tehditleri listele
+3. **Saldırı Desenleri**: Bu parçadaki tekrarlayan saldırı desenlerini analiz et
+4. **Öneriler**: Bu parça için güvenlik önerileri sun
+
+Parça Bilgisi: ${chunkIndex + 1}/${chunks.length} (${chunk.length} log)
+
+İstatistikler:
+- Toplam Log: ${analysisStats.total}
+- Yüksek Öncelik: ${analysisStats.high}
+- Orta Öncelik: ${analysisStats.medium}
+- Düşük Öncelik: ${analysisStats.low}
+- Engellenen: ${analysisStats.dropped}
+- Uyarılar: ${analysisStats.alerts}
+
+En Çok Saldırı Yapan IP'ler: ${analysisStats.topSourceIPs.join(', ')}
+
+Log Detayları:
+${JSON.stringify(logsSummary, null, 2)}
+
+Yanıtını kısa ve öz tut, sadece bu parça için önemli noktaları vurgula.`
+                        : `Aşağıda Snort IDS güvenlik log kayıtlarının detaylı analizi var. Bu logları analiz et ve Türkçe olarak şunları sağla:
 
 1. **Genel Güvenlik Durumu**: Sistemin genel güvenlik durumunu değerlendir (iyi/orta/kötü)
 2. **Kritik Tehditler**: Yüksek öncelikli tehditleri ve potansiyel saldırıları listele
@@ -452,17 +495,65 @@ En Sık Görülen Sınıflandırmalar:
 ${analysisStats.topClassifications.map((c: any) => `- ${c.name}: ${c.count} kez`).join('\n')}
 
 Log Detayları:
-${JSON.stringify(logsSummary.slice(0, 30), null, 2)}
+${JSON.stringify(logsSummary, null, 2)}
 
 Yanıtını profesyonel, detaylı ve eylem odaklı tut. Önemli tehditler varsa vurgula ve acil önlemler öner.`
-            })
+                })
 
-            if ((response as any)?.success) {
-                setAnalysisResult((response as any).analysis || (response as any).data?.analysis)
-                setSelectedLogsForAnalysis(logsForAnalysis)
-            } else {
-                throw new Error((response as any)?.message || 'Analiz başarısız oldu')
+                if ((response as any)?.success) {
+                    const chunkAnalysis = (response as any).analysis || (response as any).data?.analysis
+                    if (chunkAnalysis) {
+                        allAnalysisResults.push(`\n\n## Parça ${chunkIndex + 1}/${chunks.length} Analizi (${chunk.length} log)\n\n${chunkAnalysis}`)
+                    }
+                } else {
+                    throw new Error((response as any)?.message || `Parça ${chunkIndex + 1} analiz başarısız oldu`)
+                }
+
+                // Parçalar arasında kısa bekleme (rate limit için)
+                if (chunkIndex < chunks.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                }
             }
+
+            // Tüm parça sonuçlarını birleştir
+            const totalStats = {
+                total: allLogsForAnalysis.length,
+                high: allLogsForAnalysis.filter(l => l.priority === 'high').length,
+                medium: allLogsForAnalysis.filter(l => l.priority === 'medium').length,
+                low: allLogsForAnalysis.filter(l => l.priority === 'low').length,
+                dropped: allLogsForAnalysis.filter(l => l.action === 'drop').length,
+                alerts: allLogsForAnalysis.filter(l => l.action === 'alert').length
+            }
+
+            // Genel özet oluştur
+            const summary = `# Snort IDS Güvenlik Analizi Raporu
+
+**Analiz Tarihi:** ${new Date().toLocaleString('tr-TR')}
+**Toplam Log Sayısı:** ${totalStats.total}
+**Analiz Edilen Parça Sayısı:** ${chunks.length}
+
+## Genel İstatistikler
+- **Yüksek Öncelik:** ${totalStats.high}
+- **Orta Öncelik:** ${totalStats.medium}
+- **Düşük Öncelik:** ${totalStats.low}
+- **Engellenen:** ${totalStats.dropped}
+- **Uyarılar:** ${totalStats.alerts}
+
+---
+
+${allAnalysisResults.join('\n\n---\n')}
+
+---
+
+## Genel Değerlendirme
+
+${chunks.length > 1 
+    ? `Toplam ${chunks.length} parça halinde ${totalStats.total} log analiz edildi. Yukarıdaki parça analizlerini inceleyerek genel güvenlik durumunu değerlendirin.`
+    : `${totalStats.total} log analiz edildi. Yukarıdaki analiz sonuçlarını inceleyerek güvenlik durumunu değerlendirin.`
+}`
+
+            setAnalysisResult(summary)
+            setSelectedLogsForAnalysis(allLogsForAnalysis)
         } catch (error: any) {
             console.error('❌ Gemini analiz hatası:', error)
             setAnalysisError(error?.response?.data?.message || error?.message || 'Analiz sırasında bir hata oluştu')
