@@ -48,7 +48,6 @@ const chatSessionsRoutes = require('./routes/chat-sessions');
 const adminGeminiRoutes = require('./routes/admin-gemini');
 const elevenlabsRoutes = require('./routes/elevenlabs');
 const segmentsRoutes = require('./routes/segments');
-const ddosDefenseRoutes = require('./routes/ddos-defense');
 const { RecommendationService } = require('./services/recommendation-service');
 const { getGeminiService } = require('./services/gemini-service');
 const { authenticateTenant, authenticateJWT, requireJWT } = require('./middleware/auth');
@@ -2027,9 +2026,6 @@ app.use('/api/admin/gemini', authenticateAdmin, adminGeminiRoutes);
 
 // ElevenLabs Routes (admin authentication required)
 app.use('/api/admin/elevenlabs', authenticateAdmin, elevenlabsRoutes);
-
-// DDoS Defense Routes (authentication route içinde yapılıyor)
-app.use('/api/admin/ddos', ddosDefenseRoutes);
 
 // Segments Routes
 app.use('/api', segmentsRoutes);

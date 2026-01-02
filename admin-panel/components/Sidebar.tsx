@@ -175,7 +175,6 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
         { id: 'server-stats', label: 'Sunucu İstatistikleri', icon: Activity },
         { id: 'backup', label: 'Veri Yedekleme', icon: Settings },
         { id: 'security', label: 'Güvenlik', icon: Shield },
-        { id: 'ddos-defense', label: 'DDoS Savunma', icon: Shield },
         { id: 'seo', label: 'SEO Panel', icon: Search },
         { id: 'admin-logs', label: 'Yönetici Logları', icon: FileText },
         { id: 'snort-logs', label: 'Snort IDS Logları', icon: AlertTriangle },
@@ -246,7 +245,6 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
                   key={item.id}
                   onClick={() => {
                     if (item.id === 'admin-logs') { router.push('/admin-logs'); return }
-                    if (item.id === 'ddos-defense') { router.push('/ddos-defense'); return }
                     setActiveTab(item.id)
                     // Mobilde menü öğesine tıklandığında sidebar'ı kapat
                     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
