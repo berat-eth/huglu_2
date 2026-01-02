@@ -79,7 +79,9 @@ function setCachedResponse(cacheKey: string, response: any): void {
   // Cache boyutunu kontrol et (max 1000 entry)
   if (responseCache.size > 1000) {
     const firstKey = responseCache.keys().next().value;
-    responseCache.delete(firstKey);
+    if (firstKey !== undefined) {
+      responseCache.delete(firstKey);
+    }
   }
 }
 
