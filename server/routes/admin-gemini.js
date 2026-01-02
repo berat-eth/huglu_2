@@ -693,94 +693,59 @@ router.post('/analyze-snort-logs', async (req, res) => {
           modelName = 'gemini-2.5-flash';
         }
 
-        // Request body'den logları al (eğer gönderilmişse)
-        const { logs: requestLogs, stats: requestStats, customPrompt } = req.body || {};
+        // Son 100 snort logunu al (son 24 saat)
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-        let logs = [];
-        let logsSummary = [];
-        let analysisStats = {};
+        const [logs] = await poolWrapper.execute(`
+            SELECT 
+                id, timestamp, src_ip, dst_ip, protocol, 
+                message, classification, priority, action
+            FROM snort_logs
+            WHERE timestamp >= ?
+            ORDER BY timestamp DESC
+            LIMIT 100
+        `, [oneDayAgo]);
 
-        // Eğer frontend'den loglar gönderilmişse onları kullan
-        if (requestLogs && Array.isArray(requestLogs) && requestLogs.length > 0) {
-            logsSummary = requestLogs.map(log => ({
-                id: log.id,
-                timestamp: log.timestamp,
-                src_ip: log.sourceIp || log.src_ip,
-                dst_ip: log.destIp || log.dst_ip,
-                protocol: log.protocol,
-                message: log.message,
-                classification: log.classification,
-                priority: log.priority,
-                action: log.action,
-                signature: log.signature || ''
-            }));
-            analysisStats = requestStats || {};
-        } else {
-            // Backend'den son 200 snort logunu al (son 24 saat) - request size için sınırlı
-            const oneDayAgo = new Date();
-            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-            const [dbLogs] = await poolWrapper.execute(`
-                SELECT 
-                    id, timestamp, src_ip, dst_ip, protocol, 
-                    message, classification, priority, action
-                FROM snort_logs
-                WHERE timestamp >= ?
-                ORDER BY timestamp DESC
-                LIMIT 200
-            `, [oneDayAgo]);
-
-            if (!dbLogs || dbLogs.length === 0) {
-                return res.json({
-                    success: true,
-                    analysis: 'Son 24 saatte snort log kaydı bulunamadı. Sistem güvenli görünüyor.',
-                    summary: {
-                        totalLogs: 0,
-                        highPriority: 0,
-                        mediumPriority: 0,
-                        lowPriority: 0
-                    }
-                });
-            }
-
-            logs = dbLogs;
-            logsSummary = logs.map(log => ({
-                timestamp: log.timestamp,
-                src_ip: log.src_ip,
-                dst_ip: log.dst_ip,
-                protocol: log.protocol,
-                message: log.message,
-                classification: log.classification,
-                priority: log.priority,
-                action: log.action
-            }));
-
-            // İstatistikleri hesapla
-            analysisStats = {
-                totalLogs: logs.length,
-                highPriority: logs.filter(l => l.priority === 'high').length,
-                mediumPriority: logs.filter(l => l.priority === 'medium').length,
-                lowPriority: logs.filter(l => l.priority === 'low').length
-            };
+        if (!logs || logs.length === 0) {
+            return res.json({
+                success: true,
+                analysis: 'Son 24 saatte snort log kaydı bulunamadı. Sistem güvenli görünüyor.',
+                summary: {
+                    totalLogs: 0,
+                    highPriority: 0,
+                    mediumPriority: 0,
+                    lowPriority: 0
+                }
+            });
         }
 
+        // Logları Gemini'ye göndermek için formatla
+        const logsSummary = logs.map(log => ({
+            timestamp: log.timestamp,
+            src_ip: log.src_ip,
+            dst_ip: log.dst_ip,
+            protocol: log.protocol,
+            message: log.message,
+            classification: log.classification,
+            priority: log.priority,
+            action: log.action
+        }));
+
         // Gemini'ye analiz için prompt hazırla
-        const defaultPrompt = `Aşağıda bir güvenlik duvarı (Snort) log kayıtlarının özeti var. Bu logları analiz et ve Türkçe olarak şunları sağla:
+        const prompt = `Aşağıda bir güvenlik duvarı (Snort) log kayıtlarının özeti var. Bu logları analiz et ve Türkçe olarak şunları sağla:
 
 1. Genel güvenlik durumu değerlendirmesi (kısa ve öz)
 2. En önemli tehditler veya uyarılar (varsa)
 3. Öneriler (varsa)
 
-Log Özeti (İlk 200 log):
-${JSON.stringify(logsSummary.slice(0, 200), null, 2)}
+Log Özeti:
+${JSON.stringify(logsSummary.slice(0, 50), null, 2)}
 
 Yanıtını kısa ve öz tut, maksimum 200 kelime. Önemli tehditler varsa vurgula, yoksa sistemin güvenli olduğunu belirt.`;
 
-        const prompt = customPrompt || defaultPrompt;
-
         // Gemini API'yi axios ile çağır
-        // API key'i hem header'da hem de query parameter olarak gönder
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
         const response = await axios.post(url, {
             contents: [{
                 role: 'user',
@@ -801,31 +766,18 @@ Yanıtını kısa ve öz tut, maksimum 200 kelime. Önemli tehditler varsa vurgu
         const analysisText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz tamamlandı ancak yanıt alınamadı.';
 
         // Öncelik istatistikleri
-        let finalStats = {};
-        if (Object.keys(analysisStats).length > 0) {
-            // Frontend'den gelen istatistikleri kullan
-            finalStats = {
-                totalLogs: analysisStats.total || logsSummary.length,
-                highPriority: analysisStats.high || 0,
-                mediumPriority: analysisStats.medium || 0,
-                lowPriority: analysisStats.low || 0
-            };
-        } else {
-            // Backend'den hesapla
-            const logsForStats = logs.length > 0 ? logs : logsSummary;
-            finalStats = {
-                totalLogs: logsSummary.length || logs.length,
-                highPriority: logsForStats.filter((l) => l.priority === 'high' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('high'))).length,
-                mediumPriority: logsForStats.filter((l) => l.priority === 'medium' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('medium'))).length,
-                lowPriority: logsForStats.filter((l) => l.priority === 'low' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('low'))).length
-            };
-        }
+        const highPriority = logs.filter(l => l.priority === 'high' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('high'))).length;
+        const mediumPriority = logs.filter(l => l.priority === 'medium' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('medium'))).length;
+        const lowPriority = logs.filter(l => l.priority === 'low' || (typeof l.priority === 'string' && l.priority.toLowerCase().includes('low'))).length;
 
         res.json({
             success: true,
             analysis: analysisText,
             summary: {
-                ...finalStats,
+                totalLogs: logs.length,
+                highPriority,
+                mediumPriority,
+                lowPriority,
                 analyzedAt: new Date().toISOString()
             }
         });

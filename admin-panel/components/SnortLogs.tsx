@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { Shield, AlertTriangle, Search, Filter, Download, Eye, X, RefreshCw, Clock, Activity, TrendingUp, Ban, CheckCircle, Info, Zap, Globe, Server, Calendar, Settings, BarChart3, Map, FileText, Bell, BellOff, Volume2, VolumeX, CheckSquare, Square, Brain, Loader2 } from 'lucide-react'
+import { Shield, AlertTriangle, Search, Filter, Download, Eye, X, RefreshCw, Clock, Activity, TrendingUp, Ban, CheckCircle, Info, Zap, Globe, Server, Calendar, Settings, BarChart3, Map, FileText, Bell, BellOff, Volume2, VolumeX, CheckSquare, Square } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
@@ -9,7 +9,6 @@ import SnortCharts from './SnortCharts'
 import SnortMap from './SnortMap'
 import SnortRules from './SnortRules'
 import SnortReports from './SnortReports'
-import { GeminiService } from '@/lib/services/gemini-service'
 
 interface SnortLog {
     id: number
@@ -44,18 +43,12 @@ export default function SnortLogs() {
     const [filterIPs, setFilterIPs] = useState<string[]>([])
     const [ipInput, setIpInput] = useState('')
     const [useRegex, setUseRegex] = useState(false)
-    const [activeTab, setActiveTab] = useState<'logs' | 'charts' | 'map' | 'rules' | 'reports' | 'analysis'>('logs')
+    const [activeTab, setActiveTab] = useState<'logs' | 'charts' | 'map' | 'rules' | 'reports'>('logs')
     const [statsData, setStatsData] = useState<any[]>([])
     const [protocolData, setProtocolData] = useState<any[]>([])
     const [topAttackers, setTopAttackers] = useState<any[]>([])
     const eventSourceRef = useRef<EventSource | null>(null)
     const audioRef = useRef<HTMLAudioElement | null>(null)
-    
-    // Gemini Analiz States
-    const [isAnalyzing, setIsAnalyzing] = useState(false)
-    const [analysisResult, setAnalysisResult] = useState<string | null>(null)
-    const [analysisError, setAnalysisError] = useState<string | null>(null)
-    const [selectedLogsForAnalysis, setSelectedLogsForAnalysis] = useState<SnortLog[]>([])
 
     const priorityConfig = {
         high: { 
@@ -377,191 +370,6 @@ export default function SnortLogs() {
         }
     }
 
-    // Gemini ile Snort log analizi - Parça parça gönder (200'er log)
-    const analyzeWithGemini = async (logsToAnalyze?: SnortLog[]) => {
-        try {
-            setIsAnalyzing(true)
-            setAnalysisError(null)
-            setAnalysisResult(null)
-
-            // Analiz edilecek logları belirle
-            const allLogsForAnalysis = logsToAnalyze || (selectedLogs.size > 0 
-                ? Array.from(selectedLogs).map(id => logs.find(log => log.id === id)).filter((log): log is SnortLog => !!log)
-                : filteredLogs)
-
-            if (allLogsForAnalysis.length === 0) {
-                setAnalysisError('Analiz edilecek log bulunamadı')
-                setIsAnalyzing(false)
-                return
-            }
-
-            // Logları 50'şer parçaya böl (request size limit için)
-            const CHUNK_SIZE = 50
-            const chunks: SnortLog[][] = []
-            for (let i = 0; i < allLogsForAnalysis.length; i += CHUNK_SIZE) {
-                chunks.push(allLogsForAnalysis.slice(i, i + CHUNK_SIZE))
-            }
-
-            console.log(`📦 ${allLogsForAnalysis.length} log ${chunks.length} parçaya bölündü (her parça ${CHUNK_SIZE} log)`)
-
-            // Her parçayı analiz et ve sonuçları birleştir
-            const allAnalysisResults: string[] = []
-            const allStats: any[] = []
-
-            for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-                const chunk = chunks[chunkIndex]
-                console.log(`🔄 Parça ${chunkIndex + 1}/${chunks.length} analiz ediliyor (${chunk.length} log)...`)
-
-                // Logları formatla
-                const logsSummary = chunk.map(log => ({
-                    id: log.id,
-                    timestamp: log.timestamp,
-                    sourceIp: log.sourceIp,
-                    destIp: log.destIp,
-                    protocol: log.protocol,
-                    message: log.message,
-                    classification: log.classification,
-                    priority: log.priority,
-                    action: log.action,
-                    signature: log.signature
-                }))
-
-                // İstatistikleri hesapla
-                const analysisStats = {
-                    total: chunk.length,
-                    high: chunk.filter(l => l.priority === 'high').length,
-                    medium: chunk.filter(l => l.priority === 'medium').length,
-                    low: chunk.filter(l => l.priority === 'low').length,
-                    dropped: chunk.filter(l => l.action === 'drop').length,
-                    alerts: chunk.filter(l => l.action === 'alert').length,
-                    topSourceIPs: Array.from(new Set(chunk.map(l => l.sourceIp))).slice(0, 5),
-                    topClassifications: Object.entries(
-                        chunk.reduce((acc: any, log) => {
-                            acc[log.classification] = (acc[log.classification] || 0) + 1
-                            return acc
-                        }, {})
-                    ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5).map(([name, count]: any) => ({ name, count }))
-                }
-
-                allStats.push(analysisStats)
-
-                // Gemini'ye gönder
-                const response = await api.post('/admin/gemini/analyze-snort-logs', {
-                    logs: logsSummary,
-                    stats: analysisStats,
-                    customPrompt: chunks.length > 1 
-                        ? `Aşağıda Snort IDS güvenlik log kayıtlarının ${chunkIndex + 1}. parçası var (Toplam ${chunks.length} parça). Bu logları analiz et ve Türkçe olarak şunları sağla:
-
-1. **Bu Parça İçin Güvenlik Durumu**: Bu parçadaki logların güvenlik durumunu değerlendir
-2. **Kritik Tehditler**: Bu parçadaki yüksek öncelikli tehditleri listele
-3. **Saldırı Desenleri**: Bu parçadaki tekrarlayan saldırı desenlerini analiz et
-4. **Öneriler**: Bu parça için güvenlik önerileri sun
-
-Parça Bilgisi: ${chunkIndex + 1}/${chunks.length} (${chunk.length} log)
-
-İstatistikler:
-- Toplam Log: ${analysisStats.total}
-- Yüksek Öncelik: ${analysisStats.high}
-- Orta Öncelik: ${analysisStats.medium}
-- Düşük Öncelik: ${analysisStats.low}
-- Engellenen: ${analysisStats.dropped}
-- Uyarılar: ${analysisStats.alerts}
-
-En Çok Saldırı Yapan IP'ler: ${analysisStats.topSourceIPs.join(', ')}
-
-Log Detayları:
-${JSON.stringify(logsSummary, null, 2)}
-
-Yanıtını kısa ve öz tut, sadece bu parça için önemli noktaları vurgula.`
-                        : `Aşağıda Snort IDS güvenlik log kayıtlarının detaylı analizi var. Bu logları analiz et ve Türkçe olarak şunları sağla:
-
-1. **Genel Güvenlik Durumu**: Sistemin genel güvenlik durumunu değerlendir (iyi/orta/kötü)
-2. **Kritik Tehditler**: Yüksek öncelikli tehditleri ve potansiyel saldırıları listele
-3. **Saldırı Desenleri**: Tekrarlayan saldırı desenlerini ve kaynak IP'leri analiz et
-4. **Öneriler**: Güvenlik iyileştirmeleri için somut öneriler sun
-5. **Acil Aksiyonlar**: Hemen yapılması gereken güvenlik önlemleri
-
-İstatistikler:
-- Toplam Log: ${analysisStats.total}
-- Yüksek Öncelik: ${analysisStats.high}
-- Orta Öncelik: ${analysisStats.medium}
-- Düşük Öncelik: ${analysisStats.low}
-- Engellenen: ${analysisStats.dropped}
-- Uyarılar: ${analysisStats.alerts}
-
-En Çok Saldırı Yapan IP'ler: ${analysisStats.topSourceIPs.join(', ')}
-
-En Sık Görülen Sınıflandırmalar:
-${analysisStats.topClassifications.map((c: any) => `- ${c.name}: ${c.count} kez`).join('\n')}
-
-Log Detayları:
-${JSON.stringify(logsSummary, null, 2)}
-
-Yanıtını profesyonel, detaylı ve eylem odaklı tut. Önemli tehditler varsa vurgula ve acil önlemler öner.`
-                })
-
-                if ((response as any)?.success) {
-                    const chunkAnalysis = (response as any).analysis || (response as any).data?.analysis
-                    if (chunkAnalysis) {
-                        allAnalysisResults.push(`\n\n## Parça ${chunkIndex + 1}/${chunks.length} Analizi (${chunk.length} log)\n\n${chunkAnalysis}`)
-                    }
-                } else {
-                    throw new Error((response as any)?.message || `Parça ${chunkIndex + 1} analiz başarısız oldu`)
-                }
-
-                // Parçalar arasında kısa bekleme (rate limit için)
-                if (chunkIndex < chunks.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000))
-                }
-            }
-
-            // Tüm parça sonuçlarını birleştir
-            const totalStats = {
-                total: allLogsForAnalysis.length,
-                high: allLogsForAnalysis.filter(l => l.priority === 'high').length,
-                medium: allLogsForAnalysis.filter(l => l.priority === 'medium').length,
-                low: allLogsForAnalysis.filter(l => l.priority === 'low').length,
-                dropped: allLogsForAnalysis.filter(l => l.action === 'drop').length,
-                alerts: allLogsForAnalysis.filter(l => l.action === 'alert').length
-            }
-
-            // Genel özet oluştur
-            const summary = `# Snort IDS Güvenlik Analizi Raporu
-
-**Analiz Tarihi:** ${new Date().toLocaleString('tr-TR')}
-**Toplam Log Sayısı:** ${totalStats.total}
-**Analiz Edilen Parça Sayısı:** ${chunks.length}
-
-## Genel İstatistikler
-- **Yüksek Öncelik:** ${totalStats.high}
-- **Orta Öncelik:** ${totalStats.medium}
-- **Düşük Öncelik:** ${totalStats.low}
-- **Engellenen:** ${totalStats.dropped}
-- **Uyarılar:** ${totalStats.alerts}
-
----
-
-${allAnalysisResults.join('\n\n---\n')}
-
----
-
-## Genel Değerlendirme
-
-${chunks.length > 1 
-    ? `Toplam ${chunks.length} parça halinde ${totalStats.total} log analiz edildi. Yukarıdaki parça analizlerini inceleyerek genel güvenlik durumunu değerlendirin.`
-    : `${totalStats.total} log analiz edildi. Yukarıdaki analiz sonuçlarını inceleyerek güvenlik durumunu değerlendirin.`
-}`
-
-            setAnalysisResult(summary)
-            setSelectedLogsForAnalysis(allLogsForAnalysis)
-        } catch (error: any) {
-            console.error('❌ Gemini analiz hatası:', error)
-            setAnalysisError(error?.response?.data?.message || error?.message || 'Analiz sırasında bir hata oluştu')
-        } finally {
-            setIsAnalyzing(false)
-        }
-    }
-
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -638,8 +446,7 @@ ${chunks.length > 1
                     { id: 'charts', label: 'Grafikler', icon: BarChart3 },
                     { id: 'map', label: 'Harita', icon: Map },
                     { id: 'rules', label: 'Kurallar', icon: Settings },
-                    { id: 'reports', label: 'Raporlar', icon: FileText },
-                    { id: 'analysis', label: 'AI Analiz', icon: Brain }
+                    { id: 'reports', label: 'Raporlar', icon: FileText }
                 ].map(tab => {
                     const Icon = tab.icon
                     return (
@@ -1206,223 +1013,6 @@ ${chunks.length > 1
             {activeTab === 'map' && <SnortMap logs={logs} />}
             {activeTab === 'rules' && <SnortRules />}
             {activeTab === 'reports' && <SnortReports />}
-            
-            {/* AI Analiz Tab */}
-            {activeTab === 'analysis' && (
-                <div className="space-y-6">
-                    {/* Analiz Kontrol Paneli */}
-                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                                    Gemini AI Güvenlik Analizi
-                                </h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                    Snort loglarınızı yapay zeka ile analiz edin ve güvenlik önerileri alın
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-4 mb-6">
-                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                                <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-1">Analiz Edilecek Log</p>
-                                <p className="text-2xl font-bold text-purple-800 dark:text-purple-300">
-                                    {selectedLogs.size > 0 ? selectedLogs.size : filteredLogs.length}
-                                </p>
-                            </div>
-                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Yüksek Öncelik</p>
-                                <p className="text-2xl font-bold text-blue-800 dark:text-blue-300">
-                                    {filteredLogs.filter(l => l.priority === 'high').length}
-                                </p>
-                            </div>
-                            <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
-                                <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Engellenen</p>
-                                <p className="text-2xl font-bold text-red-800 dark:text-red-300">
-                                    {filteredLogs.filter(l => l.action === 'drop').length}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => analyzeWithGemini()}
-                                disabled={isAnalyzing || filteredLogs.length === 0}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isAnalyzing ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        <span>Analiz Ediliyor...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Brain className="w-5 h-5" />
-                                        <span>
-                                            {selectedLogs.size > 0 
-                                                ? `Seçilen ${selectedLogs.size} Logu Analiz Et`
-                                                : `Tüm Logları Analiz Et (${filteredLogs.length})`
-                                            }
-                                        </span>
-                                    </>
-                                )}
-                            </button>
-                            {selectedLogs.size > 0 && (
-                                <button
-                                    onClick={() => setSelectedLogs(new Set())}
-                                    className="px-4 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                >
-                                    Seçimi Temizle
-                                </button>
-                            )}
-                        </div>
-
-                        {selectedLogs.size > 0 && (
-                            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    <strong>{selectedLogs.size}</strong> log seçildi. Sadece seçili loglar analiz edilecek.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Analiz Sonuçları */}
-                    {isAnalyzing && (
-                        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-12 border border-slate-200 dark:border-slate-700 text-center">
-                            <Loader2 className="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-4" />
-                            <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Gemini AI analiz yapıyor...</p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Loglarınız analiz ediliyor, lütfen bekleyin
-                            </p>
-                        </div>
-                    )}
-
-                    {analysisError && (
-                        <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl shadow-sm p-6 border border-red-200 dark:border-red-800">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Analiz Hatası</h4>
-                                    <p className="text-red-700 dark:text-red-400">{analysisError}</p>
-                                    <button
-                                        onClick={() => {
-                                            setAnalysisError(null)
-                                            analyzeWithGemini()
-                                        }}
-                                        className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                                    >
-                                        Tekrar Dene
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {analysisResult && !isAnalyzing && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"
-                        >
-                            <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                        <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                                        Analiz Sonuçları
-                                    </h3>
-                                    <button
-                                        onClick={() => {
-                                            setAnalysisResult(null)
-                                            setSelectedLogsForAnalysis([])
-                                        }}
-                                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                    >
-                                        <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                                    </button>
-                                </div>
-                                {selectedLogsForAnalysis.length > 0 && (
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                                        {selectedLogsForAnalysis.length} log analiz edildi
-                                    </p>
-                                )}
-                            </div>
-                            <div className="p-6">
-                                <div className="prose dark:prose-invert max-w-none">
-                                    <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
-                                        {analysisResult}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        const blob = new Blob([analysisResult], { type: 'text/plain;charset=utf-8;' })
-                                        const link = document.createElement('a')
-                                        link.href = URL.createObjectURL(blob)
-                                        link.download = `snort-analysis-${new Date().toISOString().split('T')[0]}.txt`
-                                        link.click()
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    <span>İndir</span>
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(analysisResult)
-                                        alert('✅ Analiz sonucu panoya kopyalandı')
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                >
-                                    <FileText className="w-4 h-4" />
-                                    <span>Kopyala</span>
-                                </button>
-                                <button
-                                    onClick={() => analyzeWithGemini()}
-                                    className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    <span>Yeniden Analiz Et</span>
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {!analysisResult && !isAnalyzing && !analysisError && (
-                        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm p-12 border border-slate-200 dark:border-slate-700 text-center">
-                            <Brain className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                            <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Analiz Başlatın</p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Snort loglarınızı Gemini AI ile analiz etmek için yukarıdaki butona tıklayın
-                            </p>
-                            <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
-                                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                                    <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400 mb-2" />
-                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">AI Analiz</h4>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                                        Loglarınızı yapay zeka ile analiz edin
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                                    <AlertTriangle className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
-                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Tehdit Tespiti</h4>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                                        Potansiyel güvenlik tehditlerini tespit edin
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                                    <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 mb-2" />
-                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Öneriler</h4>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                                        Güvenlik iyileştirmeleri için öneriler alın
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     )
 }
