@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Shield, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Shield, AlertTriangle, Clock, CheckCircle, XCircle, Activity } from 'lucide-react'
 import { DDoSAttack } from '@/lib/services/ddos-api'
 import { useTheme } from '@/lib/ThemeContext'
 
