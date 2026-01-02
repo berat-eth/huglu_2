@@ -3821,7 +3821,7 @@ function authenticateAdmin(req, res, next) {
 // Admin login endpoint (username/password -> token)
 app.post('/api/admin/login', async (req, res) => {
   try {
-    const { username, password } = req.body || {};
+    let { username, password } = req.body || {};
     
     // GÜVENLİK: SQL Injection koruması - Input validation
     const InputValidation = require('./security/input-validation');
@@ -3965,14 +3965,14 @@ app.post('/api/admin/login', async (req, res) => {
         tenantId = ins.insertId;
       }
 
-      const ADMIN_USERNAME_FIXED = (process.env.ADMIN_USERNAME || 'berat1').toString();
+      const ADMIN_USERNAME_FIXED = (process.env.ADMIN_USERNAME || ADMIN_USERNAME).toString();
       const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || (ADMIN_USERNAME_FIXED + '@admin.local')).toString();
 
       // Admin kullanıcıyı seed et (yoksa oluştur)
       const [existingAdmin] = await poolWrapper.execute('SELECT id, password FROM users WHERE email = ? AND role = "admin" LIMIT 1', [ADMIN_EMAIL]);
       if (existingAdmin.length === 0) {
         const userIdStr = (Math.floor(10000000 + Math.random() * 90000000)).toString();
-        const adminPlainPassword = (process.env.ADMIN_PASSWORD || 'berat1').toString();
+        const adminPlainPassword = (process.env.ADMIN_PASSWORD || ADMIN_PASSWORD).toString();
         const seededHash = await hashPassword(adminPlainPassword);
         await poolWrapper.execute(
           'INSERT INTO users (user_id, tenantId, name, email, password, role, isActive, createdAt) VALUES (?, ?, ?, ?, ?, "admin", true, NOW())',
@@ -24098,6 +24098,8 @@ TEMEL KURALLAR:
 - Ürün bilgileri verilmişse, bunları kullanarak detaylı yanıt ver
 - Bilmediğin bir şey varsa dürüst ol ve canlı desteğe yönlendir
 - web sitesine değil işlemleri mobil uygulamadan yapsın
+- gerçek bir insan gibi konuş
+- muşteriye nokta atışı beden bilgisi sun 
 
 YARDIM EDEBİLECEĞİN KONULAR:
 - Ürün bilgileri (özellikler, fiyat, stok, beden, renk)
