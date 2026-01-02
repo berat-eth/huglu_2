@@ -24018,7 +24018,7 @@ async function startServer() {
     try {
       // Gemini config'i veritabanından al
       const [geminiConfigs] = await poolWrapper.execute(`
-        SELECT enabled, apiKey, model, temperature, maxTokens
+        SELECT id, enabled, apiKey, model, temperature, maxTokens
         FROM gemini_config
         WHERE enabled = 1
         ORDER BY id ASC
@@ -24027,10 +24027,29 @@ async function startServer() {
 
       if (geminiConfigs && geminiConfigs.length > 0 && geminiConfigs[0].apiKey && geminiConfigs[0].apiKey.trim() !== '') {
         const config = geminiConfigs[0];
-        // Geçerli Gemini modelleri: gemini-2.5-flash, gemini-1.5-pro, gemini-pro
+        // Müşteri hizmetleri için gemini-2.5-flash kullan
         // Eski model adlarını yeni adlara dönüştür
         let modelName = config.model || 'gemini-2.5-flash';
-        if (modelName === 'gemini-2.5-flash' || modelName === 'gemini-2.0-flash') {
+        // Tüm eski flash modellerini gemini-2.5-flash'e dönüştür
+        const oldModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro-latest', 'gemini-pro', 'gemini-1.5-pro'];
+        if (oldModels.includes(modelName)) {
+          modelName = 'gemini-2.5-flash';
+          // Veritabanındaki modeli de güncelle
+          try {
+            const configId = geminiConfigs[0].id || config.id;
+            if (configId) {
+              await poolWrapper.execute(
+                'UPDATE gemini_config SET model = ? WHERE id = ?',
+                ['gemini-2.5-flash', configId]
+              );
+              console.log('✅ Veritabanındaki model gemini-2.5-flash olarak güncellendi');
+            }
+          } catch (updateError) {
+            console.warn('⚠️ Model güncellenemedi:', updateError.message);
+          }
+        }
+        // Eğer model belirtilmemişse veya geçersizse gemini-2.5-flash kullan
+        if (!modelName || modelName === '' || modelName.trim() === '') {
           modelName = 'gemini-2.5-flash';
         }
         const temperature = parseFloat(config.temperature) || 0.70;
@@ -24103,12 +24122,13 @@ YARDIM EDEBİLECEĞİN KONULAR:
 
         // Gemini API çağrısı
         const axios = require('axios');
-        // Gemini API v1beta endpoint - API key'i query parameter olarak gönder
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+        // Gemini API v1beta endpoint - gemini-2.5-flash için
+        // API key'i hem header'da hem de query parameter olarak gönder (bazı modeller için gerekli)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
         
         console.log('🤖 Gemini API çağrısı:', { 
           modelName, 
-          url: url,
+          url: url.replace(config.apiKey, '***'),
           hasApiKey: !!config.apiKey,
           apiKeyLength: config.apiKey ? config.apiKey.length : 0
         });
