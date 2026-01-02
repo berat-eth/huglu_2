@@ -5,6 +5,7 @@
 
 const { getEndpointRateLimit } = require('../config/endpoint-rate-limits');
 const { createEndpointLimiter, getClientIP, getUserIdFromRequest, detectClientType } = require('../utils/rate-limiting');
+const { getDDoSDetectionService } = require('../services/ddos-detection-service');
 
 // Rate limiter cache - Aynı endpoint için tekrar oluşturmayı önler
 const limiterCache = new Map();
@@ -41,7 +42,7 @@ function getLimiterForEndpoint(path, method) {
  * Endpoint rate limit middleware
  * Request path ve method'a göre uygun rate limiter'ı uygular
  */
-function endpointRateLimitMiddleware(req, res, next) {
+async function endpointRateLimitMiddleware(req, res, next) {
   // Full path'i al (nested routes için req.originalUrl veya req.baseUrl + req.path kullan)
   // Express'te req.path nested route'lar için relative path olabilir
   let fullPath = req.originalUrl || req.url;
@@ -59,7 +60,8 @@ function endpointRateLimitMiddleware(req, res, next) {
   // Health check ve bazı özel endpoint'ler için skip
   const skipPaths = [
     '/api/health',
-    '/api/maintenance/status'
+    '/api/maintenance/status',
+    '/api/admin/ddos/stream' // SSE endpoint'i skip
   ];
 
   if (skipPaths.includes(fullPath)) {
@@ -69,6 +71,45 @@ function endpointRateLimitMiddleware(req, res, next) {
   try {
     const path = fullPath;
     const method = req.method;
+    const ip = getClientIP(req);
+    const tenantId = req.tenant?.id || 1;
+
+    // DDoS detection service'i al (poolWrapper'ı req.app.locals'tan al)
+    let poolWrapper = null;
+    if (req.app && req.app.locals && req.app.locals.poolWrapper) {
+      poolWrapper = req.app.locals.poolWrapper;
+    } else {
+      poolWrapper = require('../database-schema').poolWrapper;
+    }
+
+    if (poolWrapper) {
+      try {
+        const ddosDetectionService = getDDoSDetectionService(poolWrapper);
+        
+        // Request'i analiz et
+        const requestData = {
+          endpoint: path,
+          method: method,
+          userAgent: req.headers['user-agent'] || '',
+          tenantId: tenantId,
+          estimatedTokens: req.headers['content-length'] ? Math.ceil(parseInt(req.headers['content-length']) / 3.5) : 0
+        };
+
+        const analysis = await ddosDetectionService.analyzeRequest(ip, requestData);
+        
+        // Eğer IP engellenmişse veya saldırı tespit edilmişse
+        if (analysis.blocked) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied',
+            reason: analysis.reason || 'IP blocked'
+          });
+        }
+      } catch (ddosError) {
+        // DDoS detection hatası rate limiting'i engellemez
+        console.error('DDoS detection hatası:', ddosError);
+      }
+    }
 
     // Endpoint için rate limiter'ı al
     const limiter = getLimiterForEndpoint(path, method);

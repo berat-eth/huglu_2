@@ -75,11 +75,51 @@ class SecurityMonitor {
     // Metrikleri güncelle
     this.updateMetrics(event);
 
+    // DDoS event'lerini DDoS detection service'e bildir
+    if (event.type === 'DDoS_ATTACK' || event.type === 'RATE_LIMIT_EXCEEDED' || event.severity === 'high' || event.severity === 'critical') {
+      this.notifyDDoSDetection(event);
+    }
+
     // Alert kontrolü
     this.checkAlerts(event);
 
     // Alert'leri temizle
     this.cleanupAlerts();
+  }
+
+  /**
+   * DDoS detection service'e event bildir
+   */
+  notifyDDoSDetection(event) {
+    try {
+      // poolWrapper'ı global'den veya require ile al
+      let poolWrapper = null;
+      if (typeof global !== 'undefined' && global.poolWrapper) {
+        poolWrapper = global.poolWrapper;
+      } else {
+        try {
+          poolWrapper = require('../database-schema').poolWrapper;
+        } catch (err) {
+          // poolWrapper henüz hazır değilse skip
+          return;
+        }
+      }
+
+      if (poolWrapper && event.ip) {
+        const { getDDoSDetectionService } = require('../services/ddos-detection-service');
+        const ddosDetectionService = getDDoSDetectionService(poolWrapper);
+        
+        // IP score'u artır
+        if (event.severity === 'critical') {
+          ddosDetectionService.increaseIPScore(event.ip, 20);
+        } else if (event.severity === 'high') {
+          ddosDetectionService.increaseIPScore(event.ip, 10);
+        }
+      }
+    } catch (error) {
+      // DDoS detection hatası güvenlik monitoring'i engellemez
+      console.error('DDoS detection bildirimi hatası:', error);
+    }
   }
 
   /**
