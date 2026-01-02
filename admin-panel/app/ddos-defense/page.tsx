@@ -19,6 +19,50 @@ export default function DDoSDefensePage() {
   const [loading, setLoading] = useState(true)
   const [realtimeEnabled, setRealtimeEnabled] = useState(false)
   const [sseEventSource, setSseEventSource] = useState<EventSource | null>(null)
+  const [activeTab, setActiveTab] = useState('ddos-defense')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // loadData fonksiyonunu useCallback ile sarmalayalım
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      
+      // Paralel istekler
+      const [statusRes, attacksRes, metricsRes, topAttackersRes] = await Promise.all([
+        DDoSAPI.getStatus(),
+        DDoSAPI.getAttacks({ page: 1, limit: 10 }),
+        DDoSAPI.getMetrics({ interval: 'hour' }),
+        DDoSAPI.getTopAttackers({ limit: 5 })
+      ])
+      
+      if (statusRes.success && statusRes.data) {
+        setStatus(statusRes.data)
+      }
+      
+      if (attacksRes.success && attacksRes.data) {
+        setAttacks(attacksRes.data.attacks)
+      }
+      
+      if (metricsRes.success && metricsRes.data) {
+        setMetrics(metricsRes.data.metrics || [])
+      } else {
+        // Metrics yüklenemezse boş array set et
+        setMetrics([])
+      }
+      
+      if (topAttackersRes.success && topAttackersRes.data) {
+        setTopAttackers(topAttackersRes.data.attackers)
+      }
+    } catch (error) {
+      console.error('DDoS veri yükleme hatası:', error)
+      // Hata durumunda boş veriler set et
+      setMetrics([])
+      setAttacks([])
+      setTopAttackers([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // İlk yükleme
   useEffect(() => {
@@ -33,6 +77,7 @@ export default function DDoSDefensePage() {
         DDoSAPI.unsubscribeRealtime(sseEventSource)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // SSE aboneliği
@@ -60,6 +105,7 @@ export default function DDoSDefensePage() {
         setSseEventSource(null)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [realtimeEnabled])
 
   const loadData = async () => {
@@ -131,9 +177,6 @@ export default function DDoSDefensePage() {
       </div>
     )
   }
-
-  const [activeTab, setActiveTab] = useState('ddos-defense')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
