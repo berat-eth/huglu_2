@@ -171,7 +171,7 @@ const GeminiConfig = sequelize.define('gemini_config', {
   },
   model: { 
     type: DataTypes.STRING(100), 
-    defaultValue: 'gemini-1.5-flash' 
+    defaultValue: 'gemini-2.5-flash' 
   },
   temperature: { 
     type: DataTypes.DECIMAL(3, 2), 

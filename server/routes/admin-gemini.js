@@ -102,7 +102,7 @@ router.get('/config', async (req, res) => {
             try {
                 const [result] = await poolWrapper.execute(`
                     INSERT INTO gemini_config (enabled, apiKey, model, temperature, maxTokens, createdAt, updatedAt)
-                    VALUES (1, '', 'gemini-1.5-flash', 0.70, 8192, NOW(), NOW())
+                    VALUES (1, '', 'gemini-2.5-flash', 0.70, 8192, NOW(), NOW())
                 `);
                 
                 const [newConfigs] = await poolWrapper.execute(`
@@ -121,7 +121,7 @@ router.get('/config', async (req, res) => {
                         enabled: true,
                         apiKey: '',
                         apiKeyMasked: true,
-                        model: 'gemini-1.5-flash',
+                        model: 'gemini-2.5-flash',
                         temperature: 0.70,
                         maxTokens: 8192
                     }
@@ -137,7 +137,7 @@ router.get('/config', async (req, res) => {
                 ? (apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4)) 
                 : '',
             apiKeyMasked: apiKey && apiKey.length > 12,
-            model: config.model || 'gemini-1.5-flash',
+            model: config.model || 'gemini-2.5-flash',
             temperature: parseFloat(config.temperature) || 0.70,
             maxTokens: parseInt(config.maxTokens) || 8192
         };
@@ -255,7 +255,7 @@ router.post('/config', async (req, res) => {
             `, [
                 enabled !== undefined ? (enabled ? 1 : 0) : 1,
                 apiKey || '',
-                model || 'gemini-1.5-flash',
+                model || 'gemini-2.5-flash',
                 temperature !== undefined ? temperature : 0.70,
                 maxTokens !== undefined ? maxTokens : 8192
             ]);
@@ -284,7 +284,7 @@ router.post('/config', async (req, res) => {
                 ? (apiKeyValue.substring(0, 8) + '...' + apiKeyValue.substring(apiKeyValue.length - 4)) 
                 : '',
             apiKeyMasked: apiKeyValue && apiKeyValue.length > 12,
-            model: config.model || 'gemini-1.5-flash',
+            model: config.model || 'gemini-2.5-flash',
             temperature: parseFloat(config.temperature) || 0.70,
             maxTokens: parseInt(config.maxTokens) || 8192
         };
@@ -687,10 +687,10 @@ router.post('/analyze-snort-logs', async (req, res) => {
 
         const config = configs[0];
         const axios = require('axios');
-        // Eski model adlarını yeni adlara dönüştür
-        let modelName = config.model || 'gemini-1.5-flash';
-        if (modelName === 'gemini-2.5-flash' || modelName === 'gemini-2.0-flash') {
-          modelName = 'gemini-1.5-flash';
+        // Model adını ayarla - müşteri hizmetleri için gemini-2.5-flash kullan
+        let modelName = config.model || 'gemini-2.5-flash';
+        if (modelName === 'gemini-2.0-flash' || modelName === 'gemini-1.5-flash') {
+          modelName = 'gemini-2.5-flash';
         }
 
         // Son 100 snort logunu al (son 24 saat)
