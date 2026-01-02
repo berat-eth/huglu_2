@@ -49,6 +49,7 @@ const adminGeminiRoutes = require('./routes/admin-gemini');
 const elevenlabsRoutes = require('./routes/elevenlabs');
 const segmentsRoutes = require('./routes/segments');
 const { RecommendationService } = require('./services/recommendation-service');
+const { getGeminiService } = require('./services/gemini-service');
 const { authenticateTenant, authenticateJWT, requireJWT } = require('./middleware/auth');
 const helmet = require('helmet');
 const hpp = require('hpp');
@@ -24087,6 +24088,30 @@ async function startServer() {
 - Kilo: ${userInfo.weight || 'Belirtilmemiş'} kg`;
         }
 
+        // Mesaj tipine göre özel prompt hazırla
+        const messageLower = message.toLowerCase();
+        let specialContext = '';
+        
+        // Hızlı sipariş için özel context
+        if (messageLower.includes('hızlı sipariş') || messageLower.includes('sipariş ver')) {
+          specialContext = `\n\nÖNEMLİ: Müşteri hızlı sipariş vermek istiyor. Ürün bilgilerini kullanarak sipariş sürecini hızlandır. Sepete ekleme ve ödeme adımlarını açıkla. Müşteriyi satın almaya yönlendir ve sipariş verme sürecini kolaylaştır.`;
+        }
+        
+        // Beden bilgisi için özel context
+        if (messageLower.includes('beden') || messageLower.includes('size')) {
+          specialContext = `\n\nÖNEMLİ: Müşteri beden bilgisi istiyor. ${userContext ? 'Kullanıcının boy ve kilo bilgileri verilmiş, bunları kullanarak nokta atışı beden önerisi yap. ' : ''}Ürünün mevcut bedenlerini ve özelliklerini kullanarak en uygun bedeni öner. Detaylı beden tablosu veya ölçü bilgileri varsa paylaş.`;
+        }
+        
+        // Fiyat için özel context
+        if (messageLower.includes('fiyat') || messageLower.includes('price') || messageLower.includes('kaç')) {
+          specialContext = `\n\nÖNEMLİ: Müşteri fiyat bilgisi istiyor. Ürünün normal fiyatını, varsa indirimli fiyatını ve indirim oranını açıkça belirt. Kampanya veya özel fiyatlandırma varsa bunları da belirt. Fiyat karşılaştırması yaparak değer vurgusu yap.`;
+        }
+        
+        // Müşteri hizmetleri için özel context
+        if (messageLower.includes('müşteri hizmetleri') || messageLower.includes('destek') || messageLower.includes('support') || messageLower.includes('yardım')) {
+          specialContext = `\n\nÖNEMLİ: Müşteri müşteri hizmetleri ile iletişime geçmek istiyor. Canlı destek seçeneklerini, çalışma saatlerini ve iletişim kanallarını açıkla. Müşteriyi canlı desteğe yönlendir ve nasıl bağlanabileceğini anlat.`;
+        }
+
         // Gemini için prompt hazırla
         const systemPrompt = `Sen Huğlu Outdoor e-ticaret sitesinin profesyonel ve yardımsever AI asistanısın. Görevin müşterilere en iyi alışveriş deneyimini sunmak.
 
@@ -24119,43 +24144,22 @@ YARDIM EDEBİLECEĞİN KONULAR:
 - Ürün bilgileri varsa mutlaka kullan
 - muşteriyi satın almaya yönlendir 
 - müşteriyi satın almaya yönlendirmek için öneri ver
-- Satışları Maximize etmeye özen göster`;
+- Satışları Maximize etmeye özen göster${specialContext}`;
 
         const userPrompt = `${message}${productContext}${userContext}`;
 
-        // Gemini API çağrısı
-        const axios = require('axios');
-        // Gemini API v1beta endpoint - gemini-2.5-flash için
-        // API key'i hem header'da hem de query parameter olarak gönder (bazı modeller için gerekli)
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
-        
-        console.log('🤖 Gemini API çağrısı:', { 
-          modelName, 
-          url: url.replace(config.apiKey, '***'),
-          hasApiKey: !!config.apiKey,
-          apiKeyLength: config.apiKey ? config.apiKey.length : 0
-        });
-        
-        const response = await axios.post(url, {
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: `${systemPrompt}\n\nMüşteri Sorusu: ${userPrompt}` }]
-            }
-          ],
-          generationConfig: {
-            temperature: temperature,
-            maxOutputTokens: maxTokens
-          }
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': config.apiKey
-          },
-          timeout: 30000
-        });
+        // Gemini Service kullanarak API çağrısı (rate limiting ve caching ile)
+        const geminiService = getGeminiService(poolWrapper);
+        const geminiResult = await geminiService.sendMessage(
+          message,
+          productContext,
+          userContext,
+          systemPrompt,
+          productId,
+          userId
+        );
 
-        const geminiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const geminiResponse = geminiResult.text || '';
         
         if (geminiResponse && geminiResponse.trim()) {
           // Gemini yanıtından ürün adlarını çıkar ve ürün kartlarını bul

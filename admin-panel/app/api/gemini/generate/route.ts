@@ -1,5 +1,159 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import crypto from 'crypto';
+
+// ==================== RPM (Requests Per Minute) ====================
+let requestCount = 0;
+let windowStart = Date.now();
+const windowSize = 60000; // 1 dakika
+const maxRequestsPerMinute = 15; // Free tier için güvenli limit (20'den 15'e düşürüldü)
+
+// ==================== TPM (Tokens Per Minute - Input) ====================
+let tokenCount = 0;
+let tokenWindowStart = Date.now();
+const maxTokensPerMinute = 28000; // Free tier için güvenli limit (32,000'den 28,000'e düşürüldü)
+
+// ==================== RPD (Requests Per Day) ====================
+let dailyRequestCount = 0;
+let dailyWindowStart = getPacificMidnight(); // Pasifik saatine göre gece yarısı
+const maxRequestsPerDay = 1200; // Free tier için günlük limit (1,500'den 1,200'e düşürüldü)
+
+// Response cache (benzer sorular için)
+const responseCache = new Map<string, { response: any; timestamp: number }>();
+const cacheTTL = 5 * 60 * 1000; // 5 dakika
+
+/**
+ * Pasifik saatine göre gece yarısını hesapla
+ * RPD kotaları Pasifik saatine göre gece yarısında sıfırlanır
+ */
+function getPacificMidnight(): Date {
+  const now = new Date();
+  // Pasifik saati (UTC-8 veya UTC-7 - DST'ye göre)
+  // Basitleştirme: UTC-8 kullanıyoruz (PST)
+  const pacificOffset = -8 * 60; // UTC-8 in minutes
+  const pacificTime = new Date(now.getTime() + (pacificOffset * 60 * 1000));
+  
+  // Bugünün gece yarısı (Pasifik saatine göre)
+  pacificTime.setHours(0, 0, 0, 0);
+  
+  // UTC'ye geri çevir
+  return new Date(pacificTime.getTime() - (pacificOffset * 60 * 1000));
+}
+
+/**
+ * Metindeki token sayısını tahmin et (yaklaşık)
+ * Gemini API için: ~4 karakter = 1 token (Türkçe için)
+ */
+function estimateTokenCount(text: string): number {
+  if (!text) return 0;
+  // Türkçe için yaklaşık: 1 token = 4 karakter
+  // Güvenli tahmin için 3.5 karakter/token kullanıyoruz
+  return Math.ceil(text.length / 3.5);
+}
+
+// Cache key oluştur
+function getCacheKey(messages: any[]): string {
+  const messageText = messages.map(m => m.content || '').join('|');
+  return crypto.createHash('md5').update(messageText).digest('hex');
+}
+
+// Cache'den yanıt al
+function getCachedResponse(cacheKey: string): any | null {
+  const cached = responseCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < cacheTTL) {
+    return cached.response;
+  }
+  if (cached) {
+    responseCache.delete(cacheKey);
+  }
+  return null;
+}
+
+// Cache'e yanıt kaydet
+function setCachedResponse(cacheKey: string, response: any): void {
+  responseCache.set(cacheKey, {
+    response,
+    timestamp: Date.now()
+  });
+  
+  // Cache boyutunu kontrol et (max 1000 entry)
+  if (responseCache.size > 1000) {
+    const firstKey = responseCache.keys().next().value;
+    responseCache.delete(firstKey);
+  }
+}
+
+// Tüm rate limitleri kontrol et (RPM, TPM, RPD)
+async function checkAllRateLimits(inputText: string): Promise<void> {
+  const now = Date.now();
+  
+  // ==================== RPM (Requests Per Minute) Kontrolü ====================
+  if (now - windowStart >= windowSize) {
+    requestCount = 0;
+    windowStart = now;
+  }
+  
+  if (requestCount >= maxRequestsPerMinute) {
+    const waitTime = windowSize - (now - windowStart);
+    if (waitTime > 0) {
+      console.log(`⏳ Gemini API RPM limit: ${waitTime}ms bekleniyor... (${requestCount}/${maxRequestsPerMinute})`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      requestCount = 0;
+      windowStart = Date.now();
+    }
+  }
+  
+  // ==================== TPM (Tokens Per Minute) Kontrolü ====================
+  const estimatedTokens = estimateTokenCount(inputText);
+  
+  if (now - tokenWindowStart >= windowSize) {
+    tokenCount = 0;
+    tokenWindowStart = now;
+  }
+  
+  if (tokenCount + estimatedTokens > maxTokensPerMinute) {
+    const waitTime = windowSize - (now - tokenWindowStart);
+    if (waitTime > 0) {
+      console.log(`⏳ Gemini API TPM limit: ${waitTime}ms bekleniyor... (${tokenCount + estimatedTokens}/${maxTokensPerMinute} tokens)`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      tokenCount = 0;
+      tokenWindowStart = Date.now();
+    }
+  }
+  
+  // ==================== RPD (Requests Per Day) Kontrolü ====================
+  const pacificMidnight = getPacificMidnight();
+  const timeSinceMidnight = now - pacificMidnight.getTime();
+  const oneDay = 24 * 60 * 60 * 1000;
+  
+  // Eğer yeni bir gün başladıysa sıfırla
+  if (timeSinceMidnight >= oneDay || timeSinceMidnight < 0) {
+    dailyRequestCount = 0;
+    dailyWindowStart = pacificMidnight;
+    console.log('🔄 Gemini API günlük limit sıfırlandı (Pasifik saati gece yarısı)');
+  }
+  
+  if (dailyRequestCount >= maxRequestsPerDay) {
+    const nextMidnight = new Date(pacificMidnight);
+    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    const waitTime = nextMidnight.getTime() - now;
+    
+    if (waitTime > 0) {
+      const waitHours = Math.ceil(waitTime / (60 * 60 * 1000));
+      throw new Error(`Günlük istek limiti aşıldı (${dailyRequestCount}/${maxRequestsPerDay}). Lütfen ${waitHours} saat sonra tekrar deneyin.`);
+    }
+  }
+  
+  // Limitler aşılmadıysa sayacları artır
+  requestCount++;
+  tokenCount += estimatedTokens;
+  dailyRequestCount++;
+  
+  // Log (her 10 istekte bir)
+  if (requestCount % 10 === 0 || dailyRequestCount % 100 === 0) {
+    console.log(`📊 Gemini API kullanımı - RPM: ${requestCount}/${maxRequestsPerMinute}, TPM: ${tokenCount}/${maxTokensPerMinute}, RPD: ${dailyRequestCount}/${maxRequestsPerDay}`);
+  }
+}
 
 // Backend'den API key'i çek
 async function getApiKeyFromBackend(): Promise<string | null> {
@@ -196,29 +350,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Gemini'ye istek gönder
-    const result = await geminiModel.generateContent({
-      contents: contents as any,
-      generationConfig: {
-        temperature: temperature || 0.7,
-        maxOutputTokens: maxTokens || 8192,
-        topP: 0.95,
-        topK: 40
-      }
-    });
+    // Cache kontrolü
+    const cacheKey = getCacheKey(messages);
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      console.log('✅ Gemini API cache hit');
+      return NextResponse.json(cachedResponse);
+    }
 
-    const response = await result.response;
-    const text = response.text();
+    // Tüm rate limitleri kontrol et
+    const fullInputText = JSON.stringify(contents);
+    await checkAllRateLimits(fullInputText);
 
-    // REST API formatına çevir (geriye uyumluluk için)
-    return NextResponse.json({
-      candidates: [{
-        content: {
-          parts: [{ text }],
-          role: 'model'
+    // Gemini'ye istek gönder (retry mekanizması ile)
+    let result;
+    let lastError: any = null;
+    const maxRetries = 3;
+    const retryDelays = [1000, 2000, 5000]; // 1s, 2s, 5s
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        result = await geminiModel.generateContent({
+          contents: contents as any,
+          generationConfig: {
+            temperature: temperature || 0.7,
+            maxOutputTokens: maxTokens || 8192,
+            topP: 0.95,
+            topK: 40
+          }
+        });
+        
+        const response = await result.response;
+        const text = response.text();
+
+        // REST API formatına çevir (geriye uyumluluk için)
+        const apiResponse = {
+          candidates: [{
+            content: {
+              parts: [{ text }],
+              role: 'model'
+            }
+          }]
+        };
+        
+        // Cache'e kaydet
+        setCachedResponse(cacheKey, apiResponse);
+        
+        return NextResponse.json(apiResponse);
+      } catch (error: any) {
+        lastError = error;
+        
+        // 429 (Rate Limit) hatası için retry
+        if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+          if (attempt < maxRetries) {
+            const retryAfter = error.message?.match(/retry in (\d+\.?\d*)s/i);
+            const waitTime = retryAfter 
+              ? Math.ceil(parseFloat(retryAfter[1]) * 1000)
+              : retryDelays[attempt - 1];
+            
+            console.warn(`⚠️ Gemini API rate limit (429), ${waitTime}ms sonra tekrar deneniyor... (${attempt}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
         }
-      }]
-    });
+        
+        // Diğer hatalar için de retry (sadece network hataları)
+        if (attempt < maxRetries && (!error.message?.includes('400') && !error.message?.includes('401') && !error.message?.includes('403'))) {
+          const waitTime = retryDelays[attempt - 1];
+          console.warn(`⚠️ Gemini API hatası, ${waitTime}ms sonra tekrar deneniyor... (${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    // Tüm denemeler başarısız
+    throw lastError || new Error('Gemini API erişilemiyor');
 
   } catch (error: any) {
     console.error('❌ Gemini API route error:', error);

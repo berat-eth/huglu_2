@@ -849,10 +849,29 @@ export default function ProductDetailScreen({ navigation, route }) {
       const userId = await AsyncStorage.getItem('userId');
       const productId = product?.id || product?._id || routeProductId;
 
+      // Özel alanlar için detaylı mesaj hazırla
+      let detailedMessage = question;
+      const questionLower = question.toLowerCase();
+      
+      if (questionLower.includes('sipariş') || questionLower.includes('hızlı sipariş')) {
+        // Hızlı sipariş için detaylı context
+        detailedMessage = `Hızlı sipariş vermek istiyorum. Ürün: ${product?.name || 'Bu ürün'}, Fiyat: ${product?.discountPrice || product?.price || 'Belirtilmemiş'} ₺, Stok: ${product?.stock || 0} adet. ${selectedSize > 0 && sizeOptions[selectedSize] ? `Seçilen beden: ${sizeOptions[selectedSize].value || sizeOptions[selectedSize].label || sizeOptions[selectedSize]}` : ''} Hızlı sipariş sürecini başlatabilir misin?`;
+      } else if (questionLower.includes('beden') || questionLower.includes('size')) {
+        // Beden bilgisi için detaylı context
+        const sizes = sizeOptions.map(s => s.value || s.label || s).join(', ');
+        detailedMessage = `Bu ürün için beden bilgisi istiyorum. Ürün: ${product?.name || 'Bu ürün'}, Mevcut bedenler: ${sizes || 'Tek beden'}. Bana uygun bedeni önerebilir misin?`;
+      } else if (questionLower.includes('fiyat') || questionLower.includes('price')) {
+        // Fiyat için detaylı context
+        detailedMessage = `Bu ürünün fiyat bilgisini öğrenmek istiyorum. Ürün: ${product?.name || 'Bu ürün'}, Normal Fiyat: ${product?.price || 'Belirtilmemiş'} ₺, ${product?.discountPrice ? `İndirimli Fiyat: ${product.discountPrice} ₺, İndirim Oranı: ${product.discountPercent || Math.round(((product.price - product.discountPrice) / product.price) * 100)}%` : 'İndirim yok'}. Fiyat hakkında detaylı bilgi verebilir misin?`;
+      } else if (questionLower.includes('müşteri hizmetleri') || questionLower.includes('destek') || questionLower.includes('support')) {
+        // Müşteri hizmetleri için detaylı context
+        detailedMessage = `Müşteri hizmetleri ile iletişime geçmek istiyorum. Ürün: ${product?.name || 'Bu ürün'}, Ürün ID: ${productId || 'Belirtilmemiş'}. Müşteri hizmetleri hakkında bilgi verebilir misin?`;
+      }
+
       // Backend'e mesaj gönder
       const response = await chatbotAPI.sendMessage(
         userId || null,
-        question,
+        detailedMessage,
         null,
         productId || null,
         'text'
@@ -2214,12 +2233,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.chatbotQuickAction, styles.chatbotQuickActionSupport]}
-              onPress={() => {
-                setShowChatbot(false);
-                navigation.navigate('LiveChat', {
-                  initialMessage: 'Merhaba, yardıma ihtiyacım var.'
-                });
-              }}
+              onPress={() => handleQuickAction('Müşteri Hizmetleri')}
             >
               <Ionicons name="headset" size={14} color={COLORS.success} />
               <Text style={[styles.chatbotQuickActionText, styles.chatbotQuickActionTextSupport]}>Müşteri Hizmetleri</Text>
