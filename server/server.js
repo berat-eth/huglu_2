@@ -23853,7 +23853,7 @@ async function startServer() {
     return 'unknown';
   }
 
-  // Chatbot yanıt oluşturma fonksiyonu
+  // Chatbot yanıt oluşturma fonksiyonu - Gemini API entegrasyonu ile
   async function generateChatbotResponse(intent, message, actionType, tenantId, userId = null, productId = null, userInfo = null) {
     const timestamp = new Date();
     const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -23863,7 +23863,113 @@ async function startServer() {
       return await handleSpecialChatbotAction(actionType, message, messageId, timestamp, tenantId);
     }
 
-    // Intent'e göre yanıt oluştur
+    // Gemini API kullanarak yanıt oluştur
+    try {
+      // Gemini config'i veritabanından al
+      const [geminiConfigs] = await poolWrapper.execute(`
+        SELECT enabled, apiKey, model, temperature, maxTokens
+        FROM gemini_config
+        WHERE enabled = 1
+        ORDER BY id ASC
+        LIMIT 1
+      `);
+
+      if (geminiConfigs && geminiConfigs.length > 0 && geminiConfigs[0].apiKey && geminiConfigs[0].apiKey.trim() !== '') {
+        const config = geminiConfigs[0];
+        const modelName = config.model || 'gemini-2.5-flash';
+        const temperature = parseFloat(config.temperature) || 0.70;
+        const maxTokens = parseInt(config.maxTokens) || 8192;
+
+        // Ürün bilgilerini hazırla
+        let productContext = '';
+        if (productId) {
+          try {
+            const [productRows] = await poolWrapper.execute(
+              'SELECT id, name, price, description, stock, brand, category FROM products WHERE id = ? AND tenantId = ? LIMIT 1',
+              [productId, tenantId]
+            );
+            if (productRows.length > 0) {
+              const product = productRows[0];
+              productContext = `\n\nÜrün Bilgileri:
+- Ürün Adı: ${product.name}
+- Fiyat: ${product.price} ₺
+- Stok: ${product.stock} adet
+- Marka: ${product.brand || 'Belirtilmemiş'}
+- Kategori: ${product.category || 'Belirtilmemiş'}
+- Açıklama: ${(product.description || '').substring(0, 200)}`;
+            }
+          } catch (err) {
+            console.warn('⚠️ Ürün bilgisi alınamadı:', err.message);
+          }
+        }
+
+        // Kullanıcı bilgilerini hazırla
+        let userContext = '';
+        if (userInfo) {
+          userContext = `\n\nKullanıcı Bilgileri:
+- İsim: ${userInfo.name || 'Belirtilmemiş'}
+- Boy: ${userInfo.height || 'Belirtilmemiş'} cm
+- Kilo: ${userInfo.weight || 'Belirtilmemiş'} kg`;
+        }
+
+        // Gemini için prompt hazırla
+        const systemPrompt = `Sen Huğlu Outdoor e-ticaret sitesinin yardımcı asistanısın. Müşterilere ürünler, siparişler, kampanyalar ve genel sorular hakkında yardımcı oluyorsun. Türkçe, samimi ve yardımsever bir dil kullan. Kısa ve öz cevaplar ver. Emoji kullanımını dengeli tut.`;
+        
+        const userPrompt = `${message}${productContext}${userContext}`;
+
+        // Gemini API çağrısı
+        const axios = require('axios');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+        
+        const response = await axios.post(url, {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `${systemPrompt}\n\nMüşteri Sorusu: ${userPrompt}` }]
+            }
+          ],
+          generationConfig: {
+            temperature: temperature,
+            maxOutputTokens: maxTokens
+          }
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': config.apiKey
+          },
+          timeout: 30000
+        });
+
+        const geminiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        if (geminiResponse && geminiResponse.trim()) {
+          // Intent'e göre hızlı yanıtlar ekle
+          let quickReplies = [];
+          if (intent === 'unknown' || intent === 'greeting') {
+            quickReplies = [
+              { id: '1', text: '📦 Sipariş Takibi', action: 'order_tracking' },
+              { id: '2', text: '🔍 Ürün Arama', action: 'product_search' },
+              { id: '3', text: '🎧 Canlı Destek', action: 'live_support' },
+              { id: '4', text: '❓ S.S.S.', action: 'faq' }
+            ];
+          }
+
+          return {
+            id: messageId,
+            text: geminiResponse.trim(),
+            isBot: true,
+            timestamp,
+            type: quickReplies.length > 0 ? 'quick_reply' : 'text',
+            quickReplies: quickReplies
+          };
+        }
+      }
+    } catch (geminiError) {
+      console.error('❌ Gemini API hatası:', geminiError.message);
+      // Gemini hatası durumunda fallback'e düş
+    }
+
+    // Fallback: Intent'e göre yanıt oluştur (Gemini kullanılamazsa)
     switch (intent) {
       case 'order_number':
         return await handleOrderTracking(message, tenantId);

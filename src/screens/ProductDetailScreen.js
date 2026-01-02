@@ -690,21 +690,65 @@ export default function ProductDetailScreen({ navigation, route }) {
     setBotTyping(true);
     startTypingAnimation();
 
-    // Simüle bot yanıtı (gerçek API entegrasyonu için chatbotAPI kullanılabilir)
-    setTimeout(() => {
+    try {
+      // Kullanıcı ID'sini al
+      const userId = await AsyncStorage.getItem('userId');
+      const productId = product?.id || product?._id || routeProductId;
+
+      // Backend'e mesaj gönder (Gemini API backend'de kullanılacak)
+      const response = await chatbotAPI.sendMessage(
+        userId || null,
+        messageText,
+        null, // sessionId - backend otomatik yönetir
+        productId || null,
+        'text'
+      );
+
       setBotTyping(false);
       stopTypingAnimation();
+
+      if (response.data?.success && response.data?.data) {
+        const botData = response.data.data;
+        const botResponse = {
+          id: botData.id || `bot-${Date.now()}`,
+          type: 'bot',
+          text: botData.text || botData.message || 'Yanıt alınamadı',
+          messageType: botData.type || 'text',
+          action: botData.action,
+          quickReplies: botData.quickReplies || [],
+          timestamp: botData.timestamp ? new Date(botData.timestamp) : new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      } else {
+        // Fallback: Eski yöntem
+        const response = getBotResponse(messageText);
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: response.text || response,
+          messageType: response.type || 'text',
+          action: response.action,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      }
+    } catch (error) {
+      console.error('Chatbot mesaj hatası:', error);
+      setBotTyping(false);
+      stopTypingAnimation();
+      
+      // Hata durumunda fallback yanıt
       const response = getBotResponse(messageText);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response,
+        text: response.text || response || 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }, 1200);
+    }
   };
 
   const getBotResponse = (message) => {
@@ -785,7 +829,7 @@ export default function ProductDetailScreen({ navigation, route }) {
     }
   };
 
-  const handleQuickAction = (question) => {
+  const handleQuickAction = async (question) => {
     const userMessage = {
       id: chatMessages.length + 1,
       type: 'user',
@@ -797,21 +841,69 @@ export default function ProductDetailScreen({ navigation, route }) {
 
     // Typing indicator
     setBotTyping(true);
+    startTypingAnimation();
 
-    // Bot yanıtı
-    setTimeout(() => {
+    try {
+      // Kullanıcı ID'sini al
+      const userId = await AsyncStorage.getItem('userId');
+      const productId = product?.id || product?._id || routeProductId;
+
+      // Backend'e mesaj gönder
+      const response = await chatbotAPI.sendMessage(
+        userId || null,
+        question,
+        null,
+        productId || null,
+        'text'
+      );
+
       setBotTyping(false);
+      stopTypingAnimation();
+
+      if (response.data?.success && response.data?.data) {
+        const botData = response.data.data;
+        const botResponse = {
+          id: botData.id || `bot-${Date.now()}`,
+          type: 'bot',
+          text: botData.text || botData.message || 'Yanıt alınamadı',
+          messageType: botData.type || 'text',
+          action: botData.action,
+          quickReplies: botData.quickReplies || [],
+          timestamp: botData.timestamp ? new Date(botData.timestamp) : new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      } else {
+        // Fallback
+        setBotTyping(false);
+        stopTypingAnimation();
+        const response = getBotResponse(question);
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: response.text || response,
+          messageType: response.type || 'text',
+          action: response.action,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      }
+    } catch (error) {
+      console.error('Chatbot quick action hatası:', error);
+      setBotTyping(false);
+      stopTypingAnimation();
+      
+      // Hata durumunda fallback
       const response = getBotResponse(question);
       const botResponse = {
         id: chatMessages.length + 2,
         type: 'bot',
-        text: response.text || response,
+        text: response.text || response || 'Üzgünüm, bir hata oluştu.',
         messageType: response.type || 'text',
         action: response.action,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, botResponse]);
-    }, 1000);
+    }
   };
 
   const handleQuickOrder = async () => {
@@ -1944,6 +2036,36 @@ export default function ProductDetailScreen({ navigation, route }) {
                       <Ionicons name="headset" size={18} color={COLORS.white} />
                       <Text style={styles.supportButtonText}>Müşteri Hizmetlerine Bağlan</Text>
                     </TouchableOpacity>
+                  )}
+
+                  {/* Quick Replies */}
+                  {message.quickReplies && message.quickReplies.length > 0 && (
+                    <View style={styles.quickRepliesContainer}>
+                      {message.quickReplies.map((reply) => (
+                        <TouchableOpacity
+                          key={reply.id}
+                          style={styles.quickReplyButton}
+                          onPress={() => {
+                            if (reply.action === 'live_support') {
+                              setShowChatbot(false);
+                              navigation.navigate('LiveChat', {
+                                initialMessage: reply.text || 'Merhaba, yardıma ihtiyacım var.'
+                              });
+                            } else if (reply.action === 'navigate_orders') {
+                              setShowChatbot(false);
+                              navigation.navigate('OrderTracking');
+                            } else if (reply.action === 'view_faq') {
+                              setShowChatbot(false);
+                              navigation.navigate('FAQ');
+                            } else {
+                              handleQuickAction(reply.text);
+                            }
+                          }}
+                        >
+                          <Text style={styles.quickReplyText}>{reply.text}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   )}
                 </View>
                 {message.type === 'user' && (
@@ -4063,6 +4185,27 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  quickRepliesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  quickReplyButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    backgroundColor: COLORS.white,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  quickReplyText: {
+    fontSize: 13,
+    color: COLORS.textMain,
+    fontWeight: '500',
   },
   quickOrderButton: {
     flexDirection: 'row',
