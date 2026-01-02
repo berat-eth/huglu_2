@@ -3,7 +3,17 @@
  * GÜVENLİK: Token blacklist yönetimi - Production'da Redis kullanılmalı
  */
 
-const poolWrapper = require('../pool-wrapper');
+// poolWrapper'ı database-schema'den al (diğer dosyalarla tutarlılık için)
+let poolWrapper;
+try {
+  poolWrapper = require('../database-schema').poolWrapper;
+} catch (error) {
+  // Fallback: global'dan al
+  poolWrapper = typeof global !== 'undefined' ? global.poolWrapper : null;
+  if (!poolWrapper) {
+    console.warn('⚠️ poolWrapper not available, token blacklist will use memory cache only');
+  }
+}
 
 class TokenBlacklist {
   constructor() {
@@ -24,12 +34,14 @@ class TokenBlacklist {
       // Database'e kaydet
       const expiryTime = expiresAt ? new Date(expiresAt * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000);
       
-      await poolWrapper.execute(
-        `INSERT INTO token_blacklist (token_hash, user_id, expires_at, created_at)
-         VALUES (?, ?, ?, NOW())
-         ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)`,
-        [this.hashToken(token), userId, expiryTime]
-      );
+      if (poolWrapper) {
+        await poolWrapper.execute(
+          `INSERT INTO token_blacklist (token_hash, user_id, expires_at, created_at)
+           VALUES (?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)`,
+          [this.hashToken(token), userId, expiryTime]
+        );
+      }
 
       // Memory cache'e ekle
       this.memoryCache.set(token, {
@@ -69,7 +81,7 @@ class TokenBlacklist {
 
       // Cache expiry kontrolü
       const cacheTime = this.cacheExpiry.get(token);
-      if (cacheTime && Date.now() < cacheTime) {
+      if (cacheTime && Date.now() < cacheTime && poolWrapper) {
         // Cache'de yok ama henüz expire olmamış, database'den kontrol et
         const tokenHash = this.hashToken(token);
         const [rows] = await poolWrapper.execute(
@@ -108,12 +120,14 @@ class TokenBlacklist {
   async revokeAllUserTokens(userId) {
     try {
       // Database'de tüm token'ları iptal et
-      await poolWrapper.execute(
-        `UPDATE token_blacklist 
-         SET expires_at = NOW() 
-         WHERE user_id = ? AND expires_at > NOW()`,
-        [userId]
-      );
+      if (poolWrapper) {
+        await poolWrapper.execute(
+          `UPDATE token_blacklist 
+           SET expires_at = NOW() 
+           WHERE user_id = ? AND expires_at > NOW()`,
+          [userId]
+        );
+      }
 
       // Memory cache'den kullanıcının token'larını temizle
       for (const [token, data] of this.memoryCache.entries()) {
@@ -141,9 +155,11 @@ class TokenBlacklist {
   async cleanupExpiredTokens() {
     try {
       // Database'den expired token'ları sil
-      await poolWrapper.execute(
-        `DELETE FROM token_blacklist WHERE expires_at < NOW()`
-      );
+      if (poolWrapper) {
+        await poolWrapper.execute(
+          `DELETE FROM token_blacklist WHERE expires_at < NOW()`
+        );
+      }
 
       // Memory cache'den expired token'ları temizle
       const now = Date.now();
@@ -163,11 +179,18 @@ class TokenBlacklist {
    */
   async getStats() {
     try {
-      const [rows] = await poolWrapper.execute(
-        `SELECT COUNT(*) as total FROM token_blacklist WHERE expires_at > NOW()`
-      );
+      if (poolWrapper) {
+        const [rows] = await poolWrapper.execute(
+          `SELECT COUNT(*) as total FROM token_blacklist WHERE expires_at > NOW()`
+        );
+        return {
+          total: rows[0].total,
+          memoryCache: this.memoryCache.size
+        };
+      }
+      // poolWrapper yoksa sadece memory cache bilgisini döndür
       return {
-        total: rows[0].total,
+        total: 0,
         memoryCache: this.memoryCache.size
       };
     } catch (error) {
