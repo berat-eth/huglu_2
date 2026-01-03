@@ -30,21 +30,48 @@ export default function QuestScreen({ navigation }) {
       setUserId(storedUserId);
 
       try {
-        const response = await gamificationAPI.getQuests(storedUserId);
-        if (response.data?.success) {
-          const allQuests = response.data.data?.quests || response.data.data || [];
-          setQuests(allQuests);
-          setActiveQuests(allQuests.filter(q => !q.completed && q.progress < q.target));
-          setCompletedQuests(allQuests.filter(q => q.completed));
-        } else {
-          // Fallback: Örnek görevler
-          const sampleQuests = generateSampleQuests();
-          setQuests(sampleQuests);
-          setActiveQuests(sampleQuests.filter(q => !q.completed));
-          setCompletedQuests(sampleQuests.filter(q => q.completed));
+        // Her zaman fallback görevleri kullan
+        let allQuests = generateSampleQuests();
+        
+        // API'den veri gelirse, progress bilgilerini güncelle
+        try {
+          const response = await gamificationAPI.getQuests(storedUserId);
+          if (response.data?.success) {
+            const apiQuests = response.data.data?.quests || response.data.data || [];
+            
+            // API'den gelen görevlerin progress bilgilerini fallback görevlere uygula
+            if (apiQuests.length > 0) {
+              allQuests = allQuests.map(fallbackQuest => {
+                const apiQuest = apiQuests.find(aq => 
+                  aq.id === fallbackQuest.id || 
+                  aq.type === fallbackQuest.type ||
+                  aq.title === fallbackQuest.title
+                );
+                
+                if (apiQuest) {
+                  // API'den gelen progress bilgilerini kullan
+                  return {
+                    ...fallbackQuest,
+                    progress: apiQuest.progress || fallbackQuest.progress,
+                    completed: apiQuest.completed || fallbackQuest.completed,
+                    target: apiQuest.target || fallbackQuest.target,
+                  };
+                }
+                return fallbackQuest;
+              });
+            }
+          }
+        } catch (apiError) {
+          console.log('API\'den görev verisi alınamadı, fallback görevler kullanılıyor:', apiError.message);
+          // API hatası durumunda sadece fallback görevleri kullan
         }
+        
+        setQuests(allQuests);
+        setActiveQuests(allQuests.filter(q => !q.completed && q.progress < q.target));
+        setCompletedQuests(allQuests.filter(q => q.completed));
       } catch (error) {
         console.error('Görevler yüklenemedi:', error);
+        // Hata durumunda fallback görevleri kullan
         const sampleQuests = generateSampleQuests();
         setQuests(sampleQuests);
         setActiveQuests(sampleQuests.filter(q => !q.completed));
@@ -69,7 +96,7 @@ export default function QuestScreen({ navigation }) {
         target: 3,
         reward: { type: 'exp', amount: 50 },
         completed: false,
-        icon: 'eye',
+        icon: 'eye-outline',
       },
       {
         id: 2,
@@ -80,7 +107,7 @@ export default function QuestScreen({ navigation }) {
         target: 1,
         reward: { type: 'exp', amount: 100 },
         completed: false,
-        icon: 'chatbubble',
+        icon: 'chatbubble-outline',
       },
       {
         id: 3,
@@ -91,7 +118,7 @@ export default function QuestScreen({ navigation }) {
         target: 5,
         reward: { type: 'exp', amount: 500 },
         completed: false,
-        icon: 'people',
+        icon: 'people-outline',
       },
       {
         id: 4,
@@ -102,7 +129,7 @@ export default function QuestScreen({ navigation }) {
         target: 1,
         reward: { type: 'exp', amount: 25 },
         completed: false,
-        icon: 'cart',
+        icon: 'cart-outline',
       },
       {
         id: 5,
@@ -113,7 +140,117 @@ export default function QuestScreen({ navigation }) {
         target: 3,
         reward: { type: 'exp', amount: 75 },
         completed: false,
-        icon: 'heart',
+        icon: 'heart-outline',
+      },
+      {
+        id: 6,
+        title: 'İlk Siparişini Ver',
+        description: 'İlk siparişini tamamla',
+        type: 'first_order',
+        progress: 0,
+        target: 1,
+        reward: { type: 'exp', amount: 200 },
+        completed: false,
+        icon: 'bag-outline',
+      },
+      {
+        id: 7,
+        title: '10 Ürün Görüntüle',
+        description: '10 farklı ürün detay sayfasını ziyaret et',
+        type: 'view_products_10',
+        progress: 0,
+        target: 10,
+        reward: { type: 'exp', amount: 150 },
+        completed: false,
+        icon: 'eye-outline',
+      },
+      {
+        id: 8,
+        title: 'Günlük Ödül Al',
+        description: '7 gün üst üste günlük ödülünü al',
+        type: 'daily_reward_streak',
+        progress: 0,
+        target: 7,
+        reward: { type: 'exp', amount: 300 },
+        completed: false,
+        icon: 'gift-outline',
+      },
+      {
+        id: 9,
+        title: 'Profilini Tamamla',
+        description: 'Profil bilgilerini tamamla',
+        type: 'complete_profile',
+        progress: 0,
+        target: 1,
+        reward: { type: 'exp', amount: 100 },
+        completed: false,
+        icon: 'person-outline',
+      },
+      {
+        id: 10,
+        title: '5 Yıldız Ver',
+        description: 'Bir ürüne 5 yıldız puan ver',
+        type: 'rate_5_stars',
+        progress: 0,
+        target: 1,
+        reward: { type: 'exp', amount: 75 },
+        completed: false,
+        icon: 'star-outline',
+      },
+      {
+        id: 11,
+        title: 'Kampanyaları Keşfet',
+        description: '5 kampanya sayfasını ziyaret et',
+        type: 'view_campaigns',
+        progress: 0,
+        target: 5,
+        reward: { type: 'exp', amount: 80 },
+        completed: false,
+        icon: 'pricetag-outline',
+      },
+      {
+        id: 12,
+        title: 'Toplulukta Paylaş',
+        description: 'Toplulukta ilk paylaşımını yap',
+        type: 'community_post',
+        progress: 0,
+        target: 1,
+        reward: { type: 'exp', amount: 150 },
+        completed: false,
+        icon: 'images-outline',
+      },
+      {
+        id: 13,
+        title: 'Flash İndirimleri Keşfet',
+        description: '5 flash indirim ürününü görüntüle',
+        type: 'view_flash_deals',
+        progress: 0,
+        target: 5,
+        reward: { type: 'exp', amount: 100 },
+        completed: false,
+        icon: 'flash-outline',
+      },
+      {
+        id: 14,
+        title: 'Arama Yap',
+        description: '10 farklı arama yap',
+        type: 'search_products',
+        progress: 0,
+        target: 10,
+        reward: { type: 'exp', amount: 60 },
+        completed: false,
+        icon: 'search-outline',
+      },
+      {
+        id: 15,
+        title: 'Ürünleri Karşılaştır',
+        description: '3 ürünü karşılaştır',
+        type: 'compare_products',
+        progress: 0,
+        target: 3,
+        reward: { type: 'exp', amount: 90 },
+        completed: false,
+        icon: 'swap-horizontal-outline',
       },
     ];
   };
@@ -150,7 +287,7 @@ export default function QuestScreen({ navigation }) {
       <View key={quest.id} style={styles.questCard}>
         <View style={styles.questHeader}>
           <View style={styles.questIconContainer}>
-            <Ionicons name={quest.icon} size={24} color={COLORS.primary} />
+            <Ionicons name={quest.icon || 'trophy-outline'} size={24} color={COLORS.primary} />
           </View>
           <View style={styles.questInfo}>
             <Text style={styles.questTitle}>{quest.title}</Text>
@@ -316,7 +453,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -401,6 +538,7 @@ const styles = StyleSheet.create({
     color: COLORS.gray600,
   },
 });
+
 
 
 

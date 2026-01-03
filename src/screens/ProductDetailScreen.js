@@ -1177,12 +1177,37 @@ export default function ProductDetailScreen({ navigation, route }) {
 
       // Renk seçimi kaldırıldı
 
-      // Flash deal fiyatını kullan (eğer varsa)
-      const finalPrice = isFlashDeal && priceValue ? priceValue : (product.price || 0);
+      // İndirimli fiyatı belirle (flash deal veya normal indirim)
+      let finalPrice = product.price || 0;
+      
+      // Flash deal durumunda indirimli fiyatı kullan
+      if (isFlashDeal) {
+        // Flash deal durumunda product.price zaten indirimli fiyat olarak güncellenmiş
+        // priceValue da indirimli fiyatı içeriyor
+        finalPrice = priceValue || product.price || 0;
+      } else {
+        // Normal indirimli ürün kontrolü
+        // Eğer oldPrice varsa ve price'dan büyükse, price indirimli fiyattır
+        if (product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price)) {
+          // İndirimli fiyatı kullan (product.price zaten indirimli)
+          finalPrice = parseFloat(product.price || 0);
+        } else if (product.discountPrice) {
+          // discountPrice varsa onu kullan
+          finalPrice = parseFloat(product.discountPrice || 0);
+        } else {
+          // Normal fiyat
+          finalPrice = parseFloat(product.price || 0);
+        }
+      }
+
+      console.log('🛒 Sepete ekleme - Flash Deal:', isFlashDeal, 'İndirimli Fiyat:', finalPrice, 'priceValue:', priceValue, 'product.price:', product.price, 'product.oldPrice:', product.oldPrice);
 
       const response = await cartAPI.add(userId, pid, quantity, selectedVariations, finalPrice);
 
       if (response.data?.success) {
+        // Sepet değişti - cache'i bypass etmek için timestamp güncelle
+        await AsyncStorage.setItem('cartLastModified', Date.now().toString());
+        
         // Badge'i güncelle
         const { updateCartBadge } = require('../utils/cartBadge');
         await updateCartBadge(userId);
@@ -1521,7 +1546,21 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const hasStock = product?.stock === undefined ? true : product.stock > 0;
   const maxQty = product?.stock && product.stock > 0 ? product.stock : 99;
-  const priceValue = parseFloat(product?.discountPrice || product?.price || 0);
+  // İndirimli fiyatı hesapla
+  // Flash deal durumunda product.price zaten indirimli fiyat
+  // Normal indirimli ürünler için oldPrice > price kontrolü yap
+  let priceValue = parseFloat(product?.price || 0);
+  if (isFlashDeal) {
+    // Flash deal durumunda product.price zaten indirimli
+    priceValue = parseFloat(product?.price || 0);
+  } else if (product?.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price)) {
+    // Normal indirimli ürün - price indirimli fiyat
+    priceValue = parseFloat(product?.price || 0);
+  } else if (product?.discountPrice) {
+    // discountPrice varsa onu kullan
+    priceValue = parseFloat(product?.discountPrice || 0);
+  }
+  
   const oldPriceValue = flashDealOldPrice || product?.oldPrice;
 
   return (

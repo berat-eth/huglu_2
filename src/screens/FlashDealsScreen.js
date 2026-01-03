@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
-import { flashDealsAPI } from '../services/api';
+import { flashDealsAPI, cartAPI } from '../services/api';
+import { updateCartBadge } from '../utils/cartBadge';
 
 const { width } = Dimensions.get('window');
 
@@ -94,6 +96,45 @@ export default function FlashDealsScreen({ navigation }) {
     setRefreshing(true);
     await loadFlashDeals();
     setRefreshing(false);
+  };
+
+  // Flash deal ürününü sepete ekle (indirimli fiyat ile)
+  const handleAddToCart = async (product) => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      
+      if (!userId) {
+        Alert.alert('Giriş Gerekli', 'Sepete ürün eklemek için lütfen giriş yapın');
+        return;
+      }
+
+      const productId = product.id || product._id;
+      if (!productId) {
+        Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+        return;
+      }
+
+      // Flash deal indirimli fiyatını kullan
+      const finalPrice = product.discountedPrice || product.price || 0;
+      
+      console.log('🛒 Flash deal sepete ekleme - Ürün ID:', productId, 'İndirimli Fiyat:', finalPrice);
+
+      const response = await cartAPI.add(userId, productId, 1, {}, finalPrice);
+
+      if (response.data?.success) {
+        // Sepet değişti - cache'i bypass etmek için timestamp güncelle
+        await AsyncStorage.setItem('cartLastModified', Date.now().toString());
+        
+        // Badge'i güncelle
+        await updateCartBadge(userId);
+        Alert.alert('Başarılı', 'Ürün sepete eklendi!');
+      } else {
+        Alert.alert('Hata', response.data?.message || 'Sepete eklenemedi');
+      }
+    } catch (error) {
+      console.error('Sepete ekleme hatası:', error);
+      Alert.alert('Hata', 'Ürün sepete eklenirken bir hata oluştu');
+    }
   };
 
   // Tüm ürünleri düzleştir
@@ -368,7 +409,11 @@ export default function FlashDealsScreen({ navigation }) {
                   <View style={styles.standardFooter}>
                     <Text style={styles.smallClaimedText}>%{Math.round(product.claimed)} Tükendi</Text>
                     {!isSoldOut && (
-                      <TouchableOpacity style={styles.addButton}>
+                      <TouchableOpacity 
+                        style={styles.addButton}
+                        onPress={() => handleAddToCart(product)}
+                        activeOpacity={0.7}
+                      >
                         <Ionicons name="cart-outline" size={18} color={COLORS.textMain} />
                       </TouchableOpacity>
                     )}

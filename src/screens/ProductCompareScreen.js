@@ -88,7 +88,33 @@ export default function ProductCompareScreen({ navigation, route }) {
       }
 
       const productId = product.id || product._id;
-      await cartAPI.add(userId, productId, 1, {});
+      
+      // İndirimli fiyatı belirle
+      let finalPrice = product.price || 0;
+      
+      // Flash deal kontrolü
+      if (product.isFlashDeal) {
+        // Flash deal durumunda product.price zaten indirimli fiyat
+        finalPrice = product.discountedPrice || product.price || 0;
+      } else {
+        // Normal indirimli ürün kontrolü
+        if (product.oldPrice && parseFloat(product.oldPrice) > parseFloat(product.price)) {
+          // İndirimli fiyatı kullan
+          finalPrice = parseFloat(product.price || 0);
+        } else if (product.discountPrice) {
+          finalPrice = parseFloat(product.discountPrice || 0);
+        } else {
+          finalPrice = parseFloat(product.price || 0);
+        }
+      }
+      
+      console.log('🛒 Karşılaştırma sayfası sepete ekleme - Ürün ID:', productId, 'İndirimli Fiyat:', finalPrice);
+      
+      await cartAPI.add(userId, productId, 1, {}, finalPrice);
+      
+      // Sepet değişti - cache'i bypass etmek için timestamp güncelle
+      await AsyncStorage.setItem('cartLastModified', Date.now().toString());
+      
       setShowAddToCartSuccessModal(true);
     } catch (error) {
       console.error('Sepete eklenemedi:', error);

@@ -50,10 +50,7 @@ import ChatHistoryScreen from './src/screens/ChatHistoryScreen';
 import ShippingInformationScreen from './src/screens/ShippingInformationScreen';
 import DailyRewardScreen from './src/screens/DailyRewardScreen';
 import QuestScreen from './src/screens/QuestScreen';
-import BadgesScreen from './src/screens/BadgesScreen';
 import WelcomeBonusScreen from './src/screens/WelcomeBonusScreen';
-import VIPProgramScreen from './src/screens/VIPProgramScreen';
-import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import SocialShareScreen from './src/screens/SocialShareScreen';
 import MyAddressesScreen from './src/screens/MyAddressesScreen';
 import AddAddressScreen from './src/screens/AddAddressScreen';
@@ -288,10 +285,7 @@ function App() {
         <Stack.Screen name="Invoices" component={InvoicesScreen} />
         <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
         <Stack.Screen name="Quest" component={QuestScreen} />
-        <Stack.Screen name="Badges" component={BadgesScreen} />
         <Stack.Screen name="WelcomeBonus" component={WelcomeBonusScreen} />
-        <Stack.Screen name="VIPProgram" component={VIPProgramScreen} />
-        <Stack.Screen name="Subscription" component={SubscriptionScreen} />
         <Stack.Screen name="SocialShare" component={SocialShareScreen} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -15556,17 +15556,25 @@ app.get('/api/users/:id', async (req, res) => {
     // JWT token yoksa, sadece tenant kontrolü yapılır (API key ile korunuyor)
 
     // GÜVENLİK: Prepared statement kullanılıyor, userId integer olarak parse edildi
-    // Try with birthDate first, fallback to without it
+    // dateOfBirth, height, weight alanlarını da çek
     let [rows] = await poolWrapper.execute(
-      'SELECT id, name, email, phone, birthDate, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
+      'SELECT id, name, email, phone, birthDate, dateOfBirth, height, weight, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
       [userId, tenantId]
     ).catch(async (error) => {
       if (error.code === 'ER_BAD_FIELD_ERROR') {
-        console.log('⚠️ birthDate column missing, using fallback query');
-        return await poolWrapper.execute(
-          'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
-          [userId, tenantId]
-        );
+        console.log('⚠️ Some columns missing, using fallback query');
+        // Eksik kolonları kontrol et ve uygun sorguyu kullan
+        try {
+          return await poolWrapper.execute(
+            'SELECT id, name, email, phone, birthDate, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
+            [userId, tenantId]
+          );
+        } catch (fallbackError) {
+          return await poolWrapper.execute(
+            'SELECT id, name, email, phone, address, createdAt FROM users WHERE id = ? AND tenantId = ?',
+            [userId, tenantId]
+          );
+        }
       }
       throw error;
     });
@@ -15574,16 +15582,42 @@ app.get('/api/users/:id', async (req, res) => {
     if (rows.length > 0) {
       const user = rows[0];
 
+      // Doğum tarihi: dateOfBirth öncelikli (DD/MM/YYYY formatı), yoksa birthDate (YYYY-MM-DD)
+      let dateOfBirth = user.dateOfBirth || null;
+      if (!dateOfBirth && user.birthDate) {
+        // birthDate'i DD/MM/YYYY formatına çevir
+        const dateMatch = user.birthDate.toString().match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          dateOfBirth = `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`;
+        } else {
+          dateOfBirth = user.birthDate.toString();
+        }
+      }
+
       // Direct data (no encryption needed)
+      // height ve weight için 0 değeri de geçerli, sadece null/undefined kontrolü yap
       const userData = {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone || '',
-        birthDate: user.birthDate || null, // Will be null if column doesn't exist
+        birthDate: user.birthDate || null, // Orijinal DATE formatı
+        dateOfBirth: dateOfBirth || null, // Formatlanmış tarih (DD/MM/YYYY)
+        height: (user.height !== null && user.height !== undefined) ? user.height : null,
+        weight: (user.weight !== null && user.weight !== undefined) ? user.weight : null,
         address: user.address || '',
         createdAt: user.createdAt
       };
+      
+      console.log('🔍 Backend API Response - User Data:', {
+        userId: userData.id,
+        height: userData.height,
+        weight: userData.weight,
+        heightType: typeof userData.height,
+        weightType: typeof userData.weight,
+        rawHeight: user.height,
+        rawWeight: user.weight,
+      });
 
       res.json({ success: true, data: userData });
     } else {
@@ -23401,7 +23435,7 @@ async function startServer() {
   // Chatbot mesaj işleme endpoint'i
   app.post('/api/chatbot/message', async (req, res) => {
     try {
-      const { message, actionType = 'text', userId, productId, voiceUrl } = req.body;
+      const { message, actionType = 'text', userId, productId, voiceUrl, messageHistory } = req.body;
 
       if (!message || !message.trim()) {
         return res.status(400).json({
@@ -23413,7 +23447,7 @@ async function startServer() {
       // Tenant kontrolü
       const tenantId = req.tenant?.id || 1;
 
-      console.log('🤖 Chatbot mesaj alındı:', { message, actionType, userId, productId, voiceUrl, tenantId });
+      console.log('🤖 Chatbot mesaj alındı:', { message, actionType, userId, productId, voiceUrl, tenantId, messageHistoryCount: messageHistory?.length || 0 });
 
       // Intent tespiti
       const intent = detectChatbotIntent(message.toLowerCase());
@@ -23461,10 +23495,10 @@ async function startServer() {
         }
       }
 
-      // Yanıt oluştur
+      // Yanıt oluştur (son 6 mesaj geçmişi ile)
       let response;
       try {
-        response = await generateChatbotResponse(intent, message, actionType, tenantId, userId, productId, userInfo);
+        response = await generateChatbotResponse(intent, message, actionType, tenantId, userId, productId, userInfo, messageHistory);
       } catch (responseError) {
         console.error(' Yanıt oluşturma hatası:', responseError);
         // Fallback yanıt
@@ -24006,7 +24040,7 @@ async function startServer() {
   }
 
   // Chatbot yanıt oluşturma fonksiyonu - Gemini API entegrasyonu ile
-  async function generateChatbotResponse(intent, message, actionType, tenantId, userId = null, productId = null, userInfo = null) {
+  async function generateChatbotResponse(intent, message, actionType, tenantId, userId = null, productId = null, userInfo = null, messageHistory = null) {
     const timestamp = new Date();
     const messageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -24146,15 +24180,26 @@ YARDIM EDEBİLECEĞİN KONULAR:
 - müşteriyi satın almaya yönlendirmek için öneri ver
 - Satışları Maximize etmeye özen göster${specialContext}`;
 
-        const userPrompt = `${message}${productContext}${userContext}`;
+        // Mesaj geçmişini hazırla (son 6 mesaj)
+        let conversationHistory = '';
+        if (messageHistory && Array.isArray(messageHistory) && messageHistory.length > 0) {
+          const historyText = messageHistory.map(msg => {
+            const role = msg.type === 'user' ? 'Kullanıcı' : 'Huglu AI';
+            return `${role}: ${msg.text}`;
+          }).join('\n');
+          conversationHistory = `\n\nÖnceki Konuşma Geçmişi (Son ${messageHistory.length} mesaj):\n${historyText}`;
+        }
+
+        const userPrompt = `${message}${productContext}${userContext}${conversationHistory}`;
 
         // Gemini Service kullanarak API çağrısı (rate limiting ve caching ile)
+        // Sistem prompt'u ve mesaj geçmişi gönderiliyor
         const geminiService = getGeminiService(poolWrapper);
         const geminiResult = await geminiService.sendMessage(
-          message,
+          userPrompt, // Mesaj + context + geçmiş
           productContext,
           userContext,
-          systemPrompt,
+          systemPrompt, // Sistem prompt gönderiliyor
           productId,
           userId
         );
@@ -24295,6 +24340,19 @@ YARDIM EDEBİLECEĞİN KONULAR:
             totalCount: recommendedProducts.length
           } : undefined;
 
+          // Sepete ekleme action'ını tespit et
+          let action = null;
+          let actionProductId = null;
+          const responseLower = geminiResponse.toLowerCase();
+          
+          // Eğer mesaj sepete ekleme içeriyorsa ve ürün ID'si varsa
+          if ((responseLower.includes('sepete ekle') || responseLower.includes('sepete ekleyebilirim') || 
+               responseLower.includes('satın al') || responseLower.includes('sipariş ver')) && 
+              (productId || (recommendedProducts.length > 0 && recommendedProducts[0].id))) {
+            action = 'add-to-cart';
+            actionProductId = productId || (recommendedProducts.length > 0 ? recommendedProducts[0].id : null);
+          }
+
           return {
             id: messageId,
             text: geminiResponse.trim(),
@@ -24302,6 +24360,8 @@ YARDIM EDEBİLECEĞİN KONULAR:
             timestamp,
             type: quickReplies.length > 0 ? 'quick_reply' : 'text',
             quickReplies: quickReplies,
+            action: action,
+            productId: actionProductId,
             data: responseData
           };
         }

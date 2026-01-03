@@ -266,13 +266,24 @@ export default function OrderConfirmationScreen({ navigation, route }) {
           setSubtotal(0);
           setTotal(0);
           
+          // Cache'i temizle - AsyncStorage'daki cartCount'u sıfırla
+          await AsyncStorage.setItem('cartCount', '0');
+          // Cache timestamp'i güncelle (CartScreen'de cache kontrolü için)
+          await AsyncStorage.setItem('cartLastCleared', Date.now().toString());
+          
           // Badge'i sıfırla
           await updateCartBadge(storedUserId);
-          console.log('✅ Sepet temizlendi ve badge güncellendi');
+          console.log('✅ Sepet temizlendi, cache temizlendi ve badge güncellendi');
         } catch (clearError) {
           console.error('❌ Sepet temizleme hatası:', clearError);
           console.error('❌ Hata detayı:', clearError.response?.data || clearError.message);
-          // Sepet temizlenemese bile sipariş başarılı, kullanıcıya bilgi verme
+          // Sepet temizlenemese bile sipariş başarılı, yine de cache'i temizle
+          try {
+            await AsyncStorage.setItem('cartCount', '0');
+            await AsyncStorage.setItem('cartLastCleared', Date.now().toString());
+          } catch (cacheError) {
+            console.error('❌ Cache temizleme hatası:', cacheError);
+          }
         }
       } else {
         setErrorMessage(response.data?.message || 'Sipariş oluşturulamadı');

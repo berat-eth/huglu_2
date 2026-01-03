@@ -406,8 +406,8 @@ export const recommendationsAPI = {
 
 // ==================== CHATBOT API ====================
 export const chatbotAPI = {
-  sendMessage: (userId, message, sessionId, productId = null, actionType = 'text') => 
-    api.post('/chatbot/message', { userId, message, sessionId, productId, actionType }),
+  sendMessage: (userId, message, sessionId, productId = null, actionType = 'text', messageHistory = null) => 
+    api.post('/chatbot/message', { userId, message, sessionId, productId, actionType, messageHistory }),
   getHistory: (userId, sessionId) => 
     api.get('/chatbot/history', { params: { userId, sessionId } }),
   createSession: (userId) => api.post('/chatbot/session', { userId }),

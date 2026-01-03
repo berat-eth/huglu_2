@@ -159,7 +159,17 @@ export default function ProfileScreen({ navigation }) {
             <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
             <Text style={styles.membershipText}>Üye</Text>
           </View>
-          <TouchableOpacity style={styles.editProfileButton}>
+          <TouchableOpacity 
+            style={styles.editProfileButton}
+            onPress={() => {
+              if (!isLoggedIn) {
+                setLoginRequiredMessage('Profil bilgilerinizi düzenlemek için lütfen giriş yapın');
+                setShowLoginRequiredModal(true);
+              } else {
+                navigation.navigate('PersonalInfo');
+              }
+            }}
+          >
             <Ionicons name="settings-outline" size={16} color={COLORS.textMain} />
             <Text style={styles.editProfileText}>Profili Düzenle</Text>
           </TouchableOpacity>
@@ -304,68 +314,6 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.dashboardCard} 
-            onPress={() => {
-              if (!isLoggedIn) {
-                setLoginRequiredMessage('Rozetler için lütfen giriş yapın');
-                setShowLoginRequiredModal(true);
-              } else {
-                navigation.navigate('Badges');
-              }
-            }}
-          >
-            <View style={styles.dashboardIcon}>
-              <Ionicons name="medal-outline" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.dashboardTitle}>Rozetler</Text>
-            <Text style={styles.dashboardSubtitle}>Başarılar</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>YENİ</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.dashboardCard} 
-            onPress={() => {
-              if (!isLoggedIn) {
-                setLoginRequiredMessage('VIP programı için lütfen giriş yapın');
-                setShowLoginRequiredModal(true);
-              } else {
-                navigation.navigate('VIPProgram');
-              }
-            }}
-          >
-            <View style={styles.dashboardIcon}>
-              <Ionicons name="diamond-outline" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.dashboardTitle}>VIP Program</Text>
-            <Text style={styles.dashboardSubtitle}>Özel Avantajlar</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>YENİ</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.dashboardCard} 
-            onPress={() => {
-              if (!isLoggedIn) {
-                setLoginRequiredMessage('Abonelikler için lütfen giriş yapın');
-                setShowLoginRequiredModal(true);
-              } else {
-                navigation.navigate('Subscription');
-              }
-            }}
-          >
-            <View style={styles.dashboardIcon}>
-              <Ionicons name="repeat-outline" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.dashboardTitle}>Abonelikler</Text>
-            <Text style={styles.dashboardSubtitle}>Otomatik Sipariş</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>YENİ</Text>
-            </View>
-          </TouchableOpacity>
         </View>
 
         {/* Account Settings */}

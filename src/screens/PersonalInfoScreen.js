@@ -55,10 +55,11 @@ export default function PersonalInfoScreen({ navigation }) {
     loadAddresses();
   }, []);
 
-  // Sayfa her açıldığında adresleri yeniden yükle
+  // Sayfa her açıldığında adresleri ve kullanıcı bilgilerini yeniden yükle
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadAddresses();
+      loadUserInfo(); // Kullanıcı bilgilerini de yeniden yükle
     });
     return unsubscribe;
   }, [navigation]);
@@ -66,6 +67,33 @@ export default function PersonalInfoScreen({ navigation }) {
   const loadUserInfo = async () => {
     try {
       setLoading(true);
+      const userId = await AsyncStorage.getItem('userId');
+      
+      if (!userId) {
+        // Kullanıcı giriş yapmamış, sadece AsyncStorage'dan yükle
+        const [userName, userEmail, userPhone, userDOB, userHeight, userWeight, userHomeAddr, userWorkAddr] = await AsyncStorage.multiGet([
+          'userName',
+          'userEmail',
+          'userPhone',
+          'userDateOfBirth',
+          'userHeight',
+          'userWeight',
+          'userHomeAddress',
+          'userWorkAddress',
+        ]);
+
+        setName(userName[1] || '');
+        setEmail(userEmail[1] || '');
+        setPhone(userPhone[1] || '');
+        setDateOfBirth(userDOB[1] || '');
+        setHeight(userHeight[1] || '');
+        setWeight(userWeight[1] || '');
+        setHomeAddress(userHomeAddr[1] || '');
+        setWorkAddress(userWorkAddr[1] || '');
+        return;
+      }
+
+      // Önce AsyncStorage'dan yükle (hızlı görünüm için)
       const [userName, userEmail, userPhone, userDOB, userHeight, userWeight, userHomeAddr, userWorkAddr] = await AsyncStorage.multiGet([
         'userName',
         'userEmail',
@@ -85,6 +113,95 @@ export default function PersonalInfoScreen({ navigation }) {
       setWeight(userWeight[1] || '');
       setHomeAddress(userHomeAddr[1] || '');
       setWorkAddress(userWorkAddr[1] || '');
+
+      // API'den güncel bilgileri çek
+      try {
+        const response = await userAPI.getProfile(userId);
+        
+        console.log('🔍 API Response (TAM):', JSON.stringify(response.data, null, 2));
+        
+        if (response.data?.success && response.data?.data) {
+          const userData = response.data.data;
+          
+          console.log('🔍 API UserData (TAM):', JSON.stringify(userData, null, 2));
+          
+          // API'den gelen verileri formatla
+          const apiName = userData.name || '';
+          const apiEmail = userData.email || '';
+          const apiPhone = userData.phone || '';
+          
+          // Doğum tarihi: dateOfBirth öncelikli (zaten DD/MM/YYYY formatında), yoksa birthDate'i formatla
+          let apiDateOfBirth = userData.dateOfBirth || '';
+          if (!apiDateOfBirth && userData.birthDate) {
+            // birthDate YYYY-MM-DD formatındaysa DD/MM/YYYY'ye çevir
+            const dateStr = userData.birthDate.toString();
+            const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (dateMatch) {
+              apiDateOfBirth = `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`;
+            } else {
+              apiDateOfBirth = dateStr;
+            }
+          }
+          
+          // Boy ve kilo - null/undefined kontrolü yap, 0 değeri de geçerli
+          let apiHeight = '';
+          let apiWeight = '';
+          
+          if (userData.height !== null && userData.height !== undefined) {
+            apiHeight = String(userData.height);
+          }
+          
+          if (userData.weight !== null && userData.weight !== undefined) {
+            apiWeight = String(userData.weight);
+          }
+          
+          console.log('📊 API\'den gelen veriler (HAM):', {
+            rawHeight: userData.height,
+            rawWeight: userData.weight,
+            heightType: typeof userData.height,
+            weightType: typeof userData.weight,
+            heightIsNull: userData.height === null,
+            heightIsUndefined: userData.height === undefined,
+            weightIsNull: userData.weight === null,
+            weightIsUndefined: userData.weight === undefined,
+          });
+          
+          console.log('📊 API\'den gelen veriler (FORMATLANMIŞ):', {
+            dateOfBirth: userData.dateOfBirth,
+            birthDate: userData.birthDate,
+            formattedDateOfBirth: apiDateOfBirth,
+            height: userData.height,
+            weight: userData.weight,
+            apiHeight,
+            apiWeight,
+            heightLength: apiHeight.length,
+            weightLength: apiWeight.length,
+          });
+          
+          // State'i güncelle
+          setName(apiName);
+          setEmail(apiEmail);
+          setPhone(apiPhone);
+          setDateOfBirth(apiDateOfBirth);
+          setHeight(apiHeight);
+          setWeight(apiWeight);
+          
+          // AsyncStorage'ı da güncelle
+          await AsyncStorage.multiSet([
+            ['userName', apiName],
+            ['userEmail', apiEmail],
+            ['userPhone', apiPhone],
+            ['userDateOfBirth', apiDateOfBirth],
+            ['userHeight', apiHeight],
+            ['userWeight', apiWeight],
+          ]);
+          
+          console.log('✅ Kullanıcı bilgileri API\'den yüklendi:', { apiName, apiEmail, apiPhone, apiDateOfBirth, apiHeight, apiWeight });
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API\'den kullanıcı bilgileri yüklenemedi, AsyncStorage kullanılıyor:', apiError.message);
+        // API hatası durumunda AsyncStorage'dan yüklenen veriler kullanılacak
+      }
     } catch (error) {
       console.error('Kullanıcı bilgileri yüklenemedi:', error);
       Alert.alert('Hata', 'Bilgiler yüklenirken bir hata oluştu.');
@@ -240,7 +357,6 @@ export default function PersonalInfoScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>{name || 'Kullanıcı Adı'}</Text>
-          <Text style={styles.profileMemberSince}>2021'den beri üye</Text>
         </View>
 
         {/* Identity Section */}

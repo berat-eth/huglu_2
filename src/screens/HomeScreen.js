@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Dimensions, Modal } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,7 @@ import Stories from '../components/Stories';
 import HomeScreenSkeleton from '../components/HomeScreenSkeleton';
 import ServerErrorScreen from './ServerErrorScreen';
 import { COLORS } from '../constants/colors';
-import { productsAPI, slidersAPI, flashDealsAPI, storiesAPI, cartAPI, wishlistAPI } from '../services/api';
+import { productsAPI, slidersAPI, flashDealsAPI, storiesAPI, cartAPI, wishlistAPI, chatbotAPI } from '../services/api';
 import { testAPI, testNetworkConnectivity } from '../utils/testAPI';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
@@ -35,6 +35,13 @@ export default function HomeScreen({ navigation }) {
   const [flashDealsEndTime, setFlashDealsEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [userFavorites, setUserFavorites] = useState([]);
+  
+  // Chatbot states
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [botTyping, setBotTyping] = useState(false);
+  const chatScrollViewRef = useRef(null);
 
   useEffect(() => {
     // İlk yüklemede veri yükle (splash'te preload edilmiş olabilir ama yine de kontrol et)
@@ -302,6 +309,99 @@ export default function HomeScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Favori toggle hatası:', error);
+    }
+  };
+
+  // Chatbot handlers
+  const handleChatbotSend = async () => {
+    if (!chatInput.trim() || botTyping) return;
+
+    const userMessage = {
+      id: chatMessages.length + 1,
+      type: 'user',
+      text: chatInput,
+      timestamp: new Date(),
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    const messageText = chatInput;
+    setChatInput('');
+    setBotTyping(true);
+
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+
+      // Son 6 mesajı hazırla (context için)
+      const recentMessages = chatMessages.slice(-6).map(msg => ({
+        type: msg.type,
+        text: msg.text,
+        timestamp: msg.timestamp
+      }));
+
+      // Backend'e mesaj gönder (Gemini API backend'de kullanılacak)
+      // Son 6 mesaj ve sistem prompt backend'e gönderilecek
+      const response = await chatbotAPI.sendMessage(
+        userId || null,
+        messageText,
+        null, // sessionId - backend otomatik yönetir
+        null, // productId - ana ekranda ürün yok
+        'text',
+        recentMessages // Mesaj geçmişi
+      );
+
+      setBotTyping(false);
+
+      if (response.data?.success && response.data?.data) {
+        const botData = response.data.data;
+        const botResponse = {
+          id: botData.id || `bot-${Date.now()}`,
+          type: 'bot',
+          text: botData.text || botData.message || 'Yanıt alınamadı',
+          messageType: botData.type || 'text',
+          action: botData.action,
+          productId: botData.productId,
+          quickReplies: botData.quickReplies || [],
+          timestamp: botData.timestamp ? new Date(botData.timestamp) : new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+
+        // Eğer sepete ekleme action'ı varsa, sepete ekle
+        if (botData.action === 'add-to-cart' && botData.productId && userId) {
+          try {
+            await cartAPI.add(userId, botData.productId, 1);
+            await loadCartCount(userId);
+            const successMessage = {
+              id: `bot-${Date.now()}-success`,
+              type: 'bot',
+              text: '✅ Ürün sepete eklendi!',
+              timestamp: new Date(),
+            };
+            setChatMessages(prev => [...prev, successMessage]);
+          } catch (error) {
+            console.error('Sepete ekleme hatası:', error);
+          }
+        }
+      } else {
+        // Fallback yanıt
+        const botResponse = {
+          id: chatMessages.length + 2,
+          type: 'bot',
+          text: 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.',
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+      }
+    } catch (error) {
+      console.error('Chatbot mesaj hatası:', error);
+      setBotTyping(false);
+      
+      const botResponse = {
+        id: chatMessages.length + 2,
+        type: 'bot',
+        text: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, botResponse]);
     }
   };
 
@@ -1092,6 +1192,139 @@ export default function HomeScreen({ navigation }) {
 
       {/* Custom Alert */}
       {alert.AlertComponent()}
+
+      {/* Chatbot Floating Button */}
+      <TouchableOpacity
+        style={styles.chatbotButton}
+        onPress={() => {
+          setShowChatbot(true);
+          if (chatMessages.length === 0) {
+            setChatMessages([
+              {
+                id: 1,
+                type: 'bot',
+                text: 'Merhaba! 👋 Size nasıl yardımcı olabilirim? Ürün arayabilir, sepete ekleme yapabilir ve sorularınızı yanıtlayabilirim.',
+                timestamp: new Date(),
+              }
+            ]);
+          }
+        }}
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color={COLORS.white} />
+      </TouchableOpacity>
+
+      {/* Chatbot Modal */}
+      <Modal
+        visible={showChatbot}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowChatbot(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.chatbotModalContainer}
+        >
+          <View style={styles.chatbotModal}>
+            {/* Header */}
+            <View style={styles.chatbotHeader}>
+              <View style={styles.chatbotHeaderLeft}>
+                <View style={styles.chatbotAvatar}>
+                  <Ionicons name="chatbubble-ellipses" size={24} color={COLORS.primary} />
+                </View>
+                <View>
+                  <Text style={styles.chatbotTitle}>Huglu AI</Text>
+                  <Text style={styles.chatbotSubtitle}>Size yardımcı olmaya hazır</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowChatbot(false)}
+                style={styles.chatbotCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textMain} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Messages */}
+            <ScrollView
+              ref={chatScrollViewRef}
+              style={styles.chatbotMessages}
+              contentContainerStyle={styles.chatbotMessagesContent}
+              onContentSizeChange={() => {
+                chatScrollViewRef.current?.scrollToEnd({ animated: true });
+              }}
+            >
+              {chatMessages.map((message) => (
+                <View
+                  key={message.id}
+                  style={[
+                    styles.chatbotMessage,
+                    message.type === 'user' ? styles.chatbotMessageUser : styles.chatbotMessageBot,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chatbotMessageText,
+                      message.type === 'user' ? styles.chatbotMessageTextUser : styles.chatbotMessageTextBot,
+                    ]}
+                  >
+                    {message.text}
+                  </Text>
+                  {message.action === 'add-to-cart' && message.productId && (
+                    <TouchableOpacity
+                      style={styles.chatbotActionButton}
+                      onPress={async () => {
+                        try {
+                          const userId = await AsyncStorage.getItem('userId');
+                          if (!userId) {
+                            alert.show('Giriş Gerekli', 'Sepete eklemek için lütfen giriş yapın');
+                            return;
+                          }
+                          await cartAPI.add(userId, message.productId, 1);
+                          alert.show('Başarılı', 'Ürün sepete eklendi!');
+                          await loadCartCount(userId);
+                        } catch (error) {
+                          alert.show('Hata', 'Ürün sepete eklenirken bir hata oluştu');
+                        }
+                      }}
+                    >
+                      <Text style={styles.chatbotActionButtonText}>Sepete Ekle</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              {botTyping && (
+                <View style={[styles.chatbotMessage, styles.chatbotMessageBot]}>
+                  <Text style={styles.chatbotTypingText}>Yazıyor...</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Input */}
+            <View style={styles.chatbotInputContainer}>
+              <TextInput
+                style={styles.chatbotInput}
+                value={chatInput}
+                onChangeText={setChatInput}
+                placeholder="Mesajınızı yazın..."
+                placeholderTextColor={COLORS.gray400}
+                multiline
+                onSubmitEditing={handleChatbotSend}
+              />
+              <TouchableOpacity
+                style={[styles.chatbotSendButton, !chatInput.trim() && styles.chatbotSendButtonDisabled]}
+                onPress={handleChatbotSend}
+                disabled={!chatInput.trim() || botTyping}
+              >
+                {botTyping ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <Ionicons name="send" size={20} color={COLORS.white} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1677,5 +1910,154 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Chatbot styles
+  chatbotButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  chatbotModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  chatbotModal: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    marginTop: 100,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  chatbotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+    backgroundColor: COLORS.white,
+  },
+  chatbotHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  chatbotAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chatbotTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textMain,
+  },
+  chatbotSubtitle: {
+    fontSize: 12,
+    color: COLORS.gray600,
+    marginTop: 2,
+  },
+  chatbotCloseButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatbotMessages: {
+    flex: 1,
+    padding: 16,
+  },
+  chatbotMessagesContent: {
+    paddingBottom: 16,
+  },
+  chatbotMessage: {
+    marginBottom: 12,
+    maxWidth: '80%',
+  },
+  chatbotMessageUser: {
+    alignSelf: 'flex-end',
+  },
+  chatbotMessageBot: {
+    alignSelf: 'flex-start',
+  },
+  chatbotMessageText: {
+    fontSize: 14,
+    lineHeight: 20,
+    padding: 12,
+    borderRadius: 16,
+  },
+  chatbotMessageTextUser: {
+    backgroundColor: COLORS.primary,
+    color: COLORS.white,
+  },
+  chatbotMessageTextBot: {
+    backgroundColor: COLORS.gray100,
+    color: COLORS.textMain,
+  },
+  chatbotTypingText: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    fontStyle: 'italic',
+    padding: 12,
+  },
+  chatbotActionButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  chatbotActionButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  chatbotInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray200,
+    backgroundColor: COLORS.white,
+  },
+  chatbotInput: {
+    flex: 1,
+    maxHeight: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: COLORS.gray100,
+    fontSize: 14,
+    color: COLORS.textMain,
+    marginRight: 8,
+  },
+  chatbotSendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatbotSendButtonDisabled: {
+    backgroundColor: COLORS.gray300,
   },
 });

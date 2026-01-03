@@ -195,11 +195,17 @@ export default function DailyRewardScreen({ navigation }) {
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.claimButton, (!canClaim || claimed) && styles.claimButtonDisabled]}
+            style={[
+              styles.claimButton, 
+              (claimed || !canClaim) ? styles.claimButtonDisabled : styles.claimButtonActive
+            ]}
             onPress={claimReward}
             disabled={!canClaim || claimed}
           >
-            <Text style={[styles.claimButtonText, (!canClaim || claimed) && styles.claimButtonTextDisabled]}>
+            <Text style={[
+              styles.claimButtonText, 
+              (claimed || !canClaim) && styles.claimButtonTextDisabled
+            ]}>
               {claimed ? 'Ödül Alındı ✓' : 'Ödülü Al'}
             </Text>
           </TouchableOpacity>
@@ -364,21 +370,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   claimButton: {
-    backgroundColor: COLORS.gray200,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
+  claimButtonActive: {
+    backgroundColor: '#ff6b35', // Turuncu - ödül alınmamışsa
+  },
   claimButtonDisabled: {
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.gray400, // Gri - ödül alınmışsa
   },
   claimButtonText: {
-    color: COLORS.textMain,
+    color: '#fff', // Turuncu buton için beyaz text
     fontSize: 16,
     fontWeight: '600',
   },
   claimButtonTextDisabled: {
-    color: COLORS.gray500,
+    color: COLORS.gray600, // Gri buton için gri text
   },
   weekSection: {
     margin: 16,

@@ -26,7 +26,7 @@ export default function CartScreen({ navigation }) {
     }, [])
   );
 
-  const loadCart = async () => {
+  const loadCart = async (forceRefresh = false) => {
     try {
       setLoading(true);
       const storedUserId = await AsyncStorage.getItem('userId');
@@ -39,8 +39,49 @@ export default function CartScreen({ navigation }) {
         return;
       }
 
+      const now = Date.now();
+      
+      // Cache kontrolü - eğer sipariş sonrası sepet temizlendiyse veya değişiklik yapıldıysa cache'i bypass et
+      let shouldBypassCache = forceRefresh;
+      
+      if (!forceRefresh) {
+        const cartLastCleared = await AsyncStorage.getItem('cartLastCleared');
+        const cartLastModified = await AsyncStorage.getItem('cartLastModified');
+        const cacheTimestamp = cartLastCleared ? parseInt(cartLastCleared) : 0;
+        const modifiedTimestamp = cartLastModified ? parseInt(cartLastModified) : 0;
+        
+        // Cache süresi: 1 dakika (60 saniye)
+        const CACHE_DURATION = 60 * 1000; // 1 dakika
+        
+        // Eğer son 1 dakika içinde sepet temizlendiyse veya değiştirildiyse cache'i bypass et
+        shouldBypassCache = 
+          (cacheTimestamp > 0 && (now - cacheTimestamp) < CACHE_DURATION) ||
+          (modifiedTimestamp > 0 && (now - modifiedTimestamp) < CACHE_DURATION);
+      }
+
       setUserId(storedUserId);
-      const response = await cartAPI.get(storedUserId);
+      
+      // Cache'i bypass etmek için timestamp query parametresi ekle
+      let response;
+      if (shouldBypassCache) {
+        // Cache bypass için timestamp ile API çağrısı yap
+        const { getApiUrl } = require('../config/api.config');
+        const apiBaseUrl = getApiUrl();
+        const apiUrl = `${apiBaseUrl}/cart/${storedUserId}?t=${now}`;
+        const fetchResponse = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        const data = await fetchResponse.json();
+        response = { data };
+        console.log('🔄 Cache bypass ile sepet yüklendi (forceRefresh:', forceRefresh, ')');
+      } else {
+        // Normal API çağrısı (cache kullanılabilir)
+        response = await cartAPI.get(storedUserId);
+        console.log('📦 Normal sepet yüklendi (cache kullanıldı)');
+      }
       
       console.log('Sepet API yanıtı:', response.data);
 
@@ -175,13 +216,11 @@ export default function CartScreen({ navigation }) {
     try {
       await cartAPI.update(cartItemId, newQuantity);
       
-      const updatedItems = cartItems.map(i =>
-        i.id === cartItemId
-          ? { ...i, quantity: newQuantity }
-          : i
-      );
+      // Sepet değişti - cache'i bypass etmek için timestamp güncelle
+      await AsyncStorage.setItem('cartLastModified', Date.now().toString());
       
-      setCartItems(updatedItems);
+      // Sepeti backend'den yeniden yükle (cache bypass ile)
+      await loadCart(true); // forceRefresh = true
       
       // Badge'i güncelle
       if (userId) {
@@ -196,9 +235,14 @@ export default function CartScreen({ navigation }) {
   const removeItem = async (cartItemId, productId, selectedVariations) => {
     try {
       await cartAPI.remove(cartItemId);
-      const updatedItems = cartItems.filter(item => item.id !== cartItemId);
+      
       const removedItem = cartItems.find(item => item.id === cartItemId);
-      setCartItems(updatedItems);
+      
+      // Sepet değişti - cache'i bypass etmek için timestamp güncelle
+      await AsyncStorage.setItem('cartLastModified', Date.now().toString());
+      
+      // Sepeti backend'den yeniden yükle (cache bypass ile)
+      await loadCart(true); // forceRefresh = true
       
       // Analytics: Remove from cart tracking
       if (removedItem) {

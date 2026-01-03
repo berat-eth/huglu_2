@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { getApiUrl } from '../config/api.config';
@@ -12,42 +12,59 @@ export default function Stories({ stories, onStoryPress }) {
     setImageErrors(prev => ({ ...prev, [storyId]: true }));
   };
 
-  const getImageSource = (story) => {
-    let imageUrl = story.imageUrl || story.image_url || story.image;
-    
-    // Görsel URL kontrolü - Base64 görselleri reddet
-    if (!imageUrl || 
-        imageUrl.startsWith('data:') || // Base64 görselleri reddet
-        imageErrors[story.id] ||
-        imageUrl.trim() === '' ||
-        imageUrl === 'null' ||
-        imageUrl === 'undefined') {
-      return null; // Placeholder gösterilecek
-    }
-    
-    // URL'yi temizle ve normalize et
-    imageUrl = imageUrl.trim();
-    
-    // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
-    // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
-    let API_BASE_URL = getApiUrl();
-    if (API_BASE_URL.endsWith('/api')) {
-      API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
-    } else if (API_BASE_URL.endsWith('/api/')) {
-      API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
-    }
-    
-    if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
-      imageUrl = `${API_BASE_URL}${imageUrl}`;
-    }
-    
-    // Eğer URL hala http veya https ile başlamıyorsa geçersiz say
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      return null;
-    }
-    
-    return { uri: imageUrl };
-  };
+  // Slider'daki gibi görselleri önceden normalize et - performans optimizasyonu
+  const normalizedStories = useMemo(() => {
+    return (stories || []).map((story) => {
+      let imageUrl = story.imageUrl || story.image_url || story.image;
+      
+      // Eğer imageUrl yoksa veya geçersizse null döndür
+      if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+        return {
+          ...story,
+          normalizedImageUrl: null,
+        };
+      }
+      
+      imageUrl = imageUrl.trim();
+      
+      // Test slider gibi tam URL'ler için - olduğu gibi kullan (hiçbir işlem yapma)
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return {
+          ...story,
+          normalizedImageUrl: imageUrl,
+        };
+      }
+      
+      // Base64 görselleri reddet
+      if (imageUrl.startsWith('data:')) {
+        return {
+          ...story,
+          normalizedImageUrl: null,
+        };
+      }
+      
+      // Relative URL kontrolü - /uploads/ veya / ile başlıyorsa base URL ekle
+      if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//'))) {
+        // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
+        let API_BASE_URL = getApiUrl();
+        if (API_BASE_URL.endsWith('/api')) {
+          API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
+        } else if (API_BASE_URL.endsWith('/api/')) {
+          API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
+        }
+        
+        imageUrl = `${API_BASE_URL}${imageUrl}`;
+      } else {
+        // Geçersiz URL formatı
+        imageUrl = null;
+      }
+      
+      return {
+        ...story,
+        normalizedImageUrl: imageUrl,
+      };
+    });
+  }, [stories]);
 
   return (
     <View style={styles.container}>
@@ -56,7 +73,7 @@ export default function Stories({ stories, onStoryPress }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {stories.map((story) => (
+        {normalizedStories.map((story) => (
           <TouchableOpacity
             key={story.id}
             style={styles.storyItem}
@@ -66,11 +83,13 @@ export default function Stories({ stories, onStoryPress }) {
             {/* Gradient border simülasyonu - CSS gradient yerine border kullan */}
             <View style={styles.gradientBorder}>
               <View style={styles.imageContainer}>
-                {getImageSource(story) ? (
+                {story.normalizedImageUrl && 
+                 !imageErrors[story.id] && 
+                 story.normalizedImageUrl.startsWith('http') ? ( // Slider'daki gibi sadece HTTP/HTTPS URL'leri kabul et
                   <Image
-                    source={{
-                      ...getImageSource(story),
-                      cache: 'force-cache'
+                    source={{ 
+                      uri: story.normalizedImageUrl,
+                      cache: 'force-cache' // Görsel cache'leme - slider'daki gibi
                     }}
                     style={styles.storyImage}
                     resizeMode="cover"
