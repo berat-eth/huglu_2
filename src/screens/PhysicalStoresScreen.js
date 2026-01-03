@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { COLORS } from '../constants/colors';
 
 const { width, height } = Dimensions.get('window');
+
+// Google Maps logosunu gizlemek için custom style
+const hideGoogleLogoStyle = [
+  {
+    featureType: 'all',
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }]
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }]
+  }
+];
 
 const STORES = [
   {
@@ -24,7 +38,7 @@ const STORES = [
     pickupReadyTime: '2 saat içinde',
     latitude: 37.475114447064136,
     longitude: 31.583744408154548,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC73cH3NCJlBWJV29dNYP1NSVx-evbkoOPZBOJATEcyylDs7CstF65P8zYknJ4VzOpb-xbFfXyV15N1AO20wWJaxtocvHrq3o_60CmEbPMQgqh-xMgtkh8TXbOH8yxutjSeuiWxU4NeFvBiCt2aX1tvOzA_a--aoub7xyk88E1CKSaD8qL194ntMXQOcAOK5hVPl7okbOaRTSTxFuxJHq52OP0_OJBCqX44UTT2j9NVe5ltmVKYb9k4eaQOSzQkXVQc4-aAdVXg7V4',
+    image: 'https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwt5Uk-RzPQu55o7N8Mzzr2IfIEOIWdFx9dk47Vjv4mhmkB4Mav-_U30bQMzMeYFB1zEliKl6JJ-KdAMgBDhMn50-3IngAkCGk8gEf7Cbflv_dW0hC-vyJbvaz2wheftmjQP-5HyfkBFaM=w203-h152-k-no',
   },
   {
     id: 2,
@@ -41,14 +55,14 @@ const STORES = [
     pickupReadyTime: '1 saat içinde',
     latitude: 37.684817091999946,
     longitude: 31.723626534914292,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJW9xHXDuwHGbp-VUt18K0hy4uwilsnil9DfRyLNCJxFwE3wzTSYvARKFORK_27ML4rlYFHTvpGoQVcuIkp-4HErDLfjR-gfhhgAKUhbh8De_QE2wfGk2oLoiy5MD8OHIX9fjTD9mfJQIb56lYE4pwyG80O0AaFkQP9N0qEckIcwSUIakje3ocuWGj_AXgmGwCPbd6BEef2-7OQAx3gqXzswnanuNbgRfnmDrY2I8qlZCXGD5APHai4I5UnFnqzv4KiQ2q6VB9tn4',
+    image: 'https://lh3.googleusercontent.com/gps-cs-s/AG0ilSxtxugS0yNiZ645FJ2p-GG_CImWzRU_L_UVFbvzfs9nD_TE7vU0_gAX4V8HBL_TdLXPoZVycM4SAZOmr_nPFEc2oVw0_WhEZgn3GiwH7f1KaqLzgPiplxvgOeLAcPmpe0fanPnJ2tkxXC8z=w203-h270-k-no',
   },
   {
     id: 3,
     name: 'Huğlu Outdoor Konya',
     address: 'Konya Merkez',
     city: 'Konya',
-    phone: '+90 332 XXX XX XX',
+    phone: '0530 312 58 13',
     hours: '09:00 - 21:00',
     distance: '45 km',
     status: 'closed',
@@ -107,7 +121,8 @@ export default function PhysicalStoresScreen({ navigation }) {
     store.id !== 3 && (
       store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       store.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.city.toLowerCase().includes(searchQuery.toLowerCase())
+      store.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      store.phone.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
@@ -137,7 +152,7 @@ export default function PhysicalStoresScreen({ navigation }) {
           <Ionicons name="search" size={20} color={COLORS.primary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Şehir, posta kodu veya mağaza adı..."
+            placeholder="Şehir, posta kodu, mağaza adı veya telefon..."
             placeholderTextColor={COLORS.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -198,14 +213,18 @@ export default function PhysicalStoresScreen({ navigation }) {
               pitchEnabled={false}
               rotateEnabled={false}
               mapType="none"
+              provider={Platform.OS === 'android' ? PROVIDER_DEFAULT : undefined}
+              customMapStyle={Platform.OS === 'android' ? hideGoogleLogoStyle : []}
+              mapPadding={{ bottom: -50, left: -50, right: -50, top: -50 }}
             >
               <UrlTile
-                urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                 maximumZ={19}
                 minimumZ={0}
                 flipY={false}
                 shouldReplaceMapContent={true}
                 zIndex={-1}
+                tileSize={256}
               />
               {STORES.filter(store => store.id !== 3).map((store) => (
                 <Marker
@@ -259,14 +278,18 @@ export default function PhysicalStoresScreen({ navigation }) {
             showsUserLocation
             showsMyLocationButton
             mapType="none"
+            provider={Platform.OS === 'android' ? PROVIDER_DEFAULT : undefined}
+            customMapStyle={Platform.OS === 'android' ? hideGoogleLogoStyle : []}
+            mapPadding={{ bottom: -50, left: -50, right: -50, top: -50 }}
           >
             <UrlTile
-              urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+              urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
               maximumZ={19}
               minimumZ={0}
               flipY={false}
               shouldReplaceMapContent={true}
-              zIndex={-1}
+              zIndex={1}
+              tileSize={256}
             />
             {STORES.filter(store => store.id !== 3).map((store) => (
               <Marker
@@ -312,8 +335,6 @@ export default function PhysicalStoresScreen({ navigation }) {
                     <Text style={[styles.statusText, { color: getStatusColor(selectedStore.status) }]}>
                       {selectedStore.statusText}
                     </Text>
-                    <Text style={styles.statusDot}>•</Text>
-                    <Text style={styles.mapStoreDistance}>{selectedStore.distance}</Text>
                   </View>
                 </View>
                 <TouchableOpacity
@@ -384,9 +405,6 @@ export default function PhysicalStoresScreen({ navigation }) {
                         <Text style={styles.closingText}>{store.closingTime}</Text>
                       </View>
                     </View>
-                    <View style={styles.distanceBadge}>
-                      <Text style={styles.distanceText}>{store.distance}</Text>
-                    </View>
                   </View>
 
                   <View style={styles.addressRow}>
@@ -447,16 +465,13 @@ export default function PhysicalStoresScreen({ navigation }) {
                   disabled={store.status === 'closed'}
                   onPress={async () => {
                     try {
-                      // Mağaza ID'sine göre özel Google Maps linkleri
+                      // Google Maps yol tarifi
                       let directionsUrl;
-                      if (store.id === 1) {
-                        // Huğlu Merkez Fabrika
-                        directionsUrl = 'https://maps.app.goo.gl/b1LbAcfmFmxWTpx59';
-                      } else if (store.id === 2) {
-                        // Huğlu Outdoor Beyşehir Şubesi
-                        directionsUrl = 'https://www.google.com/maps/place/Hu%C4%9Flu+Outdoor+Bey%C5%9Fehir+%C5%9Eubesi/@37.6828178,31.7184082,16.75z/data=!4m11!1m3!2m2!1sHu%C4%9Flu+Outdoor+bey%C5%9Fehir+!6e6!3m6!1s0x14dab7c16e304ffb:0x41760d8445ae3342!8m2!3d37.6847336!4d31.7233532!15sChhIdcSfbHUgT3V0ZG9vciBiZXnFn2VoaXKSAQpkcmVzc19zaG9w4AEA!16s%2Fg%2F11xsbbmm6h?hl=tr&entry=ttu&g_ep=EgoyMDI1MTIwOS4wIKXMDSoASAFQAw%3D%3D';
+                      if (userLocation) {
+                        // Kullanıcı konumu varsa, başlangıç noktası olarak kullan
+                        directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${store.latitude},${store.longitude}`;
                       } else {
-                        // Diğer mağazalar için koordinat bazlı
+                        // Kullanıcı konumu yoksa, sadece hedefi göster
                         directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`;
                       }
                       
@@ -464,7 +479,9 @@ export default function PhysicalStoresScreen({ navigation }) {
                       if (canOpen) {
                         await Linking.openURL(directionsUrl);
                       } else {
-                        Alert.alert('Hata', 'Yol tarifi açılamadı. Lütfen Google Maps uygulamasının yüklü olduğundan emin olun.');
+                        // Google Maps uygulaması yoksa, web tarayıcısında aç
+                        const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`;
+                        await Linking.openURL(webUrl);
                       }
                     } catch (error) {
                       console.error('Yol tarifi açma hatası:', error);
@@ -492,8 +509,35 @@ export default function PhysicalStoresScreen({ navigation }) {
                   disabled={store.status === 'closed'}
                   onPress={async () => {
                     try {
-                      // Telefon numarasından boşlukları ve özel karakterleri temizle
-                      const phoneNumber = store.phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+                      // Telefon numarasını düzenle
+                      let phoneNumber = store.phone.trim();
+                      
+                      // Boşlukları ve tireleri kaldır
+                      phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/-/g, '');
+                      
+                      // Eğer +90 ile başlıyorsa, +90'ı koru
+                      // Eğer 0 ile başlıyorsa, 0'ı koru
+                      // Eğer sadece rakamlar varsa ve 10 haneli ise, başına 0 ekle
+                      if (phoneNumber.startsWith('+90')) {
+                        // +90 ile başlıyorsa, olduğu gibi kullan
+                        phoneNumber = phoneNumber;
+                      } else if (phoneNumber.startsWith('0')) {
+                        // 0 ile başlıyorsa, olduğu gibi kullan
+                        phoneNumber = phoneNumber;
+                      } else if (/^\d{10}$/.test(phoneNumber)) {
+                        // 10 haneli numara ise, başına 0 ekle
+                        phoneNumber = '0' + phoneNumber;
+                      } else if (/^\d{11}$/.test(phoneNumber) && phoneNumber.startsWith('90')) {
+                        // 90 ile başlayan 11 haneli numara ise, + ekle
+                        phoneNumber = '+' + phoneNumber;
+                      }
+                      
+                      // XXX gibi placeholder'lar varsa uyarı ver
+                      if (phoneNumber.includes('X') || phoneNumber.includes('x')) {
+                        Alert.alert('Bilgi', 'Bu mağaza için telefon numarası henüz tanımlanmamış.');
+                        return;
+                      }
+                      
                       const telUrl = `tel:${phoneNumber}`;
                       
                       const canOpen = await Linking.canOpenURL(telUrl);
@@ -530,20 +574,6 @@ export default function PhysicalStoresScreen({ navigation }) {
 
       )}
 
-      {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-      >
-        <Ionicons 
-          name={viewMode === 'list' ? 'map' : 'list'} 
-          size={24} 
-          color={COLORS.white} 
-        />
-        <Text style={styles.fabText}>
-          {viewMode === 'list' ? 'Harita Görünümü' : 'Liste Görünümü'}
-        </Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -742,11 +772,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  mapStoreDistance: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.gray600,
-  },
   mapStoreButton: {
     width: 48,
     height: 48,
@@ -892,17 +917,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray500,
   },
-  distanceBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  distanceText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.gray600,
-  },
   addressRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -990,27 +1004,5 @@ const styles = StyleSheet.create({
   },
   secondaryActionTextDisabled: {
     color: COLORS.gray400,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 28,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.white,
   },
 });

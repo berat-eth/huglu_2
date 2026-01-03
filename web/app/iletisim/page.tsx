@@ -96,7 +96,7 @@ export default function Iletisim() {
                   icon: 'call',
                   title: 'Telefon',
                   content: '0530 312 58 13',
-                  link: 'tel:+905303125813',
+                  link: 'tel:05303125813',
                   gradient: 'from-purple-500 to-pink-500'
                 },
                 {

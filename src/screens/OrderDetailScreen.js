@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Clipboard, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { COLORS } from '../constants/colors';
 import { ordersAPI, invoicesAPI, returnRequestsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
 import { Linking, Alert } from 'react-native';
+
+// Google Maps logosunu gizlemek için custom style
+const hideGoogleLogoStyle = [
+  {
+    featureType: 'all',
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }]
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }]
+  }
+];
 
 export default function OrderDetailScreen({ navigation, route }) {
   const { orderId } = route.params || {};
@@ -271,14 +285,18 @@ export default function OrderDetailScreen({ navigation, route }) {
             showsUserLocation={true}
             showsMyLocationButton={true}
             mapType="none"
+            provider={Platform.OS === 'android' ? PROVIDER_DEFAULT : undefined}
+            customMapStyle={Platform.OS === 'android' ? hideGoogleLogoStyle : []}
+            mapPadding={{ bottom: -50, left: -50, right: -50, top: -50 }}
           >
             <UrlTile
-              urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+              urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
               maximumZ={19}
               minimumZ={0}
               flipY={false}
               shouldReplaceMapContent={true}
-              zIndex={-1}
+              zIndex={1}
+              tileSize={256}
             />
             {(order.shippingAddress?.latitude || order.deliveryAddress?.latitude) && (
               <Marker

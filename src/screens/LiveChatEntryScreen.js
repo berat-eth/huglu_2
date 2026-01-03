@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
@@ -83,12 +83,6 @@ export default function LiveChatEntryScreen({ navigation }) {
                   <Text style={styles.waitTimeText}>BEKLEME SÜRESİ: &lt; 2 DAKİKA</Text>
                 </View>
               </View>
-            </View>
-            <View style={styles.agentImageContainer}>
-              <Image
-                source={{ uri: 'https://i.pravatar.cc/150?img=12' }}
-                style={styles.agentImage}
-              />
             </View>
           </View>
         </View>
@@ -200,7 +194,6 @@ const styles = StyleSheet.create({
   },
   statusContent: {
     flexDirection: 'row',
-    gap: 16,
   },
   statusLeft: {
     flex: 1,
@@ -254,23 +247,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
     letterSpacing: 0.5,
-  },
-  agentImageContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  agentImage: {
-    width: '100%',
-    height: '100%',
   },
   topicSection: {
     paddingHorizontal: 16,

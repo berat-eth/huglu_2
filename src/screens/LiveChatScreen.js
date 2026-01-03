@@ -49,18 +49,41 @@ export default function LiveChatScreen({ navigation, route }) {
       if (storedUserId) {
         setUserId(parseInt(storedUserId));
       } else {
-        // Eğer userId yoksa, route'dan al veya varsayılan olarak 1 kullan
+        // Eğer userId yoksa, route'dan al
         const routeUserId = route?.params?.userId;
         if (routeUserId) {
           setUserId(routeUserId);
         } else {
-          // Misafir kullanıcı için
-          setUserId(1);
+          // Misafir kullanıcı için benzersiz deviceId oluştur
+          let deviceId = await AsyncStorage.getItem('guestDeviceId');
+          if (!deviceId) {
+            // Benzersiz deviceId oluştur (timestamp + random)
+            deviceId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+            await AsyncStorage.setItem('guestDeviceId', deviceId);
+          }
+          // DeviceId'yi userId olarak kullan (backend'de özel işleme için)
+          // Negatif sayı kullanarak misafir kullanıcıları ayırt ediyoruz
+          // Hash fonksiyonu ile deviceId'yi sayıya çevir
+          const hash = deviceId.split('').reduce((acc, char) => {
+            const hash = ((acc << 5) - acc) + char.charCodeAt(0);
+            return hash & hash;
+          }, 0);
+          // Negatif sayı yaparak misafir kullanıcı olduğunu belirt
+          const guestUserId = -Math.abs(hash);
+          setUserId(guestUserId);
+          // DeviceId'yi de sakla (backend'e göndermek için)
+          await AsyncStorage.setItem('guestDeviceId', deviceId);
         }
       }
     } catch (error) {
       console.error('User ID yükleme hatası:', error);
-      setUserId(1); // Varsayılan olarak misafir kullanıcı
+      // Hata durumunda da benzersiz deviceId oluştur
+      const deviceId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const hash = deviceId.split('').reduce((acc, char) => {
+        const hash = ((acc << 5) - acc) + char.charCodeAt(0);
+        return hash & hash;
+      }, 0);
+      setUserId(-Math.abs(hash));
     }
   };
 
@@ -77,7 +100,12 @@ export default function LiveChatScreen({ navigation, route }) {
       const conversationDate = route?.params?.conversationDate;
       console.log('[LiveChat] Mesajlar yükleniyor...', { userId, conversationDate });
       
-      const response = await liveSupportAPI.getHistory(userId);
+      // Misafir kullanıcı için deviceId'yi de gönder
+      let deviceId = null;
+      if (userId < 0) {
+        deviceId = await AsyncStorage.getItem('guestDeviceId');
+      }
+      const response = await liveSupportAPI.getHistory(userId, deviceId);
       console.log('[LiveChat] API yanıtı:', {
         status: response?.status,
         success: response?.data?.success,

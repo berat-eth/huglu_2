@@ -66,11 +66,10 @@ const withServerErrorHandler = (WrappedComponent) => {
           visible={showServerError}
           animationType="slide"
           presentationStyle="fullScreen"
-          onRequestClose={handleClose}
         >
           <ServerErrorScreen
             onRetry={handleRetry}
-            onClose={handleClose}
+            onClose={() => {}}
             onContactSupport={handleContactSupport}
           />
         </Modal>
@@ -80,3 +79,85 @@ const withServerErrorHandler = (WrappedComponent) => {
 };
 
 export default withServerErrorHandler;
+
+      setRetryCallback(null);
+
+    };
+
+
+
+    /**
+
+     * Destek ile iletişime geç
+
+     */
+
+    const handleContactSupport = () => {
+
+      setShowServerError(false);
+
+      // Destek ekranına yönlendir veya email aç
+
+      if (props.navigation) {
+
+        props.navigation.navigate('LiveChat');
+
+      }
+
+    };
+
+
+
+    return (
+
+      <>
+
+        <WrappedComponent
+
+          {...props}
+
+          onServerError={handleServerError}
+
+          checkServerError={(error) => isServerError(error)}
+
+        />
+
+        
+
+        <Modal
+
+          visible={showServerError}
+
+          animationType="slide"
+
+          presentationStyle="fullScreen"
+
+          onRequestClose={handleClose}
+
+        >
+
+          <ServerErrorScreen
+
+            onRetry={handleRetry}
+
+            onClose={handleClose}
+
+            onContactSupport={handleContactSupport}
+
+          />
+
+        </Modal>
+
+      </>
+
+    );
+
+  };
+
+};
+
+
+
+export default withServerErrorHandler;
+
+

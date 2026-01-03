@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   StatusBar,
   SafeAreaView,
 } from 'react-native';
@@ -16,16 +15,7 @@ const ServerErrorScreen = ({ onRetry, onClose, onContactSupport }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.closeButton}
-          onPress={onClose}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="close" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
+      {/* Header - Kapatma butonu kaldırıldı */}
 
       {/* Content */}
       <View style={styles.content}>
@@ -72,21 +62,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   content: {
     flex: 1,

@@ -1175,14 +1175,13 @@ export default function HomeScreen({ navigation }) {
         visible={showServerError}
         animationType="slide"
         presentationStyle="fullScreen"
-        onRequestClose={() => setShowServerError(false)}
       >
         <ServerErrorScreen
           onRetry={() => {
             setShowServerError(false);
             loadData();
           }}
-          onClose={() => setShowServerError(false)}
+          onClose={() => {}}
           onContactSupport={() => {
             setShowServerError(false);
             navigation.navigate('LiveChat');

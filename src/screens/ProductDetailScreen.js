@@ -79,7 +79,6 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [reviewImageViewerIndex, setReviewImageViewerIndex] = useState(0);
   const [reviewImageViewerImages, setReviewImageViewerImages] = useState([]);
   const [liveViewers, setLiveViewers] = useState(0);
-  const [recommendedSize, setRecommendedSize] = useState(null);
   const [isFlashDeal, setIsFlashDeal] = useState(false);
   const [flashDealOldPrice, setFlashDealOldPrice] = useState(null);
 
@@ -285,10 +284,6 @@ export default function ProductDetailScreen({ navigation, route }) {
                   setIsFavorite(!!data?.isFavorite);
                 }
 
-                // Chatbot'tan beden önerisi al (sadece ürünün beden seçenekleri varsa)
-                // NOT: AI beden önerisi sizeOptions hazır olduğunda useEffect içinde kontrol edilecek
-                // Burada sadece temizleme yapıyoruz
-                setRecommendedSize(null);
               } else {
                 setIsFavorite(!!data?.isFavorite);
               }
@@ -1465,51 +1460,6 @@ export default function ProductDetailScreen({ navigation, route }) {
     setSelectedSize(0);
   }, [product?.id, product?._id]);
 
-  // Beden seçenekleri varsa AI beden önerisini al, yoksa temizle
-  useEffect(() => {
-    const fetchBedenOnerisi = async () => {
-      // Eğer beden seçenekleri yoksa, AI önerisini çalıştırma
-      if (sizeOptions.length === 0) {
-        setRecommendedSize(null);
-        return;
-      }
-
-      // Beden seçenekleri varsa, AI önerisini al
-      try {
-        const userId = await AsyncStorage.getItem('userId');
-        if (!userId || !product) {
-          return;
-        }
-
-        const productId = product.id || product._id;
-        if (!productId) {
-          return;
-        }
-
-        const chatbotResponse = await chatbotAPI.sendMessage(userId, 'beden bilgisi', null, productId, 'text');
-        if (chatbotResponse.data?.success && chatbotResponse.data?.data) {
-          const responseData = chatbotResponse.data.data;
-          // Önerilen bedeni data'dan al
-          if (responseData.recommendedSize) {
-            setRecommendedSize(responseData.recommendedSize);
-          } else if (responseData.data?.recommendedSize) {
-            setRecommendedSize(responseData.data.recommendedSize);
-          } else if (responseData.quickReplies) {
-            // Quick reply'lerden önerilen bedeni bul
-            const sizeReply = responseData.quickReplies.find((r: any) => r.data?.recommendedSize);
-            if (sizeReply?.data?.recommendedSize) {
-              setRecommendedSize(sizeReply.data.recommendedSize);
-            }
-          }
-        }
-      } catch (chatbotError) {
-        console.log('Chatbot beden önerisi alınamadı:', chatbotError);
-        setRecommendedSize(null);
-      }
-    };
-
-    fetchBedenOnerisi();
-  }, [sizeOptions.length, product?.id, product?._id]);
 
   // productImages değiştiğinde currentImageIndex'i geçerli tut
   useEffect(() => {
@@ -1753,11 +1703,6 @@ export default function ProductDetailScreen({ navigation, route }) {
                 </View>
               )}
             </View>
-            {product.stock !== undefined && (
-              <Text style={[styles.stockText, product.stock > 0 ? styles.inStock : styles.outOfStock]}>
-                {product.stock > 0 ? `Stokta ${product.stock} adet` : 'Stokta yok'}
-              </Text>
-            )}
           </View>
 
           {/* Size Selection */}
@@ -1768,12 +1713,6 @@ export default function ProductDetailScreen({ navigation, route }) {
                 <TouchableOpacity>
                   <View style={styles.sizeGuideContainer}>
                     <Text style={styles.sizeGuide}>Beden Rehberi</Text>
-                    {recommendedSize && sizeOptions.length > 0 && (
-                      <View style={styles.recommendedSizeBadge}>
-                        <Ionicons name="sparkles" size={12} color="#FF8C00" />
-                        <Text style={styles.recommendedSizeText}>AI Önerilen: {recommendedSize}</Text>
-                      </View>
-                    )}
                   </View>
                 </TouchableOpacity>
               </View>
@@ -3081,17 +3020,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.gray600,
   },
-  stockText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  inStock: {
-    color: COLORS.primary,
-  },
-  outOfStock: {
-    color: COLORS.error,
-  },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3169,22 +3097,6 @@ const styles = StyleSheet.create({
   sizeGuideContainer: {
     alignItems: 'flex-end',
     gap: 4,
-  },
-  recommendedSizeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FFD700',
-  },
-  recommendedSizeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF8C00',
   },
   colorsContainer: {
     flexDirection: 'row',

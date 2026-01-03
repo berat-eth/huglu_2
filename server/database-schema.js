@@ -1672,6 +1672,21 @@ async function createDatabaseSchema(pool) {
             console.warn('⚠️ Foreign key eklenemedi:', fkError.message);
           }
         }
+
+        // deviceId kolonu ekle (misafir kullanıcılar için)
+        const [deviceIdColumns] = await pool.execute(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'chatbot_analytics'
+          AND COLUMN_NAME = 'deviceId'
+        `);
+        
+        if (deviceIdColumns.length === 0) {
+          await pool.execute(`ALTER TABLE chatbot_analytics ADD COLUMN deviceId VARCHAR(255) NULL`);
+          await pool.execute(`ALTER TABLE chatbot_analytics ADD INDEX idx_deviceId_analytics (deviceId)`);
+          console.log('✅ deviceId kolonu chatbot_analytics tablosuna eklendi');
+        }
       } catch (e) {
         console.warn('⚠️ Chatbot analytics table update warning:', e.message);
       }

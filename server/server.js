@@ -23756,7 +23756,7 @@ async function startServer() {
   // Canlı destek - Mesaj gönder
   app.post('/api/chatbot/live-support/message', async (req, res) => {
     try {
-      const { userId, message } = req.body;
+      const { userId, message, deviceId } = req.body;
 
       if (!userId || !message || !message.trim()) {
         return res.status(400).json({
@@ -23765,30 +23765,55 @@ async function startServer() {
         });
       }
 
-      // Tenant kontrolü (kullanıcının tenant'ı)
-      const [userRow] = await poolWrapper.execute(
-        'SELECT tenantId FROM users WHERE id = ? LIMIT 1',
-        [userId]
-      );
+      let tenantId = 1;
+      let finalUserId = userId;
 
-      if (userRow.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Kullanıcı bulunamadı'
-        });
+      // Misafir kullanıcı kontrolü (negatif userId veya deviceId varsa)
+      const isGuest = userId < 0 || deviceId;
+      
+      if (isGuest) {
+        // Misafir kullanıcı için deviceId kullan
+        if (!deviceId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Misafir kullanıcı için deviceId gerekli'
+          });
+        }
+        // DeviceId'yi hash'leyerek benzersiz bir identifier oluştur
+        // Negatif sayı kullanarak misafir kullanıcı olduğunu belirt
+        const hash = deviceId.split('').reduce((acc, char) => {
+          const hash = ((acc << 5) - acc) + char.charCodeAt(0);
+          return hash & hash;
+        }, 0);
+        finalUserId = -Math.abs(hash);
+        tenantId = 1; // Misafir kullanıcılar için varsayılan tenant
+      } else {
+        // Kayıtlı kullanıcı için tenant kontrolü
+        const [userRow] = await poolWrapper.execute(
+          'SELECT tenantId FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        );
+
+        if (userRow.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'Kullanıcı bulunamadı'
+          });
+        }
+
+        tenantId = userRow[0].tenantId || 1;
       }
 
-      const tenantId = userRow[0].tenantId || 1;
-
-      // Canlı destek mesajını kaydet
+      // Canlı destek mesajını kaydet (deviceId'yi de sakla misafir kullanıcılar için)
       const [result] = await poolWrapper.execute(
-        `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, timestamp) 
-         VALUES (?, ?, ?, ?, NOW())`,
+        `INSERT INTO chatbot_analytics (tenantId, userId, message, intent, timestamp, deviceId) 
+         VALUES (?, ?, ?, ?, NOW(), ?)`,
         [
           tenantId,
-          userId,
+          finalUserId,
           message.substring(0, 1000),
-          'live_support'
+          'live_support',
+          isGuest ? deviceId : null
         ]
       );
 
@@ -23809,37 +23834,75 @@ async function startServer() {
   });
 
   // Canlı destek - Mesaj geçmişi getir
-  app.get('/api/chatbot/live-support/history/:userId', authenticateJWT, validateUserIdMatch('params'), async (req, res) => {
+  app.get('/api/chatbot/live-support/history/:userId', async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      if (!userId || userId <= 0) {
+      if (!userId) {
         return res.status(400).json({ success: false, message: 'Geçersiz userId' });
       }
 
-      // Tenant kontrolü (kullanıcının tenant'ı)
-      const [userRow] = await poolWrapper.execute(
-        'SELECT tenantId FROM users WHERE id = ? LIMIT 1',
-        [userId]
-      );
+      // Misafir kullanıcı kontrolü (negatif userId)
+      const isGuest = userId < 0;
+      let tenantId = 1;
+      let deviceId = null;
 
-      if (userRow.length === 0) {
-        console.error(`[Live Support History] Kullanıcı bulunamadı: userId=${userId}`);
-        return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
+      if (isGuest) {
+        // Misafir kullanıcı için deviceId'yi query parametresinden al
+        deviceId = req.query.deviceId;
+        if (!deviceId) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Misafir kullanıcı için deviceId gerekli' 
+          });
+        }
+        tenantId = 1; // Misafir kullanıcılar için varsayılan tenant
+      } else {
+        // Kayıtlı kullanıcı için tenant kontrolü ve authentication
+        // Sadece kayıtlı kullanıcılar için authentication gerekli
+        if (!req.user || req.user.id !== userId) {
+          return res.status(401).json({ 
+            success: false, 
+            message: 'Yetkisiz erişim' 
+          });
+        }
+
+        const [userRow] = await poolWrapper.execute(
+          'SELECT tenantId FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        );
+
+        if (userRow.length === 0) {
+          console.error(`[Live Support History] Kullanıcı bulunamadı: userId=${userId}`);
+          return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı' });
+        }
+
+        tenantId = userRow[0].tenantId || 1;
       }
 
-      const tenantId = userRow[0].tenantId || 1;
+      // Canlı destek mesajlarını getir
+      // Misafir kullanıcılar için deviceId'ye göre, kayıtlı kullanıcılar için userId'ye göre
+      let rows;
+      if (isGuest) {
+        [rows] = await poolWrapper.execute(
+          `SELECT id, message, intent, timestamp 
+           FROM chatbot_analytics 
+           WHERE deviceId = ? AND tenantId = ? AND (intent = 'live_support' OR intent = 'admin_message')
+           ORDER BY timestamp ASC
+           LIMIT 100`,
+          [deviceId, tenantId]
+        );
+      } else {
+        [rows] = await poolWrapper.execute(
+          `SELECT id, message, intent, timestamp 
+           FROM chatbot_analytics 
+           WHERE userId = ? AND tenantId = ? AND (intent = 'live_support' OR intent = 'admin_message')
+           ORDER BY timestamp ASC
+           LIMIT 100`,
+          [userId, tenantId]
+        );
+      }
 
-      // Canlı destek mesajlarını getir (live_support ve admin_message intent'leri)
-      const [rows] = await poolWrapper.execute(
-        `SELECT id, message, intent, timestamp 
-         FROM chatbot_analytics 
-         WHERE userId = ? AND tenantId = ? AND (intent = 'live_support' OR intent = 'admin_message')
-         ORDER BY timestamp ASC
-         LIMIT 100`,
-        [userId, tenantId]
-      );
-
-      console.log(`[Live Support History] Mesajlar getirildi: userId=${userId}, tenantId=${tenantId}, mesajSayisi=${rows.length}`);
+      console.log(`[Live Support History] Mesajlar getirildi: userId=${userId}, isGuest=${isGuest}, tenantId=${tenantId}, mesajSayisi=${rows.length}`);
 
       res.json({
         success: true,

@@ -415,10 +415,25 @@ export const chatbotAPI = {
 
 // ==================== CANLI DESTEK API ====================
 export const liveSupportAPI = {
-  sendMessage: (userId, message) => 
-    api.post('/chatbot/live-support/message', { userId, message }),
-  getHistory: (userId) => 
-    api.get(`/chatbot/live-support/history/${userId}`),
+  sendMessage: async (userId, message) => {
+    // Misafir kullanıcı için deviceId'yi de gönder
+    let deviceId = null;
+    if (userId < 0) {
+      // Negatif userId = misafir kullanıcı
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        deviceId = await AsyncStorage.getItem('guestDeviceId');
+      } catch (error) {
+        console.error('DeviceId alınamadı:', error);
+      }
+    }
+    return api.post('/chatbot/live-support/message', { userId, message, deviceId });
+  },
+  getHistory: (userId, deviceId = null) => {
+    const url = `/chatbot/live-support/history/${userId}`;
+    const params = deviceId ? { deviceId } : {};
+    return api.get(url, { params });
+  },
   getAdminMessages: (userId) => 
     api.get(`/chatbot/admin-messages/${userId}`),
   getConversations: (userId) => 
