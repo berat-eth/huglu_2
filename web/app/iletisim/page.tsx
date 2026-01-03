@@ -253,13 +253,12 @@ export default function Iletisim() {
             <div className="rounded-2xl overflow-hidden shadow-xl">
               <div className="h-[400px] w-full">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d202081.12586154795!2d31.58504840067316!3d37.68404172477694!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14c52b33668b81cb%3A0x3f8e0c193c9d5c17!2sHu%C4%9Flu%20Outdoor!5e0!3m2!1str!2str!4v1761295809929!5m2!1str!2str"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=31.5700%2C37.4700%2C31.6000%2C37.4800&layer=mapnik&marker=37.475114447064136%2C31.583744408154548"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
                   allowFullScreen
                   loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
                 ></iframe>
               </div>
             </div>

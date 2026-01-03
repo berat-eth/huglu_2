@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { COLORS } from '../constants/colors';
 
@@ -14,7 +14,7 @@ const STORES = [
     name: 'Huğlu Merkez Fabrika',
     address: 'Huğlu, Beyşehir, Konya',
     city: 'Konya',
-    phone: '+90 332 XXX XX XX',
+    phone: '0530 312 58 13',
     hours: '07:30 - 17:30',
     distance: '2.5 km',
     status: 'open',
@@ -22,8 +22,8 @@ const STORES = [
     closingTime: '17:30\'da Kapanıyor',
     pickupAvailable: true,
     pickupReadyTime: '2 saat içinde',
-    latitude: 37.9833,
-    longitude: 31.6167,
+    latitude: 37.475114447064136,
+    longitude: 31.583744408154548,
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC73cH3NCJlBWJV29dNYP1NSVx-evbkoOPZBOJATEcyylDs7CstF65P8zYknJ4VzOpb-xbFfXyV15N1AO20wWJaxtocvHrq3o_60CmEbPMQgqh-xMgtkh8TXbOH8yxutjSeuiWxU4NeFvBiCt2aX1tvOzA_a--aoub7xyk88E1CKSaD8qL194ntMXQOcAOK5hVPl7okbOaRTSTxFuxJHq52OP0_OJBCqX44UTT2j9NVe5ltmVKYb9k4eaQOSzQkXVQc4-aAdVXg7V4',
   },
   {
@@ -31,7 +31,7 @@ const STORES = [
     name: 'Huğlu Outdoor Beyşehir Şubesi',
     address: 'Beyşehir Merkez, Konya',
     city: 'Konya',
-    phone: '+90 332 XXX XX XX',
+    phone: '0530 312 58 13',
     hours: '09:00 - 18:30',
     distance: '8.3 km',
     status: 'open',
@@ -39,8 +39,8 @@ const STORES = [
     closingTime: '18:30\'da Kapanıyor',
     pickupAvailable: true,
     pickupReadyTime: '1 saat içinde',
-    latitude: 37.9167,
-    longitude: 31.7333,
+    latitude: 37.684817091999946,
+    longitude: 31.723626534914292,
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJW9xHXDuwHGbp-VUt18K0hy4uwilsnil9DfRyLNCJxFwE3wzTSYvARKFORK_27ML4rlYFHTvpGoQVcuIkp-4HErDLfjR-gfhhgAKUhbh8De_QE2wfGk2oLoiy5MD8OHIX9fjTD9mfJQIb56lYE4pwyG80O0AaFkQP9N0qEckIcwSUIakje3ocuWGj_AXgmGwCPbd6BEef2-7OQAx3gqXzswnanuNbgRfnmDrY2I8qlZCXGD5APHai4I5UnFnqzv4KiQ2q6VB9tn4',
   },
   {
@@ -104,9 +104,11 @@ export default function PhysicalStoresScreen({ navigation }) {
   };
 
   const filteredStores = STORES.filter(store => 
-    store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    store.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    store.city.toLowerCase().includes(searchQuery.toLowerCase())
+    store.id !== 3 && (
+      store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      store.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      store.city.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   const getStatusColor = (status) => {
@@ -186,8 +188,8 @@ export default function PhysicalStoresScreen({ navigation }) {
               ref={mapRef}
               style={styles.mapPreviewMap}
               initialRegion={{
-                latitude: userLocation?.latitude || 37.9833,
-                longitude: userLocation?.longitude || 31.6167,
+                latitude: userLocation?.latitude || 37.475114447064136,
+                longitude: userLocation?.longitude || 31.583744408154548,
                 latitudeDelta: 0.5,
                 longitudeDelta: 0.5,
               }}
@@ -195,8 +197,17 @@ export default function PhysicalStoresScreen({ navigation }) {
               zoomEnabled={false}
               pitchEnabled={false}
               rotateEnabled={false}
+              mapType="none"
             >
-              {STORES.map((store) => (
+              <UrlTile
+                urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                maximumZ={19}
+                minimumZ={0}
+                flipY={false}
+                shouldReplaceMapContent={true}
+                zIndex={-1}
+              />
+              {STORES.filter(store => store.id !== 3).map((store) => (
                 <Marker
                   key={store.id}
                   coordinate={{
@@ -240,15 +251,24 @@ export default function PhysicalStoresScreen({ navigation }) {
             ref={mapRef}
             style={styles.fullMap}
             initialRegion={{
-              latitude: userLocation?.latitude || 37.9833,
-              longitude: userLocation?.longitude || 31.6167,
+              latitude: userLocation?.latitude || 37.475114447064136,
+              longitude: userLocation?.longitude || 31.583744408154548,
               latitudeDelta: 0.5,
               longitudeDelta: 0.5,
             }}
             showsUserLocation
             showsMyLocationButton
+            mapType="none"
           >
-            {STORES.map((store) => (
+            <UrlTile
+              urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+              maximumZ={19}
+              minimumZ={0}
+              flipY={false}
+              shouldReplaceMapContent={true}
+              zIndex={-1}
+            />
+            {STORES.filter(store => store.id !== 3).map((store) => (
               <Marker
                 key={store.id}
                 coordinate={{
@@ -425,6 +445,32 @@ export default function PhysicalStoresScreen({ navigation }) {
                     store.status === 'closed' && styles.secondaryActionDisabled
                   ]}
                   disabled={store.status === 'closed'}
+                  onPress={async () => {
+                    try {
+                      // Mağaza ID'sine göre özel Google Maps linkleri
+                      let directionsUrl;
+                      if (store.id === 1) {
+                        // Huğlu Merkez Fabrika
+                        directionsUrl = 'https://maps.app.goo.gl/b1LbAcfmFmxWTpx59';
+                      } else if (store.id === 2) {
+                        // Huğlu Outdoor Beyşehir Şubesi
+                        directionsUrl = 'https://www.google.com/maps/place/Hu%C4%9Flu+Outdoor+Bey%C5%9Fehir+%C5%9Eubesi/@37.6828178,31.7184082,16.75z/data=!4m11!1m3!2m2!1sHu%C4%9Flu+Outdoor+bey%C5%9Fehir+!6e6!3m6!1s0x14dab7c16e304ffb:0x41760d8445ae3342!8m2!3d37.6847336!4d31.7233532!15sChhIdcSfbHUgT3V0ZG9vciBiZXnFn2VoaXKSAQpkcmVzc19zaG9w4AEA!16s%2Fg%2F11xsbbmm6h?hl=tr&entry=ttu&g_ep=EgoyMDI1MTIwOS4wIKXMDSoASAFQAw%3D%3D';
+                      } else {
+                        // Diğer mağazalar için koordinat bazlı
+                        directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`;
+                      }
+                      
+                      const canOpen = await Linking.canOpenURL(directionsUrl);
+                      if (canOpen) {
+                        await Linking.openURL(directionsUrl);
+                      } else {
+                        Alert.alert('Hata', 'Yol tarifi açılamadı. Lütfen Google Maps uygulamasının yüklü olduğundan emin olun.');
+                      }
+                    } catch (error) {
+                      console.error('Yol tarifi açma hatası:', error);
+                      Alert.alert('Hata', 'Yol tarifi açılırken bir hata oluştu.');
+                    }
+                  }}
                 >
                   <Ionicons 
                     name="navigate" 
@@ -444,6 +490,23 @@ export default function PhysicalStoresScreen({ navigation }) {
                     store.status === 'closed' && styles.secondaryActionDisabled
                   ]}
                   disabled={store.status === 'closed'}
+                  onPress={async () => {
+                    try {
+                      // Telefon numarasından boşlukları ve özel karakterleri temizle
+                      const phoneNumber = store.phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+                      const telUrl = `tel:${phoneNumber}`;
+                      
+                      const canOpen = await Linking.canOpenURL(telUrl);
+                      if (canOpen) {
+                        await Linking.openURL(telUrl);
+                      } else {
+                        Alert.alert('Hata', 'Telefon araması başlatılamadı.');
+                      }
+                    } catch (error) {
+                      console.error('Telefon arama hatası:', error);
+                      Alert.alert('Hata', 'Telefon araması başlatılırken bir hata oluştu.');
+                    }
+                  }}
                 >
                   <Ionicons 
                     name="call-outline" 

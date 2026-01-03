@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { COLORS } from '../constants/colors';
 import { ordersAPI, invoicesAPI, returnRequestsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
@@ -258,7 +258,7 @@ export default function OrderDetailScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Google Maps */}
+        {/* OpenStreetMap */}
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
@@ -270,7 +270,16 @@ export default function OrderDetailScreen({ navigation, route }) {
             }}
             showsUserLocation={true}
             showsMyLocationButton={true}
+            mapType="none"
           >
+            <UrlTile
+              urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+              maximumZ={19}
+              minimumZ={0}
+              flipY={false}
+              shouldReplaceMapContent={true}
+              zIndex={-1}
+            />
             {(order.shippingAddress?.latitude || order.deliveryAddress?.latitude) && (
               <Marker
                 coordinate={{
