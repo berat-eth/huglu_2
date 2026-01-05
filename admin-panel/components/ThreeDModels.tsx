@@ -60,7 +60,7 @@ export default function ThreeDModels() {
 
   const loadProducts = async () => {
     try {
-      const response = await api.get<ApiResponse<Product[]>>('/admin/products', { params: { limit: 1000 } })
+      const response = await api.get<ApiResponse<Product[]>>('/admin/products?limit=1000')
       if (response.success && response.data) {
         setProducts(response.data)
       }
