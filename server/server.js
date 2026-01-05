@@ -17876,8 +17876,8 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
     }
     
     // Optimize: Admin için gerekli column'lar (isActive ve excludeFromXml dahil)
-    // model3dUrl ve model3dFormat kolonları varsa ekle
-    let selectColumns = 'id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId';
+    // Önce mevcut kolonları kontrol et
+    let selectColumns = 'id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId';
     
     try {
       const [colCheck] = await poolWrapper.execute(`
@@ -17887,15 +17887,17 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
         AND TABLE_NAME = 'products' 
         AND COLUMN_NAME IN ('model3dUrl', 'model3dFormat')
       `);
-      const existingModelCols = colCheck.map((c) => c.COLUMN_NAME);
-      if (existingModelCols.includes('model3dUrl')) {
+      const existingCols = colCheck.map((c) => c.COLUMN_NAME);
+      
+      // model3d kolonları varsa ekle
+      if (existingCols.includes('model3dUrl')) {
         selectColumns += ', model3dUrl';
       }
-      if (existingModelCols.includes('model3dFormat')) {
+      if (existingCols.includes('model3dFormat')) {
         selectColumns += ', model3dFormat';
       }
     } catch (e) {
-      console.error(' Model3d kolon kontrolü hatası:', e);
+      console.error(' Kolon kontrolü hatası:', e);
       // Kolon kontrolü başarısız olursa devam et, varsayılan kolonlarla devam et
     }
 
@@ -17912,10 +17914,10 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
     } catch (sqlError) {
       console.error(' SQL sorgu hatası:', sqlError);
       console.error(' SELECT columns:', selectColumns);
-      // Hata durumunda varsayılan kolonlarla tekrar dene
+      // Hata durumunda minimal kolonlarla tekrar dene
       try {
         [rows] = await poolWrapper.execute(
-          `SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId
+          `SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId
            FROM products 
            WHERE tenantId = ?
            ORDER BY lastUpdated DESC
