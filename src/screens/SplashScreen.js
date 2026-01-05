@@ -240,18 +240,12 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Gradient Background */}
-      <View style={styles.gradientBackground}>
-        <View style={styles.gradientTop} />
-        <View style={styles.gradientBottom} />
-      </View>
-
-      {/* Animated Particles */}
-      <View style={styles.particlesContainer}>
-        <View style={[styles.particle, styles.particle1]} />
-        <View style={[styles.particle, styles.particle2]} />
-        <View style={[styles.particle, styles.particle3]} />
-      </View>
+      {/* Background Image */}
+      <Image 
+        source={require('../../assets/splash.png')} 
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
 
       {/* Content */}
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
@@ -347,66 +341,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Gradient Background
-  gradientBackground: {
+  // Background Image
+  backgroundImage: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  gradientTop: {
-    position: 'absolute',
-    top: -100,
-    left: -100,
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
-    backgroundColor: '#E8F5E9',
-    opacity: 0.8,
-  },
-  gradientBottom: {
-    position: 'absolute',
-    bottom: -100,
-    right: -100,
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: '#C8E6C9',
-    opacity: 0.6,
-  },
-
-  // Animated Particles
-  particlesContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  particle: {
-    position: 'absolute',
-    backgroundColor: '#4CAF50',
-    borderRadius: 50,
-    opacity: 0.08,
-  },
-  particle1: {
-    width: 100,
-    height: 100,
-    top: '20%',
-    left: '10%',
-  },
-  particle2: {
-    width: 150,
-    height: 150,
-    top: '60%',
-    right: '5%',
-  },
-  particle3: {
-    width: 80,
-    height: 80,
-    bottom: '30%',
-    left: '70%',
+    width: '100%',
+    height: '100%',
   },
 
   // Content
