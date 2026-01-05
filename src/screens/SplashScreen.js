@@ -266,7 +266,7 @@ export default function SplashScreen({ navigation }) {
             ]}
           >
             <Image
-              source={require('../../assets/logo.jpg')}
+              source={require('../../assets/spalsh logo.png')}
               style={[styles.logo, { opacity: 0.8 }]}
               resizeMode="contain"
             />
@@ -288,7 +288,7 @@ export default function SplashScreen({ navigation }) {
             ]}
           >
             <Image
-              source={require('../../assets/logo.jpg')}
+              source={require('../../assets/spalsh logo.png')}
               style={[styles.logo, { opacity: 0.8 }]}
               resizeMode="contain"
             />
@@ -302,7 +302,7 @@ export default function SplashScreen({ navigation }) {
             }}
           >
             <Image
-              source={require('../../assets/logo.jpg')}
+              source={require('../../assets/spalsh logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -336,7 +336,6 @@ export default function SplashScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -346,10 +345,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
     width: '100%',
     height: '100%',
+    zIndex: 0,
   },
 
   // Content
