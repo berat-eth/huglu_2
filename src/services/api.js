@@ -145,6 +145,7 @@ export const productsAPI = {
   getByCategory: (category, params) => api.get('/products', { params: { category, ...params } }),
   getFeatured: (limit = 10) => api.get('/products/featured', { params: { limit } }),
   getRecommendations: (productId, limit = 6) => api.get(`/products/${productId}/recommendations`, { params: { limit } }),
+  getModel3d: (productId) => api.get(`/products/${productId}/model3d`),
 };
 
 // ==================== CART API ====================

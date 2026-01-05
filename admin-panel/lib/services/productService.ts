@@ -98,4 +98,32 @@ export const productService = {
       isActive
     });
   },
+
+  // 3D Models Management
+  uploadModel3d: async (file: File) => {
+    const formData = new FormData();
+    formData.append('model', file);
+    return api.post<ApiResponse<{ filename: string; originalName: string; url: string; format: string; size: number }>>('/admin/3d-models/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+
+  getModel3dList: async () => {
+    return api.get<ApiResponse<Array<{ filename: string; url: string; format: string; size: number; uploadedAt: string }>>>('/admin/3d-models');
+  },
+
+  assignModelToProduct: async (productId: number, model3dUrl: string, model3dFormat: string) => {
+    return api.put<ApiResponse<{ productId: number; model3dUrl: string; model3dFormat: string }>>(`/admin/products/${productId}/model3d`, {
+      model3dUrl,
+      model3dFormat
+    });
+  },
+
+  deleteModel3d: async (filename: string) => {
+    return api.delete<ApiResponse<{ success: boolean }>>(`/admin/3d-models/${filename}`);
+  },
+
+  getProductModel3d: async (productId: number) => {
+    return api.get<ApiResponse<{ url: string; format: string } | null>>(`/products/${productId}/model3d`);
+  },
 };

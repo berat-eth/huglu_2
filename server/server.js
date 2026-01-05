@@ -693,6 +693,13 @@ if (!fs.existsSync(communityUploadsDir)) {
   logger.log('✅ Community uploads directory created:', communityUploadsDir);
 }
 
+// 3D models uploads directory
+const models3dDir = path.join(__dirname, 'uploads', '3d_models');
+if (!fs.existsSync(models3dDir)) {
+  fs.mkdirSync(models3dDir, { recursive: true });
+  logger.log('✅ 3D models uploads directory created:', models3dDir);
+}
+
 // Invoices PDF yükleme için uploads klasörünü oluştur
 const invoicesDir = path.join(__dirname, 'uploads', 'invoices');
 if (!fs.existsSync(invoicesDir)) {
@@ -880,6 +887,38 @@ const invoiceFileFilter = (req, file, cb) => {
     cb(new Error('Sadece PDF dosyaları yüklenebilir'), false);
   }
 };
+
+// 3D models upload için multer yapılandırması
+const model3dStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, models3dDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const sanitizedName = sanitizeFileName(file.originalname.replace(ext, ''));
+    cb(null, `model3d-${sanitizedName}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const model3dUpload = multer({
+  storage: model3dStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /\.(obj|glb|gltf|usdz)$/i;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = file.mimetype === 'application/octet-stream' || 
+                     file.mimetype === 'model/obj' || 
+                     file.mimetype === 'model/gltf-binary' ||
+                     file.mimetype === 'model/gltf+json' ||
+                     file.mimetype === 'model/usd';
+    
+    if (extname || mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error('Sadece .obj, .glb, .gltf, .usdz formatları desteklenir'));
+  }
+});
 
 const invoiceUpload = multer({
   storage: invoiceStorage,
@@ -17822,7 +17861,7 @@ app.get('/api/admin/products', authenticateAdmin, async (req, res) => {
     
     // Optimize: Admin için gerekli column'lar (isActive ve excludeFromXml dahil)
     const [rows] = await poolWrapper.execute(
-      `SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, createdAt, tenantId 
+      `SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, model3dUrl, model3dFormat, lastUpdated, createdAt, tenantId 
        FROM products 
        WHERE tenantId = ?
        ORDER BY lastUpdated DESC
@@ -17879,7 +17918,7 @@ app.get('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     
     // Optimize: Admin detail için gerekli column'lar (isActive ve excludeFromXml dahil)
     const [rows] = await poolWrapper.execute(
-      'SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId FROM products WHERE id = ?',
+      'SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, model3dUrl, model3dFormat, lastUpdated, tenantId FROM products WHERE id = ?',
       [productId]
     );
 
@@ -17984,7 +18023,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
       console.error(' Kolon kontrolü/ekleme hatası:', alterError);
     }
     
-    const allowed = ['name', 'description', 'price', 'taxRate', 'priceIncludesTax', 'category', 'image', 'images', 'stock', 'brand', 'hasVariations', 'isActive', 'excludeFromXml'];
+    const allowed = ['name', 'description', 'price', 'taxRate', 'priceIncludesTax', 'category', 'image', 'images', 'stock', 'brand', 'hasVariations', 'isActive', 'excludeFromXml', 'model3dUrl', 'model3dFormat'];
     const fields = [];
     const params = [];
     for (const key of allowed) {
@@ -18046,7 +18085,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
       console.warn(' Cache invalidation error:', error.message);
     }
     // Optimize: Sadece gerekli column'lar
-    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, lastUpdated, tenantId FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
+    const [rows] = await poolWrapper.execute('SELECT id, name, price, image, images, brand, category, description, stock, sku, isActive, excludeFromXml, model3dUrl, model3dFormat, lastUpdated, tenantId FROM products WHERE id = ? AND tenantId = ?', [productId, tenantId]);
     res.json({ success: true, data: rows[0], message: 'Ürün güncellendi' });
   } catch (error) {
     console.error(' Error updating product:', error);
@@ -18150,6 +18189,170 @@ app.patch('/api/admin/products/bulk-status', authenticateAdmin, async (req, res)
   } catch (error) {
     console.error(' Error bulk toggling product status:', error);
     res.status(500).json({ success: false, message: 'Error bulk toggling product status' });
+  }
+});
+
+// ==================== 3D MODELS MANAGEMENT ====================
+
+// Admin - Upload 3D Model
+app.post('/api/admin/3d-models/upload', authenticateAdmin, model3dUpload.single('model'), handleMulterError, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '3D model dosyası gereklidir' });
+    }
+
+    const fileUrl = `/uploads/3d_models/${req.file.filename}`;
+    const fileFormat = path.extname(req.file.originalname).toLowerCase().replace('.', '');
+
+    res.json({
+      success: true,
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        url: fileUrl,
+        format: fileFormat,
+        size: req.file.size
+      },
+      message: '3D model başarıyla yüklendi'
+    });
+  } catch (error) {
+    console.error('❌ Error uploading 3D model:', error);
+    res.status(500).json({ success: false, message: '3D model yüklenirken hata oluştu: ' + (error.message || 'Bilinmeyen hata') });
+  }
+});
+
+// Admin - List all 3D models
+app.get('/api/admin/3d-models', authenticateAdmin, async (req, res) => {
+  try {
+    const files = fs.readdirSync(models3dDir);
+    const models = files
+      .filter(file => /\.(obj|glb|gltf|usdz)$/i.test(file))
+      .map(file => {
+        const filePath = path.join(models3dDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: file,
+          url: `/uploads/3d_models/${file}`,
+          format: path.extname(file).toLowerCase().replace('.', ''),
+          size: stats.size,
+          uploadedAt: stats.birthtime
+        };
+      })
+      .sort((a, b) => b.uploadedAt - a.uploadedAt);
+
+    res.json({ success: true, data: models });
+  } catch (error) {
+    console.error('❌ Error listing 3D models:', error);
+    res.status(500).json({ success: false, message: '3D modeller listelenirken hata oluştu' });
+  }
+});
+
+// Admin - Assign 3D model to product
+app.put('/api/admin/products/:id/model3d', authenticateAdmin, async (req, res) => {
+  try {
+    const productId = parseInt(req.params.id);
+    const tenantId = req.tenant?.id || 1;
+    const { model3dUrl, model3dFormat } = req.body || {};
+
+    // Verify product exists
+    const [productRows] = await poolWrapper.execute(
+      'SELECT id FROM products WHERE id = ? AND tenantId = ?',
+      [productId, tenantId]
+    );
+
+    if (productRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+    }
+
+    // Update product with 3D model info
+    await poolWrapper.execute(
+      'UPDATE products SET model3dUrl = ?, model3dFormat = ?, lastUpdated = NOW() WHERE id = ? AND tenantId = ?',
+      [model3dUrl || null, model3dFormat || null, productId, tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: '3D model ürüne başarıyla atandı',
+      data: { productId, model3dUrl, model3dFormat }
+    });
+  } catch (error) {
+    console.error('❌ Error assigning 3D model to product:', error);
+    res.status(500).json({ success: false, message: '3D model atanırken hata oluştu' });
+  }
+});
+
+// Admin - Delete 3D model
+app.delete('/api/admin/3d-models/:filename', authenticateAdmin, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const sanitizedFilename = sanitizeFileName(filename);
+    const filePath = path.join(models3dDir, sanitizedFilename);
+
+    // Security check: ensure file is in the correct directory
+    if (!isPathInside(filePath, models3dDir)) {
+      return res.status(400).json({ success: false, message: 'Geçersiz dosya yolu' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'Dosya bulunamadı' });
+    }
+
+    // Check if model is assigned to any product
+    const [products] = await poolWrapper.execute(
+      'SELECT id, name FROM products WHERE model3dUrl LIKE ?',
+      [`%${sanitizedFilename}%`]
+    );
+
+    if (products.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu model bir veya daha fazla ürüne atanmış. Önce ürünlerden kaldırın.',
+        data: { assignedProducts: products }
+      });
+    }
+
+    fs.unlinkSync(filePath);
+    res.json({ success: true, message: '3D model başarıyla silindi' });
+  } catch (error) {
+    console.error('❌ Error deleting 3D model:', error);
+    res.status(500).json({ success: false, message: '3D model silinirken hata oluştu' });
+  }
+});
+
+// Public - Get product's 3D model info
+app.get('/api/products/:id/model3d', async (req, res) => {
+  try {
+    const productId = parseInt(req.params.id);
+    const tenantId = req.tenant?.id;
+
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: 'Tenant authentication required' });
+    }
+
+    const [rows] = await poolWrapper.execute(
+      'SELECT model3dUrl, model3dFormat FROM products WHERE id = ? AND tenantId = ?',
+      [productId, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ürün bulunamadı' });
+    }
+
+    const product = rows[0];
+    if (!product.model3dUrl) {
+      return res.json({ success: true, data: null, message: 'Bu ürün için 3D model bulunmuyor' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        url: product.model3dUrl,
+        format: product.model3dFormat
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting product 3D model:', error);
+    res.status(500).json({ success: false, message: '3D model bilgisi alınırken hata oluştu' });
   }
 });
 
@@ -19256,7 +19459,7 @@ app.get('/api/products/:id', async (req, res) => {
     // Eğer isActive kolonu varsa ve pasifse, WHERE clause'da filtreleyebiliriz ama şimdilik tüm ürünleri gösteriyoruz
     // Görsel kolonlarını kontrol et ve ekle (imageUrl kolonu veritabanında yok, kaldırıldı)
     const [rows] = await poolWrapper.execute(
-      'SELECT id, name, price, image, images, image1, image2, image3, image4, image5, thumbnail, gallery, brand, category, description, stock, sku, rating, reviewCount, lastUpdated FROM products WHERE id = ? AND tenantId = ?',
+      'SELECT id, name, price, image, images, image1, image2, image3, image4, image5, thumbnail, gallery, brand, category, description, stock, sku, rating, reviewCount, model3dUrl, model3dFormat, lastUpdated FROM products WHERE id = ? AND tenantId = ?',
       [numericId, req.tenant.id]
     );
 

@@ -389,6 +389,16 @@ async function createDatabaseSchema(pool) {
           console.log('✅ Added variationDetails (JSON) to products');
       }
 
+      // Ensure 3D model columns exist in products
+      if (!prodColNames.includes('model3dUrl')) {
+          await pool.execute('ALTER TABLE products ADD COLUMN model3dUrl VARCHAR(500) NULL AFTER variationDetails');
+          console.log('✅ Added model3dUrl to products');
+      }
+      if (!prodColNames.includes('model3dFormat')) {
+          await pool.execute('ALTER TABLE products ADD COLUMN model3dFormat VARCHAR(10) NULL AFTER model3dUrl');
+          console.log('✅ Added model3dFormat to products');
+      }
+
       // Ensure image columns exist in products
       if (!prodColNames.includes('image1')) {
           await pool.execute('ALTER TABLE products ADD COLUMN image1 VARCHAR(500) AFTER images');

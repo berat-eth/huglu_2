@@ -10,6 +10,7 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import ProductCard from '../components/ProductCard';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
+import ARViewer from '../components/ARViewer';
 import { COLORS } from '../constants/colors';
 import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI, flashDealsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
@@ -2448,59 +2449,29 @@ export default function ProductDetailScreen({ navigation, route }) {
           </SafeAreaView>
 
           <View style={styles.arViewerContent}>
-            <View style={styles.arPlaceholder}>
-              <View style={styles.arPlaceholderIconContainer}>
-                <Ionicons name="cube" size={64} color={COLORS.primary} />
+            {product?.model3dUrl ? (
+              <ARViewer
+                modelUrl={product.model3dUrl}
+                modelFormat={product.model3dFormat}
+                onClose={() => setShowARViewer(false)}
+              />
+            ) : (
+              <View style={styles.arPlaceholder}>
+                <View style={styles.arPlaceholderIconContainer}>
+                  <Ionicons name="cube-outline" size={64} color={COLORS.primary} />
+                </View>
+                <Text style={styles.arPlaceholderTitle}>3D Model Bulunamadı</Text>
+                <Text style={styles.arPlaceholderText}>
+                  Bu ürün için henüz 3D model eklenmemiş
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowARViewer(false)}
+                  style={[styles.button, { marginTop: 20 }]}
+                >
+                  <Text style={styles.buttonText}>Kapat</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.arPlaceholderTitle}>3D Model Yükleniyor...</Text>
-              <Text style={styles.arPlaceholderText}>
-                Ürünü gerçek ortamınızda görmek için kameranızı kullanın
-              </Text>
-            </View>
-
-            {/* AR Controls */}
-            <View style={styles.arControls}>
-              <TouchableOpacity style={styles.arControlButton}>
-                <View style={styles.arControlIconContainer}>
-                  <Ionicons name="refresh" size={20} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arControlText}>Sıfırla</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.arControlButton}>
-                <View style={styles.arControlIconContainer}>
-                  <Ionicons name="resize" size={20} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arControlText}>Boyut</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.arControlButton}>
-                <View style={styles.arControlIconContainer}>
-                  <Ionicons name="sync" size={20} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arControlText}>Döndür</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* AR Instructions */}
-            <View style={styles.arInstructions}>
-              <View style={styles.arInstructionItem}>
-                <View style={styles.arInstructionIcon}>
-                  <Ionicons name="hand-left-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arInstructionText}>Sürükle: Taşı</Text>
-              </View>
-              <View style={styles.arInstructionItem}>
-                <View style={styles.arInstructionIcon}>
-                  <Ionicons name="expand-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arInstructionText}>Pinch: Boyutlandır</Text>
-              </View>
-              <View style={styles.arInstructionItem}>
-                <View style={styles.arInstructionIcon}>
-                  <Ionicons name="sync-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arInstructionText}>İki parmak: Döndür</Text>
-              </View>
-            </View>
+            )}
           </View>
         </View>
       </Modal>
