@@ -10,7 +10,6 @@ import ProductRecommendations from '../components/ProductRecommendations';
 import ProductCard from '../components/ProductCard';
 import AddToCartSuccessModal from '../components/AddToCartSuccessModal';
 import LoginRequiredModal from '../components/LoginRequiredModal';
-import ARViewer from '../components/ARViewer';
 import { COLORS } from '../constants/colors';
 import { productsAPI, cartAPI, productQuestionsAPI, wishlistAPI, chatbotAPI, userLevelAPI, flashDealsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
@@ -65,10 +64,8 @@ export default function ProductDetailScreen({ navigation, route }) {
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [showSimilarModal, setShowSimilarModal] = useState(false);
   const [showTipsModal, setShowTipsModal] = useState(false);
-  const [showARNotAvailableModal, setShowARNotAvailableModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
-  const [showARViewer, setShowARViewer] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -1073,14 +1070,6 @@ export default function ProductDetailScreen({ navigation, route }) {
     setShowImageViewer(true);
   };
 
-  const handleARView = () => {
-    // Ürünün 3D modeli var mı kontrol et
-    if (product?.model3D || product?.arModel || product?.glbModel) {
-      setShowARViewer(true);
-    } else {
-      setShowARNotAvailableModal(true);
-    }
-  };
 
   const handleAddToCompare = async () => {
     try {
@@ -1529,15 +1518,6 @@ export default function ProductDetailScreen({ navigation, route }) {
             <TouchableOpacity style={[styles.headerButton, styles.aiButton]} onPress={handleAIAssistant}>
               <Ionicons name="sparkles" size={24} color={COLORS.white} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.headerButton, styles.arButton]}
-              onPress={handleARView}
-            >
-              <Ionicons name="cube-outline" size={24} color={COLORS.white} />
-              {(product?.model3D || product?.arModel || product?.glbModel) && (
-                <View style={styles.arBadge} />
-              )}
-            </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={24} color={COLORS.white} />
             </TouchableOpacity>
@@ -1743,9 +1723,6 @@ export default function ProductDetailScreen({ navigation, route }) {
                       >
                         {sizeValue}
                       </Text>
-                      {isOutOfStock && (
-                        <View style={styles.outOfStockLine} />
-                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -2422,60 +2399,6 @@ export default function ProductDetailScreen({ navigation, route }) {
         </View>
       </Modal>
 
-      {/* AR Viewer Modal */}
-      <Modal
-        visible={showARViewer}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowARViewer(false)}
-      >
-        <View style={styles.arViewerContainer}>
-          <SafeAreaView style={styles.arViewerSafeArea} edges={['top']}>
-            <View style={styles.arViewerHeader}>
-              <TouchableOpacity
-                style={styles.arViewerCloseButton}
-                onPress={() => setShowARViewer(false)}
-              >
-                <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
-              </TouchableOpacity>
-              <View style={styles.arViewerHeaderInfo}>
-                <View style={styles.arViewerHeaderIcon}>
-                  <Ionicons name="cube" size={20} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arViewerTitle}>AR Görünümü</Text>
-              </View>
-              <View style={{ width: 44 }} />
-            </View>
-          </SafeAreaView>
-
-          <View style={styles.arViewerContent}>
-            {product?.model3dUrl ? (
-              <ARViewer
-                modelUrl={product.model3dUrl}
-                modelFormat={product.model3dFormat}
-                onClose={() => setShowARViewer(false)}
-              />
-            ) : (
-              <View style={styles.arPlaceholder}>
-                <View style={styles.arPlaceholderIconContainer}>
-                  <Ionicons name="cube-outline" size={64} color={COLORS.primary} />
-                </View>
-                <Text style={styles.arPlaceholderTitle}>3D Model Bulunamadı</Text>
-                <Text style={styles.arPlaceholderText}>
-                  Bu ürün için henüz 3D model eklenmemiş
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowARViewer(false)}
-                  style={[styles.button, { marginTop: 20 }]}
-                >
-                  <Text style={styles.buttonText}>Kapat</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
-
       {/* Image Viewer Modal */}
       <Modal
         visible={showImageViewer}
@@ -2736,25 +2659,6 @@ export default function ProductDetailScreen({ navigation, route }) {
         </View>
       </CustomModal>
 
-      {/* AR Not Available Modal */}
-      <CustomModal
-        visible={showARNotAvailableModal}
-        onClose={() => setShowARNotAvailableModal(false)}
-        title="AR Görünümü"
-        icon="cube"
-        iconColor={COLORS.primary}
-        actionButton
-        actionButtonText="Tamam"
-        onActionPress={() => setShowARNotAvailableModal(false)}
-        scrollable={false}
-      >
-        <View style={styles.arNotAvailableContent}>
-          <Text style={styles.arNotAvailableText}>
-            Bu ürün için 3D model henüz mevcut değil.
-          </Text>
-        </View>
-      </CustomModal>
-
       {/* Add to Cart Success Modal */}
       <AddToCartSuccessModal
         visible={showAddToCartSuccessModal}
@@ -2827,26 +2731,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
-  },
-  arButton: {
-    backgroundColor: 'rgba(128, 128, 128, 0.9)',
-    shadowColor: '#808080',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
-    position: 'relative',
-  },
-  arBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
-    borderWidth: 2,
-    borderColor: COLORS.white,
   },
   headerActions: {
     flexDirection: 'row',
@@ -3554,172 +3438,6 @@ const styles = StyleSheet.create({
     width: 24,
     backgroundColor: COLORS.white,
   },
-  arViewerContainer: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundLight,
-  },
-  arViewerSafeArea: {
-    zIndex: 10,
-  },
-  arViewerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  arViewerCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arViewerHeaderInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  arViewerHeaderIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arViewerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.textMain,
-  },
-  arViewerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.backgroundLight,
-  },
-  arPlaceholder: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 48,
-  },
-  arPlaceholderIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  arPlaceholderTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.textMain,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  arPlaceholderText: {
-    fontSize: 14,
-    color: COLORS.gray600,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  arControls: {
-    position: 'absolute',
-    bottom: 120,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 16,
-  },
-  arControlButton: {
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    minWidth: 80,
-  },
-  arControlIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arControlText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textMain,
-  },
-  arInstructions: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    flexWrap: 'wrap',
-  },
-  arInstructionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  arInstructionIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arInstructionText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: COLORS.textMain,
-  },
   // Question Styles
   askQuestionButton: {
     flexDirection: 'row',
@@ -4382,15 +4100,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray600,
     lineHeight: 20,
-  },
-  arNotAvailableContent: {
-    paddingVertical: 8,
-  },
-  arNotAvailableText: {
-    fontSize: 15,
-    color: COLORS.gray600,
-    lineHeight: 22,
-    textAlign: 'center',
   },
 
 });

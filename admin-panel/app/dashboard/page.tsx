@@ -71,7 +71,6 @@ import BehaviorAnalytics from '@/components/BehaviorAnalytics'
 import AnalyticsReports from '@/components/AnalyticsReports'
 import AnalyticsSettings from '@/components/AnalyticsSettings'
 import Community from '@/components/Community'
-import ThreeDModels from '@/components/ThreeDModels'
 import Snackbar, { SnackbarMessage } from '@/components/Snackbar'
 
 
@@ -360,7 +359,6 @@ export default function DashboardPage() {
           {activeTab === 'analytics-settings' && <AnalyticsSettings />}
 
           {activeTab === 'community' && <Community />}
-          {activeTab === '3d-models' && <ThreeDModels />}
         </main>
       </div>
     </div>

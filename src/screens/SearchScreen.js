@@ -23,13 +23,6 @@ const POPULAR_SEARCHES = [
   'Kamp Sobası',
 ];
 
-const TRENDING_SEARCHES = [
-  { emoji: '🔥', text: 'Waterproof jackets' },
-  { emoji: '⛺', text: '4-season tents' },
-  { emoji: '🎒', text: 'Ultralight gear' },
-  { emoji: '🥾', text: 'Trail runners' },
-  { emoji: '🧗', text: 'Climbing ropes' },
-];
 
 const SAMPLE_PRODUCTS = [
   { id: 1, name: 'Apex Ultra-Light Tent', brand: 'Tents', price: 249, image: 'https://via.placeholder.com/300', rating: 4.8, isFavorite: false },
@@ -962,22 +955,6 @@ export default function SearchScreen({ navigation }) {
             </View>
           )}
 
-          {/* Trending Searches */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Trend Aramalar</Text>
-            <View style={styles.tagsContainer}>
-              {TRENDING_SEARCHES.map((search, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.trendingTag}
-                  onPress={() => handleSearch(search.text)}
-                >
-                  <Text style={styles.trendingEmoji}>{search.emoji}</Text>
-                  <Text style={styles.tagText}>{search.text}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
         </ScrollView>
       ) : (
         <View style={styles.resultsContainer}>
@@ -1279,20 +1256,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.gray200,
-  },
-  trendingTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    gap: 6,
-  },
-  trendingEmoji: {
-    fontSize: 16,
   },
   tagText: {
     fontSize: 14,

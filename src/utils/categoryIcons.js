@@ -27,6 +27,7 @@ export const CATEGORY_ICONS = {
   'Kamp Ürünleri': campIcon,
   'Kamp': campIcon,
   'Esofman': esofmanIcon,
+  'Eşofman': esofmanIcon,
   'Gömlek': gomlekIcon,
   'Hırka': hirkaIcon,
   'Hoodie': hoodieIcon,
@@ -45,8 +46,14 @@ export const CATEGORY_ICONS = {
   'Tişört': tisortIcon,
   'Tshirt': tisortIcon,
   'Tişort': tisortIcon,
+  'T-Shirt': tisortIcon,
+  'T-shirt': tisortIcon,
+  't-shirt': tisortIcon,
   'Yelek': yelekIcon,
   'Waistcoat': yelekIcon,
+  'Yardımcı Giyim': aplıkeIcon,
+  'Yardımcı giyim': aplıkeIcon,
+  'yardımcı giyim': aplıkeIcon,
   'Yağmurluk': yagmurlukIcon,
   
   // İngilizce ve alternatif isimler
@@ -56,6 +63,7 @@ export const CATEGORY_ICONS = {
   'camp': campIcon,
   'kamp': campIcon,
   'esofman': esofmanIcon,
+  'eşofman': esofmanIcon,
   'gomlek': gomlekIcon,
   'gömlek': gomlekIcon,
   'hirka': hirkaIcon,
@@ -74,23 +82,22 @@ export const CATEGORY_ICONS = {
   'tisort': tisortIcon,
   'tişört': tisortIcon,
   'tişort': tisortIcon,
+  't-shirt': tisortIcon,
+  't-short': tisortIcon,
   'yelek': yelekIcon,
+  'yardımcı giyim': aplıkeIcon,
   'yagmurluk': yagmurlukIcon,
   'yağmurluk': yagmurlukIcon,
 };
 
-// Kategori için ikon getir (resim varsa resim, yoksa Ionicons ismi)
+// Kategori için ikon getir (resim varsa resim, yoksa null döner)
 export const getCategoryIcon = (categoryName) => {
   if (!categoryName) {
-    console.log('getCategoryIcon: categoryName boş');
     return null;
   }
   
-  console.log('getCategoryIcon çağrıldı:', categoryName);
-  
   // Tam eşleşme ara
   if (CATEGORY_ICONS[categoryName]) {
-    console.log('Tam eşleşme bulundu:', categoryName);
     return CATEGORY_ICONS[categoryName];
   }
   
@@ -101,25 +108,22 @@ export const getCategoryIcon = (categoryName) => {
   );
   
   if (matchedKey) {
-    console.log('Büyük/küçük harf eşleşmesi bulundu:', matchedKey);
     return CATEGORY_ICONS[matchedKey];
   }
   
-  // Kısmi eşleşme ara
+  // Kısmi eşleşme ara (tire ve boşluk karakterlerini normalize et)
+  const normalizedForPartial = normalizedName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
   const partialMatch = Object.keys(CATEGORY_ICONS).find(
     key => {
-      const keyLower = key.toLowerCase().trim();
-      return keyLower.includes(normalizedName) || normalizedName.includes(keyLower);
+      const keyLower = key.toLowerCase().trim().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+      return keyLower.includes(normalizedForPartial) || normalizedForPartial.includes(keyLower);
     }
   );
   
   if (partialMatch) {
-    console.log('Kısmi eşleşme bulundu:', partialMatch);
     return CATEGORY_ICONS[partialMatch];
   }
   
-  console.log('Hiçbir eşleşme bulunamadı:', categoryName);
-  console.log('Mevcut kategoriler:', Object.keys(CATEGORY_ICONS));
   return null;
 };
 
@@ -148,6 +152,7 @@ export const getIoniconName = (categoryName) => {
     'Camp Ürünleri': 'bonfire-outline',
     'Kamp Ürünleri': 'bonfire-outline',
     'Esofman': 'fitness-outline',
+    'Eşofman': 'fitness-outline',
     'Gömlek': 'shirt-outline',
     'Hırka': 'shirt-outline',
     'Hoodie': 'shirt-outline',
@@ -162,7 +167,13 @@ export const getIoniconName = (categoryName) => {
     'Silah Aksesuarları': 'shield-outline',
     'Tişört': 'shirt-outline',
     'Tshirt': 'shirt-outline',
+    'T-Shirt': 'shirt-outline',
+    'T-shirt': 'shirt-outline',
+    't-shirt': 'shirt-outline',
     'Yelek': 'shirt-outline',
+    'Yardımcı Giyim': 'star-outline',
+    'Yardımcı giyim': 'star-outline',
+    'yardımcı giyim': 'star-outline',
     'Yağmurluk': 'rainy-outline',
   };
   

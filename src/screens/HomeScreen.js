@@ -717,34 +717,6 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  // Kategori ikonlarını belirle
-  const getCategoryIcon = (category) => {
-    const iconMap = {
-      'Tümü': 'grid-outline',
-      'Havlu': 'water-outline',
-      'Bornoz': 'shirt-outline',
-      'Nevresim': 'bed-outline',
-      'Pike': 'snow-outline',
-      'Battaniye': 'sunny-outline',
-      'Yatak Örtüsü': 'bed-outline',
-      'Çarşaf': 'document-outline',
-      'Yastık': 'ellipse-outline',
-      'Perde': 'albums-outline',
-      'Masa Örtüsü': 'square-outline',
-      'Peştemal': 'fitness-outline',
-      'Plaj Havlusu': 'beach-outline',
-      'Mutfak': 'restaurant-outline',
-      'Banyo': 'water-outline',
-      'Yatak Odası': 'moon-outline',
-      'Salon': 'home-outline',
-      'Çocuk': 'happy-outline',
-      'Bebek': 'heart-outline',
-    };
-    
-    // Kategori adını normalize et ve eşleştir
-    const normalizedCategory = category.trim();
-    return iconMap[normalizedCategory] || 'pricetag-outline';
-  };
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = selectedCategory === 'Tümü' || product.category === selectedCategory;
@@ -1111,8 +1083,15 @@ export default function HomeScreen({ navigation }) {
                   );
                 }
                 
-                // Şimdilik Ionicons kullan (PNG ikonlar şeffaf/beyaz olabilir)
-                const useImage = false; // PNG ikonları devre dışı bırak
+                // PNG ikonları kullan
+                const categoryIconSource = getCategoryIcon(category);
+                const useImage = !!categoryIconSource; // PNG ikonu varsa kullan
+                
+                if (useImage) {
+                  console.log('✅ Icon bulundu:', category, categoryIconSource);
+                } else {
+                  console.log('❌ Icon bulunamadı:', category);
+                }
                 
                 return (
                   <TouchableOpacity
@@ -1135,9 +1114,14 @@ export default function HomeScreen({ navigation }) {
                     {useImage ? (
                       <Image 
                         source={categoryIconSource} 
-                        style={[styles.categoryIconImage, { backgroundColor: '#11d421', borderWidth: 1, borderColor: '#000' }]}
+                        style={styles.categoryIconImage}
                         resizeMode="contain"
-                        onError={(e) => console.error('Image yükleme hatası:', category, e.nativeEvent.error)}
+                        onError={(e) => {
+                          console.error('❌ Image yükleme hatası:', category, e.nativeEvent.error);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Image yüklendi:', category);
+                        }}
                       />
                     ) : (
                       <Ionicons
@@ -1199,6 +1183,15 @@ export default function HomeScreen({ navigation }) {
           <Ionicons name="chevron-forward" size={24} color={COLORS.white} />
         </TouchableOpacity>
 
+        {/* Popüler Ürünler Banner */}
+        <View style={styles.bannerContainer}>
+          <Image 
+            source={require('../../assets/banners/popüler_urunler.png')} 
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+        </View>
+
         {/* Size Özel Slider */}
         {personalizedProducts.length > 0 && (
           <ProductSlider
@@ -1221,6 +1214,15 @@ export default function HomeScreen({ navigation }) {
           />
         )}
 
+        {/* Yeni Ürünler Banner */}
+        <View style={styles.bannerContainer}>
+          <Image 
+            source={require('../../assets/banners/yeni ürünler.png')} 
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+        </View>
+
         {/* New Arrivals Slider (grid -> slider) */}
         {displayedProducts.length > 0 && (
           <ProductSlider
@@ -1241,7 +1243,11 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.heroButtonText}>Fırsatları Gör</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.promoImagePlaceholder} />
+          <Image 
+            source={require('../../assets/nature.jpg')} 
+            style={styles.promoImage}
+            resizeMode="cover"
+          />
         </View>
 
         <View style={{ height: 32 }} />
@@ -1663,9 +1669,8 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   categoryIconImage: {
-    width: 24,
-    height: 24,
-    zIndex: 10,
+    width: 28,
+    height: 28,
   },
   flashDealsBanner: {
     flexDirection: 'row',
@@ -1821,6 +1826,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textDecorationLine: 'line-through',
   },
+  bannerContainer: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  bannerImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   promoBanner: {
     marginHorizontal: 16,
     marginVertical: 16,
@@ -1848,11 +1863,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 26,
   },
-  promoImagePlaceholder: {
+  promoImage: {
     width: 90,
     height: 90,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 16,
+    overflow: 'hidden',
   },
   storyModalBackdrop: {
     flex: 1,
