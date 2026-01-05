@@ -8,6 +8,7 @@ import { COLORS } from '../constants/colors';
 import { productsAPI, wishlistAPI, flashDealsAPI } from '../services/api';
 import voiceRecognitionService from '../services/voiceRecognition';
 import LoginRequiredModal from '../components/LoginRequiredModal';
+import safeLog from '../utils/safeLogger';
 
 const SORT_OPTIONS = [
   { id: 'default', label: 'Varsayılan', icon: 'list-outline' },
@@ -74,12 +75,12 @@ export default function ProductListScreen({ navigation, route }) {
           setSelectedCategory('Tümü');
         }
       } else {
-        console.warn('Categories response not successful:', response.data);
+        safeLog.warn('Categories response not successful:', response.data);
         setCategories(['Tümü']);
         setSelectedCategory(route?.params?.category || 'Tümü');
       }
     } catch (error) {
-      console.error('❌ Kategoriler yüklenemedi:', {
+      safeLog.error('Kategoriler yüklenemedi:', {
         message: error.message,
         code: error.code,
         response: error.response?.data,
@@ -207,14 +208,14 @@ export default function ProductListScreen({ navigation, route }) {
           });
         }
       } catch (flashDealError) {
-        console.warn('⚠️ Flash deals yüklenemedi:', flashDealError.message);
+        safeLog.warn('Flash deals yüklenemedi:', flashDealError.message);
         // Flash deal hatası olsa bile ürünleri göster
       }
 
       setProducts(all);
-      console.log('✅ Tüm ürünler yüklendi:', all.length, 'ürün');
+      safeLog.debug('Tüm ürünler yüklendi:', all.length, 'ürün');
     } catch (error) {
-      console.error('❌ Ürünler yüklenemedi:', {
+      safeLog.error('Ürünler yüklenemedi:', {
         message: error.message,
         code: error.code,
         response: error.response?.data,
@@ -280,7 +281,7 @@ export default function ProductListScreen({ navigation, route }) {
           : p
       ));
     } catch (error) {
-      console.error('Favori toggle hatası:', error);
+      safeLog.error('Favori toggle hatası:', error);
     }
   };
 
@@ -299,12 +300,12 @@ export default function ProductListScreen({ navigation, route }) {
         lang: 'tr-TR',
         interimResults: true,
         onPartialResult: (transcript) => {
-          console.log('Kısmi sonuç:', transcript);
+          safeLog.debug('Kısmi sonuç:', transcript);
         }
       },
       (transcript) => {
         // Final sonuç
-        console.log('✅ Ses tanıma tamamlandı:', transcript);
+        safeLog.debug('Ses tanıma tamamlandı:', transcript);
         setIsListening(false);
         
         if (transcript && transcript.trim().length > 0) {
@@ -315,7 +316,7 @@ export default function ProductListScreen({ navigation, route }) {
       },
       (error) => {
         // Hata
-        console.error('❌ Ses tanıma hatası:', error);
+        safeLog.error('Ses tanıma hatası:', error);
         setIsListening(false);
         
         if (error !== 'İzin verilmedi' && error !== 'Desteklenmiyor') {

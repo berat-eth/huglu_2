@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiUrl, API_CONFIG } from '../config/api.config';
+import safeLog from '../utils/safeLogger';
 
 // Backend API URL
 const API_BASE_URL = getApiUrl();
@@ -32,22 +33,22 @@ api.interceptors.request.use(
       
       config.headers['X-Tenant-Id'] = tenantId || '1';
       
-      console.log('📤 API Request:', config.method.toUpperCase(), config.url, {
-        tenantId: tenantId || '1',
-        baseURL: config.baseURL,
-        fullURL: `${config.baseURL}${config.url}`,
-        params: config.params,
-        data: config.data ? Object.keys(config.data) : undefined
-      });
+      // Güvenli loglama - hassas veriler otomatik temizlenir
+      safeLog.api(
+        config.method.toUpperCase(),
+        `${config.baseURL}${config.url}`,
+        config.data ? { keys: Object.keys(config.data) } : null,
+        null
+      );
     } catch (error) {
-      console.error('❌ Request interceptor error:', error);
+      safeLog.error('Request interceptor error:', error);
       // Hata olsa bile request'i gönder
       config.headers['X-Tenant-Id'] = '1';
     }
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor setup error:', error);
+    safeLog.error('Request interceptor setup error:', error);
     return Promise.reject(error);
   }
 );
@@ -55,10 +56,17 @@ api.interceptors.request.use(
 // Response interceptor - Hata yönetimi
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', response.config.url, response.status, {
-      dataSize: JSON.stringify(response.data).length,
-      success: response.data?.success
-    });
+    // Güvenli loglama - response data otomatik temizlenir
+    safeLog.api(
+      response.config.method.toUpperCase(),
+      `${response.config.baseURL}${response.config.url}`,
+      null,
+      {
+        status: response.status,
+        dataSize: JSON.stringify(response.data).length,
+        success: response.data?.success
+      }
+    );
     return response;
   },
   async (error) => {
@@ -75,33 +83,28 @@ api.interceptors.response.use(
     
     if (error.response) {
       // Sunucu yanıt verdi ama hata kodu döndü
-      console.error('❌ API Error Response:', {
+      safeLog.error('API Error Response:', {
         ...errorDetails,
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data,
-        responseHeaders: error.response.headers,
       });
     } else if (error.request) {
       // İstek gönderildi ama yanıt alınamadı
-      console.error('❌ API Error Request (No Response):', errorDetails);
-      console.error('   This usually means:');
-      console.error('   - Network timeout');
-      console.error('   - Server not responding');
-      console.error('   - CORS issue (unlikely for mobile)');
-      console.error('   - SSL certificate problem');
+      safeLog.error('API Error Request (No Response):', errorDetails);
+      safeLog.debug('Possible causes: Network timeout, Server not responding, SSL certificate problem');
     } else {
       // İstek oluşturulurken hata
-      console.error('❌ API Error Setup:', errorDetails);
+      safeLog.error('API Error Setup:', errorDetails);
     }
     
     // Unauthorized - logout (401)
     if (error.response?.status === 401) {
       try {
         await AsyncStorage.multiRemove(['userId', 'userName', 'userEmail', 'userPhone', 'isLoggedIn']);
-        console.log('🔓 User logged out due to 401');
+        safeLog.debug('User logged out due to 401');
       } catch (logoutError) {
-        console.error('❌ Logout error:', logoutError);
+        safeLog.error('Logout error:', logoutError);
       }
     }
     
@@ -424,7 +427,7 @@ export const liveSupportAPI = {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         deviceId = await AsyncStorage.getItem('guestDeviceId');
       } catch (error) {
-        console.error('DeviceId alınamadı:', error);
+        safeLog.error('DeviceId alınamadı:', error);
       }
     }
     return api.post('/chatbot/live-support/message', { userId, message, deviceId });

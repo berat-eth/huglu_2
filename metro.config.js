@@ -25,13 +25,14 @@ config.transformer = {
   }),
 };
 
-// Bundle boyutunu azaltmak için
-config.serializer = {
-  ...config.serializer,
-  createModuleIdFactory: () => {
-    let nextId = 0;
-    return () => nextId++;
-  },
-};
+// Bundle boyutunu azaltmak için - createModuleIdFactory kaldırıldı
+// (Lazy loading ile çakışma yapıyor, "unknown module" hatasına neden oluyor)
+// config.serializer = {
+//   ...config.serializer,
+//   createModuleIdFactory: () => {
+//     let nextId = 0;
+//     return () => nextId++;
+//   },
+// };
 
 module.exports = config;
