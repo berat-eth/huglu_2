@@ -11,6 +11,7 @@ import { productsAPI, flashDealsAPI } from '../services/api';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import voiceRecognitionService from '../services/voiceRecognition';
 import analytics from '../services/analytics';
+import safeLog from '../utils/safeLogger';
 
 const RECENT_SEARCHES = ['Çadır', 'Kamp Ekipmanı', 'Trekking Bot', 'Sırt Çantası'];
 
@@ -23,11 +24,6 @@ const POPULAR_SEARCHES = [
   'Kamp Sobası',
 ];
 
-
-const SAMPLE_PRODUCTS = [
-  { id: 1, name: 'Apex Ultra-Light Tent', brand: 'Tents', price: 249, image: 'https://via.placeholder.com/300', rating: 4.8, isFavorite: false },
-  { id: 2, name: 'Trailblazer Boots', brand: 'Footwear', price: 129, image: 'https://via.placeholder.com/300', rating: 4.5, isFavorite: false },
-];
 
 export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +64,7 @@ export default function SearchScreen({ navigation }) {
         setAllCategories(categoryList);
       }
     } catch (error) {
-      console.error('Tüm kategoriler yüklenemedi:', error);
+      safeLog.error('Tüm kategoriler yüklenemedi:', error);
     }
   };
 

@@ -5,6 +5,7 @@ import { COLORS } from '../constants/colors';
 import { productsAPI, slidersAPI, storiesAPI, flashDealsAPI } from '../services/api';
 import { isServerError } from '../utils/errorHandler';
 import { checkMaintenanceMode } from '../utils/maintenanceCheck';
+import safeLog from '../utils/safeLogger';
 
 const { width, height } = Dimensions.get('window');
 
@@ -118,7 +119,6 @@ export default function SplashScreen({ navigation }) {
       const maintenanceStatus = await checkMaintenanceMode('mobile');
 
       if (maintenanceStatus.isMaintenanceMode) {
-        console.log('🔧 Bakım modu aktif, MaintenanceScreen\'e yönlendiriliyor');
         navigation.replace('Maintenance', {
           message: maintenanceStatus.message,
           estimatedEndTime: maintenanceStatus.estimatedEndTime,
@@ -129,7 +129,6 @@ export default function SplashScreen({ navigation }) {
       // 2. Onboarding kontrolü
       const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
       if (!hasSeenOnboarding) {
-        console.log('📱 İlk açılış, OnboardingScreen\'e yönlendiriliyor');
         navigation.replace('Onboarding');
         return;
       }
@@ -141,7 +140,7 @@ export default function SplashScreen({ navigation }) {
       // Kullanıcı isterse profil sayfasından login yapabilir
       navigation.replace('Main');
     } catch (error) {
-      console.error('❌ App initialization error:', error);
+      safeLog.error('App initialization error:', error);
 
       // Sunucu hatası kontrolü
       if (isServerError(error)) {
@@ -157,7 +156,7 @@ export default function SplashScreen({ navigation }) {
           return;
         }
       } catch (storageError) {
-        console.error('Storage error:', storageError);
+        safeLog.error('Storage error:', storageError);
       }
 
       // Hata olsa bile ana sayfaya git
@@ -167,7 +166,7 @@ export default function SplashScreen({ navigation }) {
 
   const preloadHomeData = async () => {
     try {
-      console.log('🚀 Preloading home data...');
+      safeLog.debug('Preloading home data...');
       const totalSteps = 4;
       let completedSteps = 0;
 
@@ -190,9 +189,9 @@ export default function SplashScreen({ navigation }) {
       try {
         await slidersAPI.getActive();
         updateProgress();
-        console.log('✅ Sliders preloaded');
+        safeLog.debug('Sliders preloaded');
       } catch (error) {
-        console.warn('⚠️ Sliders preload failed:', error.message);
+        safeLog.warn('Sliders preload failed:', error.message);
         updateProgress();
       }
 
@@ -201,9 +200,9 @@ export default function SplashScreen({ navigation }) {
       try {
         await storiesAPI.getActive();
         updateProgress();
-        console.log('✅ Stories preloaded');
+        safeLog.debug('Stories preloaded');
       } catch (error) {
-        console.warn('⚠️ Stories preload failed:', error.message);
+        safeLog.warn('Stories preload failed:', error.message);
         updateProgress();
       }
 
@@ -212,18 +211,18 @@ export default function SplashScreen({ navigation }) {
       try {
         await flashDealsAPI.getActive();
         updateProgress();
-        console.log('✅ Flash deals preloaded');
+        safeLog.debug('Flash deals preloaded');
       } catch (error) {
-        console.warn('⚠️ Flash deals preload failed:', error.message);
+        safeLog.warn('Flash deals preload failed:', error.message);
         updateProgress();
       }
 
       setLoadingText('Hazırlanıyor...');
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('✅ All data preloaded successfully');
+      safeLog.debug('All data preloaded successfully');
     } catch (error) {
-      console.error('❌ Preload error:', error);
+      safeLog.error('Preload error:', error);
       // Hata olsa bile devam et
     }
   };

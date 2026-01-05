@@ -9,12 +9,13 @@ import HomeScreenSkeleton from '../components/HomeScreenSkeleton';
 import ServerErrorScreen from './ServerErrorScreen';
 import { COLORS } from '../constants/colors';
 import { productsAPI, slidersAPI, flashDealsAPI, storiesAPI, cartAPI, wishlistAPI, chatbotAPI } from '../services/api';
-import { testAPI, testNetworkConnectivity } from '../utils/testAPI';
 import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import { isServerError } from '../utils/errorHandler';
 import { updateCartBadge } from '../utils/cartBadge';
 import { useAlert } from '../hooks/useAlert';
 import { getApiUrl } from '../config/api.config';
+import safeLog from '../utils/safeLogger';
+
 export default function HomeScreen({ navigation }) {
   const alert = useAlert();
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
@@ -120,13 +121,13 @@ export default function HomeScreen({ navigation }) {
             const products = JSON.parse(cachedProducts);
             setPersonalizedProducts(products);
             const remainingTime = Math.ceil((ROTATION_INTERVAL - timeSinceLastUpdate) / 60000);
-            console.log(`📦 Size Özel ürünler cache'den yüklendi (${remainingTime} dakika sonra güncellenecek)`);
+            safeLog.debug(`Size Özel ürünler cache'den yüklendi (${remainingTime} dakika sonra güncellenecek)`);
             return;
           }
         }
 
         // 20 dakika geçtiyse veya cache yoksa, yeni ürünler yükle
-        console.log('🔄 Size Özel ürünler güncelleniyor...');
+        safeLog.debug('Size Özel ürünler güncelleniyor...');
         const response = await productsAPI.getAll({ limit: 100 });
         
         if (response.data?.success) {
@@ -154,7 +155,7 @@ export default function HomeScreen({ navigation }) {
           await AsyncStorage.setItem(STORAGE_KEY, now.toString());
         }
       } catch (error) {
-        console.error('❌ Size Özel ürünler yüklenemedi:', error);
+        safeLog.error('Size Özel ürünler yüklenemedi:', error);
       }
     };
 
@@ -171,38 +172,6 @@ export default function HomeScreen({ navigation }) {
     return () => clearInterval(interval);
   }, [products]);
 
-  const runNetworkTest = async () => {
-    console.log('\n🔍 Running network diagnostics...');
-    
-    // 1. Internet bağlantısını test et
-    const hasInternet = await testNetworkConnectivity();
-    
-    if (!hasInternet) {
-      alert.show(
-        'İnternet Bağlantısı Yok',
-        'Lütfen internet bağlantınızı kontrol edin.',
-        [{ text: 'Tamam' }]
-      );
-      return false;
-    }
-    
-    // 2. API bağlantısını test et
-    const apiWorking = await testAPI();
-    
-    if (!apiWorking) {
-      alert.show(
-        'API Bağlantı Hatası',
-        'Sunucuya bağlanılamıyor. Lütfen daha sonra tekrar deneyin.',
-        [
-          { text: 'Tekrar Dene', onPress: () => runNetworkTest() },
-          { text: 'İptal', style: 'cancel' }
-        ]
-      );
-      return false;
-    }
-    
-    return true;
-  };
 
   const loadUserInfo = async () => {
     try {
@@ -219,7 +188,7 @@ export default function HomeScreen({ navigation }) {
         await loadUserFavorites(userId[1]);
       }
     } catch (error) {
-      console.error('Kullanıcı bilgisi yüklenemedi:', error);
+      safeLog.error('Kullanıcı bilgisi yüklenemedi:', error);
       setUserName('Misafir');
     }
   };
@@ -233,7 +202,7 @@ export default function HomeScreen({ navigation }) {
         setUserFavorites(favoriteIds);
       }
     } catch (error) {
-      console.log('Favoriler yüklenemedi:', error);
+      safeLog.error('Favoriler yüklenemedi:', error);
     }
   };
 

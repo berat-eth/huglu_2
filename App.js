@@ -6,9 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import * as Font from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
-import { testProductDetail } from './src/utils/testAPI';
-import { testMaintenanceMode } from './src/utils/testMaintenance';
 import analytics from './src/services/analytics';
+import safeLog from './src/utils/safeLogger';
 
 // Kritik ekranlar - statik import (hızlı erişim için)
 import SplashScreen from './src/screens/SplashScreen';
@@ -194,7 +193,7 @@ function App() {
         });
         setFontsLoaded(true);
       } catch (error) {
-        console.error('Error loading fonts:', error);
+        safeLog.error('Error loading fonts:', error);
         setFontsLoaded(true); // Continue anyway
       }
     }
@@ -210,20 +209,10 @@ function App() {
           analytics.heartbeat();
         }, 30000);
       } catch (error) {
-        console.error('Analytics initialization error:', error);
+        safeLog.error('Analytics initialization error:', error);
       }
     }
     initAnalytics();
-    
-    // BAKIM MODU TEST - Bakım modu kontrolünü test et
-    setTimeout(() => {
-      testMaintenanceMode();
-    }, 2000);
-    
-    // API TEST - Ürün detay verisini kontrol et
-    // setTimeout(() => {
-    //   testProductDetail(556); // Test product ID
-    // }, 3000); // 3 saniye sonra çalıştır
   }, []);
 
   if (!fontsLoaded) {
@@ -238,7 +227,7 @@ function App() {
     <NavigationContainer
       onReady={() => {
         // Navigation hazır olduğunda analytics'i başlat
-        analytics.initialize().catch(console.error);
+        analytics.initialize().catch((error) => safeLog.error('Analytics init error:', error));
       }}
       onStateChange={(state) => {
         // Screen değişikliklerini track et
@@ -246,7 +235,7 @@ function App() {
           const route = state.routes[state.index];
           if (route) {
             const screenName = route.name;
-            analytics.trackScreenView(screenName).catch(console.error);
+            analytics.trackScreenView(screenName).catch((error) => safeLog.error('Screen tracking error:', error));
           }
         }
       }}
