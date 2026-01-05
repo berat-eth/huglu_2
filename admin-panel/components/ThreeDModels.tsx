@@ -293,7 +293,7 @@ export default function ThreeDModels() {
 
         {filteredModels.length === 0 ? (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-            <Cube className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <Box className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Henüz model yüklenmemiş</p>
           </div>
         ) : (
