@@ -447,6 +447,12 @@ export default function ProductListScreen({ navigation, route }) {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
           }
+          // Performans optimizasyonları
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
           renderItem={({ item }) => (
             <View style={styles.productWrapper}>
               <ProductCard

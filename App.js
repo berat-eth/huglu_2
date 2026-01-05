@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,62 +10,78 @@ import { testProductDetail } from './src/utils/testAPI';
 import { testMaintenanceMode } from './src/utils/testMaintenance';
 import analytics from './src/services/analytics';
 
-// Screens
+// Kritik ekranlar - statik import (hızlı erişim için)
 import SplashScreen from './src/screens/SplashScreen';
+import MaintenanceScreen from './src/screens/MaintenanceScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import SignUpScreen from './src/screens/SignUpScreen';
-import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProductListScreen from './src/screens/ProductListScreen';
-import ProductDetailScreen from './src/screens/ProductDetailScreen';
-import CartScreen from './src/screens/CartScreen';
-import PaymentMethodScreen from './src/screens/PaymentMethodScreen';
-import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WishlistScreen from './src/screens/WishlistScreen';
-import OrderTrackingScreen from './src/screens/OrderTrackingScreen';
-import PickupOrdersScreen from './src/screens/PickupOrdersScreen';
-import OrderDetailScreen from './src/screens/OrderDetailScreen';
-import NotificationsScreen from './src/screens/NotificationsScreen';
-import SearchScreen from './src/screens/SearchScreen';
-import CampaignsScreen from './src/screens/CampaignsScreen';
-import LiveChatScreen from './src/screens/LiveChatScreen';
-import LiveChatEntryScreen from './src/screens/LiveChatEntryScreen';
-import FAQScreen from './src/screens/FAQScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
-import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
-import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
-import TwoFactorAuthScreen from './src/screens/TwoFactorAuthScreen';
-import PrivacySettingsScreen from './src/screens/PrivacySettingsScreen';
-import LanguageScreen from './src/screens/LanguageScreen';
-import PersonalInfoScreen from './src/screens/PersonalInfoScreen';
-import PhysicalStoresScreen from './src/screens/PhysicalStoresScreen';
-import WalletScreen from './src/screens/WalletScreen';
-import WalletTransferScreen from './src/screens/WalletTransferScreen';
-import FlashDealsScreen from './src/screens/FlashDealsScreen';
-import ReferralScreen from './src/screens/ReferralScreen';
-import ChatHistoryScreen from './src/screens/ChatHistoryScreen';
-import ShippingInformationScreen from './src/screens/ShippingInformationScreen';
-import DailyRewardScreen from './src/screens/DailyRewardScreen';
-import QuestScreen from './src/screens/QuestScreen';
-import WelcomeBonusScreen from './src/screens/WelcomeBonusScreen';
-import SocialShareScreen from './src/screens/SocialShareScreen';
-import MyAddressesScreen from './src/screens/MyAddressesScreen';
-import AddAddressScreen from './src/screens/AddAddressScreen';
-import ReturnRequestScreen from './src/screens/ReturnRequestScreen';
-import ReturnRequestsListScreen from './src/screens/ReturnRequestsListScreen';
-import InvoicesScreen from './src/screens/InvoicesScreen';
-import MaintenanceScreen from './src/screens/MaintenanceScreen';
-import UserLevelScreen from './src/screens/UserLevelScreen';
-import ProductCompareScreen from './src/screens/ProductCompareScreen';
-import CommunityFeedScreen from './src/screens/CommunityFeedScreen';
-import CreatePostScreen from './src/screens/CreatePostScreen';
-import CommunityProfileScreen from './src/screens/CommunityProfileScreen';
-import CommunityDiscoverScreen from './src/screens/CommunityDiscoverScreen';
-import CommunityNotificationsScreen from './src/screens/CommunityNotificationsScreen';
-import CommunityRulesScreen from './src/screens/CommunityRulesScreen';
+
+// Lazy loading - sadece gerektiğinde yüklenecek
+const SignUpScreen = lazy(() => import('./src/screens/SignUpScreen'));
+const ForgotPasswordScreen = lazy(() => import('./src/screens/ForgotPasswordScreen'));
+const ProductDetailScreen = lazy(() => import('./src/screens/ProductDetailScreen'));
+const CartScreen = lazy(() => import('./src/screens/CartScreen'));
+const PaymentMethodScreen = lazy(() => import('./src/screens/PaymentMethodScreen'));
+const OrderConfirmationScreen = lazy(() => import('./src/screens/OrderConfirmationScreen'));
+const OrderTrackingScreen = lazy(() => import('./src/screens/OrderTrackingScreen'));
+const PickupOrdersScreen = lazy(() => import('./src/screens/PickupOrdersScreen'));
+const OrderDetailScreen = lazy(() => import('./src/screens/OrderDetailScreen'));
+const NotificationsScreen = lazy(() => import('./src/screens/NotificationsScreen'));
+const SearchScreen = lazy(() => import('./src/screens/SearchScreen'));
+const CampaignsScreen = lazy(() => import('./src/screens/CampaignsScreen'));
+const LiveChatScreen = lazy(() => import('./src/screens/LiveChatScreen'));
+const LiveChatEntryScreen = lazy(() => import('./src/screens/LiveChatEntryScreen'));
+const FAQScreen = lazy(() => import('./src/screens/FAQScreen'));
+const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen'));
+const TermsOfServiceScreen = lazy(() => import('./src/screens/TermsOfServiceScreen'));
+const PrivacyPolicyScreen = lazy(() => import('./src/screens/PrivacyPolicyScreen'));
+const ChangePasswordScreen = lazy(() => import('./src/screens/ChangePasswordScreen'));
+const TwoFactorAuthScreen = lazy(() => import('./src/screens/TwoFactorAuthScreen'));
+const PrivacySettingsScreen = lazy(() => import('./src/screens/PrivacySettingsScreen'));
+const LanguageScreen = lazy(() => import('./src/screens/LanguageScreen'));
+const PersonalInfoScreen = lazy(() => import('./src/screens/PersonalInfoScreen'));
+const PhysicalStoresScreen = lazy(() => import('./src/screens/PhysicalStoresScreen'));
+const WalletScreen = lazy(() => import('./src/screens/WalletScreen'));
+const WalletTransferScreen = lazy(() => import('./src/screens/WalletTransferScreen'));
+const FlashDealsScreen = lazy(() => import('./src/screens/FlashDealsScreen'));
+const ReferralScreen = lazy(() => import('./src/screens/ReferralScreen'));
+const ChatHistoryScreen = lazy(() => import('./src/screens/ChatHistoryScreen'));
+const ShippingInformationScreen = lazy(() => import('./src/screens/ShippingInformationScreen'));
+const DailyRewardScreen = lazy(() => import('./src/screens/DailyRewardScreen'));
+const QuestScreen = lazy(() => import('./src/screens/QuestScreen'));
+const WelcomeBonusScreen = lazy(() => import('./src/screens/WelcomeBonusScreen'));
+const SocialShareScreen = lazy(() => import('./src/screens/SocialShareScreen'));
+const MyAddressesScreen = lazy(() => import('./src/screens/MyAddressesScreen'));
+const AddAddressScreen = lazy(() => import('./src/screens/AddAddressScreen'));
+const ReturnRequestScreen = lazy(() => import('./src/screens/ReturnRequestScreen'));
+const ReturnRequestsListScreen = lazy(() => import('./src/screens/ReturnRequestsListScreen'));
+const InvoicesScreen = lazy(() => import('./src/screens/InvoicesScreen'));
+const UserLevelScreen = lazy(() => import('./src/screens/UserLevelScreen'));
+const ProductCompareScreen = lazy(() => import('./src/screens/ProductCompareScreen'));
+const CommunityFeedScreen = lazy(() => import('./src/screens/CommunityFeedScreen'));
+const CreatePostScreen = lazy(() => import('./src/screens/CreatePostScreen'));
+const CommunityProfileScreen = lazy(() => import('./src/screens/CommunityProfileScreen'));
+const CommunityDiscoverScreen = lazy(() => import('./src/screens/CommunityDiscoverScreen'));
+const CommunityNotificationsScreen = lazy(() => import('./src/screens/CommunityNotificationsScreen'));
+const CommunityRulesScreen = lazy(() => import('./src/screens/CommunityRulesScreen'));
+
+// Loading component
+const ScreenLoader = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+    <ActivityIndicator size="large" color="#11d421" />
+  </View>
+);
+
+// Lazy wrapper component
+const LazyScreen = ({ component: Component, ...props }) => (
+  <Suspense fallback={<ScreenLoader />}>
+    <Component {...props} />
+  </Suspense>
+);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -135,29 +151,34 @@ function CommunityTabs() {
     >
       <Tab.Screen 
         name="CommunityFeed" 
-        component={CommunityFeedScreen} 
-        options={{ title: 'Ana Akış' }} 
-      />
+        options={{ title: 'Ana Akış' }}
+      >
+        {props => <LazyScreen component={CommunityFeedScreen} {...props} />}
+      </Tab.Screen>
       <Tab.Screen 
         name="CommunityDiscover" 
-        component={CommunityDiscoverScreen} 
-        options={{ title: 'Keşfet' }} 
-      />
+        options={{ title: 'Keşfet' }}
+      >
+        {props => <LazyScreen component={CommunityDiscoverScreen} {...props} />}
+      </Tab.Screen>
       <Tab.Screen 
         name="CommunityCreate" 
-        component={CreatePostScreen} 
-        options={{ title: 'Paylaş' }} 
-      />
+        options={{ title: 'Paylaş' }}
+      >
+        {props => <LazyScreen component={CreatePostScreen} {...props} />}
+      </Tab.Screen>
       <Tab.Screen 
         name="CommunityNotifications" 
-        component={CommunityNotificationsScreen} 
-        options={{ title: 'Bildirimler' }} 
-      />
+        options={{ title: 'Bildirimler' }}
+      >
+        {props => <LazyScreen component={CommunityNotificationsScreen} {...props} />}
+      </Tab.Screen>
       <Tab.Screen 
         name="CommunityProfile" 
-        component={CommunityProfileScreen} 
-        options={{ title: 'Profil' }} 
-      />
+        options={{ title: 'Profil' }}
+      >
+        {props => <LazyScreen component={CommunityProfileScreen} {...props} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -240,53 +261,143 @@ function App() {
         />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="SignUp">
+          {props => <LazyScreen component={SignUpScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ForgotPassword">
+          {props => <LazyScreen component={ForgotPasswordScreen} {...props} />}
+        </Stack.Screen>
         <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-        <Stack.Screen name="ProductCompare" component={ProductCompareScreen} />
+        <Stack.Screen name="ProductDetail">
+          {props => <LazyScreen component={ProductDetailScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ProductCompare">
+          {props => <LazyScreen component={ProductCompareScreen} {...props} />}
+        </Stack.Screen>
         <Stack.Screen name="Community" component={CommunityTabs} />
-        <Stack.Screen name="CommunityFeed" component={CommunityFeedScreen} />
-        <Stack.Screen name="CommunityProfile" component={CommunityProfileScreen} />
-        <Stack.Screen name="CommunityRules" component={CommunityRulesScreen} />
-        <Stack.Screen name="CreatePost" component={CreatePostScreen} />
-        <Stack.Screen name="Cart" component={CartScreen} />
-        <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
-        <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
-        <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
-        <Stack.Screen name="PickupOrders" component={PickupOrdersScreen} />
-        <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="Search" component={SearchScreen} />
-        <Stack.Screen name="Campaigns" component={CampaignsScreen} />
-        <Stack.Screen name="LiveChatEntry" component={LiveChatEntryScreen} />
-        <Stack.Screen name="LiveChat" component={LiveChatScreen} />
-        <Stack.Screen name="FAQ" component={FAQScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
-        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-        <Stack.Screen name="TwoFactorAuth" component={TwoFactorAuthScreen} />
-        <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
-        <Stack.Screen name="Language" component={LanguageScreen} />
-        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-        <Stack.Screen name="PhysicalStores" component={PhysicalStoresScreen} />
-        <Stack.Screen name="Wallet" component={WalletScreen} />
-        <Stack.Screen name="WalletTransfer" component={WalletTransferScreen} />
-        <Stack.Screen name="UserLevel" component={UserLevelScreen} />
-        <Stack.Screen name="FlashDeals" component={FlashDealsScreen} />
-        <Stack.Screen name="Referral" component={ReferralScreen} />
-        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
-        <Stack.Screen name="ShippingInformation" component={ShippingInformationScreen} />
-        <Stack.Screen name="MyAddresses" component={MyAddressesScreen} />
-        <Stack.Screen name="AddAddress" component={AddAddressScreen} />
-        <Stack.Screen name="ReturnRequest" component={ReturnRequestScreen} />
-        <Stack.Screen name="ReturnRequests" component={ReturnRequestsListScreen} />
-        <Stack.Screen name="Invoices" component={InvoicesScreen} />
-        <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
-        <Stack.Screen name="Quest" component={QuestScreen} />
-        <Stack.Screen name="WelcomeBonus" component={WelcomeBonusScreen} />
-        <Stack.Screen name="SocialShare" component={SocialShareScreen} />
+        <Stack.Screen name="CommunityFeed">
+          {props => <LazyScreen component={CommunityFeedScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="CommunityProfile">
+          {props => <LazyScreen component={CommunityProfileScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="CommunityRules">
+          {props => <LazyScreen component={CommunityRulesScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="CreatePost">
+          {props => <LazyScreen component={CreatePostScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Cart">
+          {props => <LazyScreen component={CartScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PaymentMethod">
+          {props => <LazyScreen component={PaymentMethodScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="OrderConfirmation">
+          {props => <LazyScreen component={OrderConfirmationScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="OrderTracking">
+          {props => <LazyScreen component={OrderTrackingScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PickupOrders">
+          {props => <LazyScreen component={PickupOrdersScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="OrderDetail">
+          {props => <LazyScreen component={OrderDetailScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Notifications">
+          {props => <LazyScreen component={NotificationsScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Search">
+          {props => <LazyScreen component={SearchScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Campaigns">
+          {props => <LazyScreen component={CampaignsScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="LiveChatEntry">
+          {props => <LazyScreen component={LiveChatEntryScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="LiveChat">
+          {props => <LazyScreen component={LiveChatScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="FAQ">
+          {props => <LazyScreen component={FAQScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Settings">
+          {props => <LazyScreen component={SettingsScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="TermsOfService">
+          {props => <LazyScreen component={TermsOfServiceScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PrivacyPolicy">
+          {props => <LazyScreen component={PrivacyPolicyScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ChangePassword">
+          {props => <LazyScreen component={ChangePasswordScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="TwoFactorAuth">
+          {props => <LazyScreen component={TwoFactorAuthScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PrivacySettings">
+          {props => <LazyScreen component={PrivacySettingsScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Language">
+          {props => <LazyScreen component={LanguageScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PersonalInfo">
+          {props => <LazyScreen component={PersonalInfoScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="PhysicalStores">
+          {props => <LazyScreen component={PhysicalStoresScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Wallet">
+          {props => <LazyScreen component={WalletScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="WalletTransfer">
+          {props => <LazyScreen component={WalletTransferScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="UserLevel">
+          {props => <LazyScreen component={UserLevelScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="FlashDeals">
+          {props => <LazyScreen component={FlashDealsScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Referral">
+          {props => <LazyScreen component={ReferralScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ChatHistory">
+          {props => <LazyScreen component={ChatHistoryScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ShippingInformation">
+          {props => <LazyScreen component={ShippingInformationScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="MyAddresses">
+          {props => <LazyScreen component={MyAddressesScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="AddAddress">
+          {props => <LazyScreen component={AddAddressScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ReturnRequest">
+          {props => <LazyScreen component={ReturnRequestScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="ReturnRequests">
+          {props => <LazyScreen component={ReturnRequestsListScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Invoices">
+          {props => <LazyScreen component={InvoicesScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="DailyReward">
+          {props => <LazyScreen component={DailyRewardScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Quest">
+          {props => <LazyScreen component={QuestScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="WelcomeBonus">
+          {props => <LazyScreen component={WelcomeBonusScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="SocialShare">
+          {props => <LazyScreen component={SocialShareScreen} {...props} />}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );

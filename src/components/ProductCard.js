@@ -1,8 +1,9 @@
+import React, { memo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
-export default function ProductCard({ product, onPress, onFavorite }) {
+const ProductCard = memo(function ProductCard({ product, onPress, onFavorite }) {
   // Stok durumunu kontrol et
   const isOutOfStock = product.stock === 0 || 
                        product.stock === '0' || 
@@ -22,7 +23,10 @@ export default function ProductCard({ product, onPress, onFavorite }) {
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.95}>
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: product.image || product.imageUrl || product.thumbnail || 'https://via.placeholder.com/300?text=Ürün' }} 
+          source={{ 
+            uri: product.image || product.imageUrl || product.thumbnail || 'https://via.placeholder.com/300?text=Ürün',
+            cache: 'force-cache' // Agresif cache stratejisi
+          }} 
           style={styles.image}
           resizeMode="cover"
           defaultSource={require('../../assets/icon.png')}
@@ -115,7 +119,19 @@ export default function ProductCard({ product, onPress, onFavorite }) {
       </View>
     </TouchableOpacity>
   );
-}
+}, (prevProps, nextProps) => {
+  // Sadece product veya callback'ler değiştiğinde re-render
+  return (
+    prevProps.product?.id === nextProps.product?.id &&
+    prevProps.product?.isFavorite === nextProps.product?.isFavorite &&
+    prevProps.product?.price === nextProps.product?.price &&
+    prevProps.product?.stock === nextProps.product?.stock &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onFavorite === nextProps.onFavorite
+  );
+});
+
+export default ProductCard;
 
 const styles = StyleSheet.create({
   container: {

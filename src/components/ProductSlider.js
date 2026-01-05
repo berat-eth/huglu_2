@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ProductCard from './ProductCard';
 import { COLORS } from '../constants/colors';
-export default function ProductSlider({ title, products, onSeeAll, onProductPress, onFavorite }) {
+
+const ProductSlider = memo(function ProductSlider({ title, products, onSeeAll, onProductPress, onFavorite }) {
   const handleProductPress = (product) => {
     if (onProductPress) {
       onProductPress(product);
@@ -39,7 +40,18 @@ export default function ProductSlider({ title, products, onSeeAll, onProductPres
       </ScrollView>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // Sadece products değiştiğinde re-render
+  if (prevProps.products?.length !== nextProps.products?.length) {
+    return false;
+  }
+  // Products array içeriği değişmiş mi kontrol et
+  const prevIds = prevProps.products?.map(p => p.id || p._id).join(',') || '';
+  const nextIds = nextProps.products?.map(p => p.id || p._id).join(',') || '';
+  return prevIds === nextIds && prevProps.title === nextProps.title;
+});
+
+export default ProductSlider;
 
 const styles = StyleSheet.create({
   container: {
