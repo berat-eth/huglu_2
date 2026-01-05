@@ -67,6 +67,7 @@ const CommunityProfileScreen = lazy(() => import('./src/screens/CommunityProfile
 const CommunityDiscoverScreen = lazy(() => import('./src/screens/CommunityDiscoverScreen'));
 const CommunityNotificationsScreen = lazy(() => import('./src/screens/CommunityNotificationsScreen'));
 const CommunityRulesScreen = lazy(() => import('./src/screens/CommunityRulesScreen'));
+const WholesaleScreen = lazy(() => import('./src/screens/WholesaleScreen'));
 
 // Loading component
 const ScreenLoader = () => (
@@ -338,6 +339,9 @@ function App() {
         </Stack.Screen>
         <Stack.Screen name="PhysicalStores">
           {props => <LazyScreen component={PhysicalStoresScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Wholesale">
+          {props => <LazyScreen component={WholesaleScreen} {...props} />}
         </Stack.Screen>
         <Stack.Screen name="Wallet">
           {props => <LazyScreen component={WalletScreen} {...props} />}

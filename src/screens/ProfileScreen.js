@@ -17,6 +17,7 @@ const MENU_ITEMS = [
   { id: 5, icon: 'location-outline', title: 'Teslimat Adresleri', screen: 'MyAddresses' },
   { id: 6, icon: 'card-outline', title: 'Ödeme Yöntemleri', screen: 'PaymentMethod' },
   { id: 7, icon: 'return-down-back-outline', title: 'İade Taleplerim', screen: 'ReturnRequests' },
+  { id: 8, icon: 'storefront-outline', title: 'Toptan Satış', screen: 'Wholesale' },
 ];
 
 const APP_SETTINGS = [

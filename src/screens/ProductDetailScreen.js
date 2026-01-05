@@ -319,16 +319,52 @@ export default function ProductDetailScreen({ navigation, route }) {
         if (response.data?.success) {
           const questionsData = response.data.data || response.data.questions || [];
           // Kullanıcı isimlerini maskele
+          // AsyncStorage'dan mevcut kullanıcı adını ve ID'sini al (fallback için)
+          const [currentUserName, storedUserId] = await Promise.all([
+            AsyncStorage.getItem('userName'),
+            AsyncStorage.getItem('userId')
+          ]);
+          
           const maskedQuestions = questionsData.map(q => {
             // Tüm olası isim alanlarını kontrol et
-            const originalName = q.userName || q.user?.name || q.name || '';
+            let originalName = q.userName || 
+                              q.user?.name || 
+                              q.user?.userName ||
+                              q.createdBy?.name ||
+                              q.createdBy?.userName ||
+                              q.name || 
+                              '';
+            
+            // Eğer hala ad bulunamadıysa ve bu kullanıcının kendi sorusuysa, AsyncStorage'dan al
+            if (!originalName && q.userId && storedUserId && q.userId === storedUserId && currentUserName) {
+              originalName = currentUserName;
+            }
+            
+            // Debug: İlk soru için detaylı log
+            if (questionsData.indexOf(q) === 0) {
+              console.log('🔍 API\'den gelen soru verisi:', {
+                hasUserName: !!q.userName,
+                hasUser: !!q.user,
+                hasUser_name: !!q.user?.name,
+                hasUser_userName: !!q.user?.userName,
+                hasCreatedBy: !!q.createdBy,
+                hasCreatedBy_name: !!q.createdBy?.name,
+                hasName: !!q.name,
+                hasUserId: !!q.userId,
+                originalName: originalName,
+                allKeys: Object.keys(q)
+              });
+            }
+            
             const maskedName = maskUserName(originalName);
 
             return {
               ...q,
               userName: maskedName,
               // user objesi varsa onu da güncelle
-              user: q.user ? { ...q.user, name: maskedName } : q.user
+              user: q.user ? { ...q.user, name: maskedName } : q.user,
+              // createdBy objesi varsa onu da güncelle
+              createdBy: q.createdBy ? { ...q.createdBy, name: maskedName } : q.createdBy
             };
           });
           setQuestions(maskedQuestions);
@@ -1018,19 +1054,30 @@ export default function ProductDetailScreen({ navigation, route }) {
       }
 
       const productId = product?.id || product?._id;
+      // Kullanıcı adını AsyncStorage'dan al
+      const userName = await AsyncStorage.getItem('userName');
       const response = await productQuestionsAPI.create({
         productId,
         userId,
-        question: newQuestion.trim()
+        question: newQuestion.trim(),
+        userName: userName || undefined // Backend'e kullanıcı adını da gönder
       });
 
       if (response.data?.success) {
         const newQuestionData = response.data.data || response.data.question;
         // Yeni sorunun kullanıcı ismini maskele
+        const newQuestionUserName = newQuestionData.userName || 
+                                   newQuestionData.user?.name || 
+                                   newQuestionData.user?.userName ||
+                                   newQuestionData.createdBy?.name ||
+                                   newQuestionData.createdBy?.userName ||
+                                   newQuestionData.name ||
+                                   userName || // Gönderdiğimiz kullanıcı adı
+                                   '';
         const maskedNewQuestion = {
           ...newQuestionData,
-          userName: maskUserName(newQuestionData.userName || newQuestionData.user?.name),
-          user: newQuestionData.user ? { ...newQuestionData.user, name: maskUserName(newQuestionData.user.name) } : newQuestionData.user
+          userName: maskUserName(newQuestionUserName),
+          user: newQuestionData.user ? { ...newQuestionData.user, name: maskUserName(newQuestionUserName) } : newQuestionData.user
         };
         setQuestions([maskedNewQuestion, ...questions]);
         setShowQuestionModal(false);
@@ -1041,12 +1088,34 @@ export default function ProductDetailScreen({ navigation, route }) {
           const questionsResponse = await productQuestionsAPI.getByProduct(productId);
           if (questionsResponse.data?.success) {
             const questionsData = questionsResponse.data.data || questionsResponse.data.questions || [];
+            // AsyncStorage'dan mevcut kullanıcı adını ve ID'sini al (fallback için)
+            const [refreshUserName, refreshUserId] = await Promise.all([
+              AsyncStorage.getItem('userName'),
+              AsyncStorage.getItem('userId')
+            ]);
             // Kullanıcı isimlerini maskele
-            const maskedQuestions = questionsData.map(q => ({
-              ...q,
-              userName: maskUserName(q.userName || q.user?.name),
-              user: q.user ? { ...q.user, name: maskUserName(q.user.name) } : q.user
-            }));
+            const maskedQuestions = questionsData.map(q => {
+              let originalName = q.userName || 
+                                q.user?.name || 
+                                q.user?.userName ||
+                                q.createdBy?.name ||
+                                q.createdBy?.userName ||
+                                q.name || 
+                                '';
+              
+              // Eğer hala ad bulunamadıysa ve bu kullanıcının kendi sorusuysa, AsyncStorage'dan al
+              if (!originalName && q.userId && refreshUserId && q.userId === refreshUserId && refreshUserName) {
+                originalName = refreshUserName;
+              }
+              
+              const maskedName = maskUserName(originalName);
+              return {
+                ...q,
+                userName: maskedName,
+                user: q.user ? { ...q.user, name: maskedName } : q.user,
+                createdBy: q.createdBy ? { ...q.createdBy, name: maskedName } : q.createdBy
+              };
+            });
             setQuestions(maskedQuestions);
           }
         } catch (refreshError) {
@@ -1772,12 +1841,29 @@ export default function ProductDetailScreen({ navigation, route }) {
                         <Text style={styles.questionUserName}>
                           {(() => {
                             // Tüm olası isim kaynaklarını kontrol et
-                            const name = question.userName || question.user?.name || question.name || '';
+                            const name = question.userName || 
+                                        question.user?.name || 
+                                        question.user?.userName ||
+                                        question.createdBy?.name ||
+                                        question.createdBy?.userName ||
+                                        question.name || 
+                                        '';
+                            
+                            // Debug: API'den gelen veriyi kontrol et
+                            if (!name) {
+                              console.log('⚠️ Soru için kullanıcı adı bulunamadı:', {
+                                questionId: question.id || question._id,
+                                hasUserName: !!question.userName,
+                                hasUser: !!question.user,
+                                hasUser_name: !!question.user?.name,
+                                hasCreatedBy: !!question.createdBy,
+                                questionKeys: Object.keys(question)
+                              });
+                            }
+                            
                             const masked = maskUserName(name);
-
                             // Eğer maskeleme "Kullanıcı" döndürdüyse, yine de göster
-                            // Çünkü backend'den veri gelmemiş olabilir
-                            return masked;
+                            return masked || 'Kullanıcı';
                           })()}
                         </Text>
                         <Text style={styles.questionDate}>
