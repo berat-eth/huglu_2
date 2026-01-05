@@ -61,11 +61,49 @@ export default function ThreeDModels() {
   const loadProducts = async () => {
     try {
       const response = await api.get<ApiResponse<Product[]>>('/admin/products?limit=1000')
-      if (response.success && response.data) {
-        setProducts(response.data)
+      console.log('Products API response:', response)
+      
+      // API response formatını kontrol et
+      if (response && response.success) {
+        // response.data bir array ise direkt kullan
+        if (Array.isArray(response.data)) {
+          setProducts(response.data)
+          console.log(`✅ ${response.data.length} ürün yüklendi`)
+        } 
+        // response.data bir object içinde products array'i varsa
+        else if (response.data && typeof response.data === 'object' && 'products' in response.data) {
+          const productsArray = (response.data as any).products
+          if (Array.isArray(productsArray)) {
+            setProducts(productsArray)
+            console.log(`✅ ${productsArray.length} ürün yüklendi (nested)`)
+          } else {
+            setProducts([])
+          }
+        } else {
+          console.warn('Products API response format unexpected:', response)
+          setProducts([])
+        }
+      } else {
+        console.warn('Products API response success false:', response)
+        setProducts([])
       }
     } catch (err: any) {
       console.error('Ürünler yüklenirken hata:', err)
+      console.error('Error details:', {
+        message: err.message,
+        status: (err as any).status,
+        stack: err.stack
+      })
+      
+      // API hatası ise daha detaylı mesaj göster
+      if ((err as any).status === 401) {
+        setError('Yetkilendirme hatası. Lütfen tekrar giriş yapın.')
+      } else if ((err as any).status === 500) {
+        setError('Sunucu hatası. Lütfen daha sonra tekrar deneyin.')
+      } else {
+        setError('Ürünler yüklenirken hata oluştu: ' + (err.message || 'Bilinmeyen hata'))
+      }
+      setProducts([])
     }
   }
 
@@ -438,22 +476,34 @@ export default function ThreeDModels() {
                   />
                 </div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {filteredProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleAssign(product.id, selectedModel.url, selectedModel.format)}
-                      disabled={assigningProductId === product.id}
-                      className="w-full text-left p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Package className="w-5 h-5 text-slate-400" />
-                        <span className="text-slate-900 dark:text-slate-100">{product.name}</span>
-                      </div>
-                      {assigningProductId === product.id && (
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  {filteredProducts.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                      {productSearchTerm ? (
+                        <p>"{productSearchTerm}" için ürün bulunamadı</p>
+                      ) : products.length === 0 ? (
+                        <p>Ürünler yükleniyor...</p>
+                      ) : (
+                        <p>Ürün bulunamadı</p>
                       )}
-                    </button>
-                  ))}
+                    </div>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <button
+                        key={product.id}
+                        onClick={() => handleAssign(product.id, selectedModel.url, selectedModel.format)}
+                        disabled={assigningProductId === product.id}
+                        className="w-full text-left p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Package className="w-5 h-5 text-slate-400" />
+                          <span className="text-slate-900 dark:text-slate-100">{product.name}</span>
+                        </div>
+                        {assigningProductId === product.id && (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        )}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             </motion.div>
