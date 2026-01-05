@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, BarChart3, Bell, LogOut, ShoppingBasket, Megaphone, Image, FileText, UserCog, UsersRound, Radio, MessageSquare, Shield, Crown, Ticket, Star, AlertTriangle, Menu, X, Database, Sparkles, Mail, Smartphone, Factory, ClipboardList, PackageCheck, Wallet, CreditCard, RotateCcw, Gift, Disc, FolderTree, Activity, DollarSign, Link, Monitor, Brain, Briefcase, Map, Search, SquareStack, Eye, Link2, Receipt, Key, List, HelpCircle, MousePointer, Cube } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingCart, Users, Settings, BarChart3, Bell, LogOut, ShoppingBasket, Megaphone, Image, FileText, UserCog, UsersRound, Radio, MessageSquare, Shield, Crown, Ticket, Star, AlertTriangle, Menu, X, Database, Sparkles, Mail, Smartphone, Factory, ClipboardList, PackageCheck, Wallet, CreditCard, RotateCcw, Gift, Disc, FolderTree, Activity, DollarSign, Link, Monitor, Brain, Briefcase, Map, Search, SquareStack, Eye, Link2, Receipt, Key, List, HelpCircle, MousePointer, Box } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface SidebarProps {
@@ -75,7 +75,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
         { id: 'cart', label: 'Sepetler', icon: ShoppingBasket },
         { id: 'products', label: 'Ürünler', icon: Package },
         { id: 'categories', label: 'Kategoriler', icon: FolderTree },
-        { id: '3d-models', label: '3D Modeller', icon: Cube },
+        { id: '3d-models', label: '3D Modeller', icon: Box },
         { id: 'reviews', label: 'Yorumlar', icon: Star },
         { id: 'product-questions', label: 'Ürün Soruları', icon: HelpCircle },
         { id: 'return-requests', label: 'İade Talepleri', icon: RotateCcw },

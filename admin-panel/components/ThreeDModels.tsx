@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Upload, Trash2, Search, X, Package, Link2, File, Check, AlertCircle, Loader2, Cube, Eye } from 'lucide-react'
+import { Upload, Trash2, Search, X, Package, Link2, File, Check, AlertCircle, Loader2, Box, Eye } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { productService } from '@/lib/services'
 import { api, type ApiResponse } from '@/lib/api'
@@ -246,7 +246,7 @@ export default function ThreeDModels() {
             onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
             className="hidden"
           />
-          <Cube className="w-12 h-12 mx-auto mb-4 text-slate-400 dark:text-slate-500" />
+          <Box className="w-12 h-12 mx-auto mb-4 text-slate-400 dark:text-slate-500" />
           <p className="text-slate-600 dark:text-slate-400 mb-2">
             Dosyayı buraya sürükleyin veya tıklayın
           </p>
