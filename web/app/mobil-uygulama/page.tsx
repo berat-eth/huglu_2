@@ -9,6 +9,7 @@ const Footer = dynamic(() => import('@/components/Footer'), { ssr: true })
 
 export default function MobilUygulamaPage() {
   const [activeFeature, setActiveFeature] = useState(0)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<number | null>(null)
 
   const handleStoreClick = (storeName: string) => {
     alert(`${storeName} uygulaması çok yakında yayınlanacak! Şimdilik APK dosyasını indirerek uygulamayı kullanabilirsiniz.`)
@@ -42,10 +43,11 @@ export default function MobilUygulamaPage() {
   ]
 
   const screenshots = [
-    { image: '/assets/anasayfa.jpeg', title: 'Ana Sayfa' },
-    { image: '/assets/ürünler.jpeg', title: 'Ürünler' },
-    { image: '/assets/sepet.jpeg', title: 'Sepet' },
-    { image: '/assets/profil.jpeg', title: 'Profil' }
+    { image: '/assets/Başlangiç.png', title: 'Başlangıç' },
+    { image: '/assets/Ana Sayfa.png', title: 'Ana Sayfa' },
+    { image: '/assets/Tüm ürünler.png', title: 'Tüm Ürünler' },
+    { image: '/assets/favorilerim.png', title: 'Favorilerim' },
+    { image: '/assets/profil.png', title: 'Profil' }
   ]
 
   return (
@@ -156,7 +158,7 @@ export default function MobilUygulamaPage() {
                         {/* Screen Content - Real Screenshot */}
                         <div className="w-full h-full relative">
                           <Image
-                            src="/assets/anasayfa.jpeg"
+                            src="/assets/Ana Sayfa.png"
                             alt="Ana Sayfa"
                             fill
                             className="object-cover"
@@ -235,9 +237,13 @@ export default function MobilUygulamaPage() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
                   {screenshots.map((screenshot, index) => (
-                    <div key={index} className="group relative">
+                    <div 
+                      key={index} 
+                      className="group relative cursor-pointer"
+                      onClick={() => setSelectedScreenshot(index)}
+                    >
                       <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-800 dark:border-gray-700 group-hover:scale-105 transition-transform duration-300">
                         <Image
                           src={screenshot.image}
@@ -254,6 +260,35 @@ export default function MobilUygulamaPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Screenshot Modal */}
+                {selectedScreenshot !== null && (
+                  <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    onClick={() => setSelectedScreenshot(null)}
+                  >
+                    <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+                      <button
+                        onClick={() => setSelectedScreenshot(null)}
+                        className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-4xl">close</span>
+                      </button>
+                      <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20">
+                        <Image
+                          src={screenshots[selectedScreenshot].image}
+                          alt={screenshots[selectedScreenshot].title}
+                          width={1200}
+                          height={2400}
+                          className="w-full h-auto max-h-[85vh] object-contain"
+                        />
+                      </div>
+                      <p className="mt-4 text-white text-xl font-bold">
+                        {screenshots[selectedScreenshot].title}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Testimonials */}
@@ -313,6 +348,30 @@ export default function MobilUygulamaPage() {
                 <div className="max-w-4xl mx-auto w-full space-y-6">
                   {[
                     {
+                      version: 'v3.1.0',
+                      date: '5 Ocak 2026',
+                      badge: 'Performans',
+                      badgeColor: 'from-blue-500 to-cyan-600',
+                      updates: [
+                        'Uygulama açılış hızı %60 iyileştirildi - daha hızlı başlangıç',
+                        'Görsel yükleme performansı %45 artırıldı - anında görüntüleme',
+                        'Bellek kullanımı %35 azaltıldı - daha verimli çalışma',
+                        'API yanıt süreleri optimize edildi - daha hızlı veri yükleme',
+                        'Arka plan işlemleri iyileştirildi - daha akıcı deneyim',
+                        'Önbellek (cache) sistemi geliştirildi - daha hızlı veri yükleme',
+                        'Veritabanı sorguları optimize edildi - hızlı arama sonuçları',
+                        'Görsel sıkıştırma algoritması güncellendi - daha küçük dosya boyutları',
+                        'Sayfa geçiş animasyonları optimize edildi - pürüzsüz navigasyon',
+                        'Battery kullanımı %25 azaltıldı - daha uzun pil ömrü',
+                        'Network istekleri optimize edildi - daha az veri kullanımı',
+                        'Uygulama boyutu %20 küçültüldü - daha hızlı indirme',
+                        'Startup süresi %55 kısaltıldı - anında kullanıma hazır',
+                        'Scroll performansı iyileştirildi - akıcı kaydırma',
+                        'Image lazy loading sistemi eklendi - daha hızlı sayfa yükleme',
+                        'Genel performans optimizasyonları - daha hızlı ve verimli uygulama'
+                      ]
+                    },
+                    {
                       version: 'v3.0.0',
                       date: '25 Aralık 2025',
                       badge: 'Büyük Güncelleme',
@@ -363,7 +422,6 @@ export default function MobilUygulamaPage() {
                       version: 'v2.4.0',
                       date: '15 Ağustos 2025',
                       updates: [
-                        'Karanlık mod desteği',
                         'Favori ürünler özelliği',
                         'Bildirim ayarları güncellendi',
                         'Arayüz iyileştirmeleri'

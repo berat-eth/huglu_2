@@ -309,7 +309,20 @@ export default function SplashScreen({ navigation }) {
           </Animated.View>
         </View>
 
-
+        {/* Brand Text */}
+        <Animated.View
+          style={[
+            styles.brandTextContainer,
+            {
+              opacity: sloganAnim,
+              transform: [{ translateY: sloganTranslateY }]
+            }
+          ]}
+        >
+          <Text style={styles.brandText}>
+            Huğlu Outdoor, bir Huğlu Av tüfekleri Kooperatifi markasıdır.
+          </Text>
+        </Animated.View>
 
         {/* Loading Indicator */}
         <View style={styles.loadingContainer}>
@@ -399,6 +412,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     opacity: 0.3,
     mixBlendMode: 'multiply',
+  },
+
+  // Brand Text Container
+  brandTextContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 24,
+  },
+  brandText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 
   // Brand Typography
