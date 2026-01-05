@@ -93,11 +93,15 @@ class ApiClient {
     this.adminKey = adminKey;
   }
 
-  private getHeaders(endpoint: string, customHeaders?: HeadersInit, method?: string): HeadersInit {
+  private getHeaders(endpoint: string, customHeaders?: HeadersInit, method?: string, body?: any): HeadersInit {
     const base: Record<string, string> = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+    
+    // FormData ise Content-Type header'ını ekleme (browser otomatik ayarlar)
+    if (!(body instanceof FormData)) {
+      base['Content-Type'] = 'application/json';
+    }
     if (this.apiKey) {
       base['X-API-Key'] = this.apiKey;
     }
@@ -147,7 +151,7 @@ class ApiClient {
       const response = await fetch(url, {
         ...fetchOptions,
         method,
-        headers: this.getHeaders(endpoint, headers, method),
+        headers: this.getHeaders(endpoint, headers, method, fetchOptions.body),
       });
 
       if (!response.ok) {
@@ -227,10 +231,12 @@ class ApiClient {
   }
 
   // POST request
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>): Promise<T> {
+    const body = data instanceof FormData ? data : JSON.stringify(data);
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body,
+      ...options,
     });
   }
 

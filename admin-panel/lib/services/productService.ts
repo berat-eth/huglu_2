@@ -103,9 +103,7 @@ export const productService = {
   uploadModel3d: async (file: File) => {
     const formData = new FormData();
     formData.append('model', file);
-    return api.post<ApiResponse<{ filename: string; originalName: string; url: string; format: string; size: number }>>('/admin/3d-models/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    return api.post<ApiResponse<{ filename: string; originalName: string; url: string; format: string; size: number }>>('/admin/3d-models/upload', formData);
   },
 
   getModel3dList: async () => {
