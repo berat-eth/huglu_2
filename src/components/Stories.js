@@ -73,9 +73,9 @@ export default function Stories({ stories, onStoryPress }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {normalizedStories.map((story) => (
+        {normalizedStories.map((story, index) => (
           <TouchableOpacity
-            key={story.id}
+            key={story.id ? `story-${story.id}` : `story-index-${index}`}
             style={styles.storyItem}
             onPress={() => onStoryPress(story)}
             activeOpacity={0.8}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,6 +31,8 @@ export default function HomeScreen({ navigation }) {
   const [personalizedProducts, setPersonalizedProducts] = useState([]);
   const [activeStory, setActiveStory] = useState(null);
   const [storyVisible, setStoryVisible] = useState(false);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+  const storyScrollRef = useRef(null);
   const [showServerError, setShowServerError] = useState(false);
   const [flashDealsEndTime, setFlashDealsEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -552,8 +554,20 @@ export default function HomeScreen({ navigation }) {
     try {
       // Story görüntülenme sayısını artır
       await storiesAPI.view(story.id);
-      setActiveStory(story);
-      setStoryVisible(true);
+      
+      // Tüm storyleri ve sliderları birleştir
+      const allItems = [...stories, ...heroSlides];
+      const index = allItems.findIndex(item => item.id === story.id);
+      
+      if (index !== -1) {
+        setCurrentStoryIndex(index);
+        setActiveStory(allItems[index]);
+        setStoryVisible(true);
+      } else {
+        setCurrentStoryIndex(0);
+        setActiveStory(story);
+        setStoryVisible(true);
+      }
     } catch (error) {
       console.error('Story view error:', error);
     }
@@ -760,7 +774,9 @@ export default function HomeScreen({ navigation }) {
         title: slider.title,
         description: slider.description,
         image: imageUrl,
+        imageUrl: imageUrl,
         cta: slider.buttonText || 'İncele',
+        clickAction: slider.clickAction || null,
       };
     }
     
@@ -796,7 +812,9 @@ export default function HomeScreen({ navigation }) {
       title: slider.title,
       description: slider.description,
       image: imageUrl,
+      imageUrl: imageUrl,
       cta: slider.buttonText || 'İncele',
+      clickAction: slider.clickAction || null,
     };
   });
 
@@ -828,78 +846,137 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
       >
-        {/* Story Modal - Full Screen */}
+        {/* Story Modal - Full Screen with Swipe */}
         <Modal visible={storyVisible} transparent={false} animationType="slide" onRequestClose={() => setStoryVisible(false)}>
-          <View style={styles.storyModalFullScreen}>
-            {/* Close Button */}
-            <TouchableOpacity style={styles.storyModalCloseButton} onPress={() => setStoryVisible(false)}>
-              <Text style={styles.storyModalCloseText}>✕</Text>
-            </TouchableOpacity>
+          {(() => {
+            // Stories ve sliders'ı birleştir - benzersiz key'ler için prefix ekle
+            const allItems = [
+              ...stories.map((story, idx) => ({ ...story, _uniqueKey: `story-${story.id || idx}` })),
+              ...heroSlides.map((slide, idx) => ({ ...slide, _uniqueKey: `slider-${slide.id || idx}` }))
+            ];
+            const { width, height } = Dimensions.get('window');
             
-            {/* Story Image */}
-            {(() => {
-              let storyImageUrl = activeStory?.imageUrl || activeStory?.image_url || activeStory?.image;
+            const normalizeImageUrl = (item) => {
+              let imageUrl = item?.imageUrl || item?.image_url || item?.image || null;
               
-              // Relative URL kontrolü
-              if (storyImageUrl && typeof storyImageUrl === 'string' && storyImageUrl.trim() !== '') {
-                storyImageUrl = storyImageUrl.trim();
+              if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+                imageUrl = imageUrl.trim();
                 
-                // Base URL'i al - sonundaki /api'yi güvenli şekilde kaldır
                 let API_BASE_URL = getApiUrl();
                 if (API_BASE_URL.endsWith('/api')) {
-                  API_BASE_URL = API_BASE_URL.slice(0, -4); // Son 4 karakteri (/api) kaldır
+                  API_BASE_URL = API_BASE_URL.slice(0, -4);
                 } else if (API_BASE_URL.endsWith('/api/')) {
-                  API_BASE_URL = API_BASE_URL.slice(0, -5); // Son 5 karakteri (/api/) kaldır
+                  API_BASE_URL = API_BASE_URL.slice(0, -5);
                 }
                 
-                if (storyImageUrl.startsWith('/uploads/') || (storyImageUrl.startsWith('/') && !storyImageUrl.startsWith('//') && !storyImageUrl.startsWith('http'))) {
-                  storyImageUrl = `${API_BASE_URL}${storyImageUrl}`;
+                if (imageUrl.startsWith('/uploads/') || (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.startsWith('http'))) {
+                  imageUrl = `${API_BASE_URL}${imageUrl}`;
                 }
                 
-                // Base64 görselleri reddet
-                if (storyImageUrl.startsWith('data:')) {
-                  return (
-                    <View style={styles.storyModalPlaceholder}>
-                      <Text style={styles.storyModalPlaceholderText}>📷</Text>
-                      <Text style={styles.storyModalPlaceholderSubText}>Görsel Formatı Desteklenmiyor</Text>
-                    </View>
-                  );
+                if (imageUrl.startsWith('data:')) {
+                  return null;
                 }
                 
-                // Eğer URL http veya https ile başlıyorsa göster
-                if (storyImageUrl.startsWith('http://') || storyImageUrl.startsWith('https://')) {
-                  return (
-                    <Image
-                      source={{ uri: storyImageUrl }}
-                      style={styles.storyModalFullImage}
-                      resizeMode="contain"
-                    />
-                  );
+                if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+                  return imageUrl;
                 }
               }
               
-              // Placeholder göster
-              return (
-                <View style={styles.storyModalPlaceholder}>
-                  <Text style={styles.storyModalPlaceholderText}>📷</Text>
-                  <Text style={styles.storyModalPlaceholderSubText}>Görsel Yüklenemedi</Text>
-                </View>
-              );
-            })()}
+              return null;
+            };
             
-            {/* Story Content Overlay */}
-            <View style={styles.storyModalOverlay}>
-              <Text style={styles.storyModalFullTitle}>{activeStory?.title}</Text>
-              {!!activeStory?.description && (
-                <Text style={styles.storyModalFullDesc}>{activeStory.description}</Text>
-              )}
-              {activeStory?.link_url && (
-                <TouchableOpacity style={styles.storyModalFullButton} onPress={handleStoryLink}>
-                  <Text style={styles.storyModalFullButtonText}>Detay</Text>
+            return (
+              <View style={styles.storyModalFullScreen}>
+                {/* Close Button */}
+                <TouchableOpacity style={styles.storyModalCloseButton} onPress={() => setStoryVisible(false)}>
+                  <Text style={styles.storyModalCloseText}>✕</Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          </View>
+                
+                {/* Story Counter */}
+                {allItems.length > 1 && (
+                  <View style={styles.storyCounter}>
+                    <Text style={styles.storyCounterText}>
+                      {currentStoryIndex + 1} / {allItems.length}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Swipeable Story ScrollView */}
+                <ScrollView
+                  ref={storyScrollRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+                    if (index !== currentStoryIndex && index >= 0 && index < allItems.length) {
+                      setCurrentStoryIndex(index);
+                      setActiveStory(allItems[index]);
+                      // Story görüntülenme sayısını artır
+                      if (allItems[index].id) {
+                        storiesAPI.view(allItems[index].id).catch(err => console.error('Story view error:', err));
+                      }
+                    }
+                  }}
+                  contentOffset={{ x: currentStoryIndex * width, y: 0 }}
+                  scrollEventThrottle={16}
+                >
+                  {allItems.map((item, index) => {
+                    const imageUrl = normalizeImageUrl(item);
+                    const clickAction = item.clickAction || (typeof item.clickAction === 'string' ? JSON.parse(item.clickAction) : null);
+                    const linkUrl = item.link_url || clickAction?.value || null;
+                    
+                    return (
+                      <View key={item._uniqueKey || `item-${index}`} style={{ width, height }}>
+                        {imageUrl ? (
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.storyModalFullImage}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <View style={styles.storyModalPlaceholder}>
+                            <Text style={styles.storyModalPlaceholderText}>📷</Text>
+                            <Text style={styles.storyModalPlaceholderSubText}>
+                              {imageUrl === null ? 'Görsel Yüklenemedi' : 'Görsel Formatı Desteklenmiyor'}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {/* Story Content Overlay */}
+                        <View style={styles.storyModalOverlay}>
+                          <Text style={styles.storyModalFullTitle}>{item.title}</Text>
+                          {!!item.description && (
+                            <Text style={styles.storyModalFullDesc}>{item.description}</Text>
+                          )}
+                          {linkUrl && (
+                            <TouchableOpacity 
+                              style={styles.storyModalFullButton} 
+                              onPress={() => {
+                                if (clickAction?.type === 'product' || linkUrl.includes('product')) {
+                                  const productId = linkUrl.split('/').pop() || linkUrl;
+                                  navigation.navigate('ProductDetail', { productId });
+                                } else if (clickAction?.type === 'category' || linkUrl.includes('category')) {
+                                  navigation.navigate('Shop');
+                                } else if (clickAction?.type === 'url' || linkUrl.startsWith('http')) {
+                                  Linking.openURL(linkUrl).catch(err => console.error('Link açma hatası:', err));
+                                }
+                                setStoryVisible(false);
+                              }}
+                            >
+                              <Text style={styles.storyModalFullButtonText}>
+                                {item.buttonText || item.cta || 'Detay'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            );
+          })()}
         </Modal>
 
         {/* Header */}
@@ -955,8 +1032,8 @@ export default function HomeScreen({ navigation }) {
             snapToInterval={HERO_WIDTH + 12}
             contentContainerStyle={styles.carouselContainer}
           >
-            {heroSlides.map((slide) => (
-              <View key={slide.id} style={[styles.heroCard, { width: HERO_WIDTH, height: HERO_HEIGHT }]}>
+            {heroSlides.map((slide, index) => (
+              <View key={slide.id ? `slider-${slide.id}` : `slider-index-${index}`} style={[styles.heroCard, { width: HERO_WIDTH, height: HERO_HEIGHT }]}>
                 {slide.image && slide.image.startsWith('http') ? ( // Sadece HTTP/HTTPS URL'leri kabul et
                   <Image 
                     source={{ 
@@ -1854,6 +1931,21 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  storyCounter: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  storyCounterText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   storyModalFullImage: {
     width: '100%',

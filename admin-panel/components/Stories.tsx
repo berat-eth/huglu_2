@@ -49,7 +49,12 @@ export default function Stories() {
             setLoading(true)
             const response = await api.get('/admin/stories/all') as any
             if (response.success) {
-                setStories(response.data || [])
+                // image field'ını imageUrl'e map et ve tüm storyleri al
+                const mappedStories = (response.data || []).map((story: any) => ({
+                    ...story,
+                    imageUrl: story.imageUrl || story.image || '',
+                }))
+                setStories(mappedStories)
             }
         } catch (error) {
             console.error('Stories yükleme hatası:', error)
@@ -355,7 +360,7 @@ export default function Stories() {
                             initial={{ scale: 0.9 }}
                             animate={{ scale: 1 }}
                             exit={{ scale: 0.9 }}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl max-w-lg w-full"
                         >
                             <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -518,7 +523,7 @@ export default function Stories() {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl max-w-2xl w-full"
                         >
                             <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">

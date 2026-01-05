@@ -73,13 +73,20 @@ router.get('/all', authenticateAdmin, async (req, res) => {
       });
     }
 
-    const { limit = 50 } = req.query;
-    const [stories] = await currentPool.execute(`
-      SELECT id, title, image, clickAction, \`order\`, isActive, expiresAt, createdAt, updatedAt
+    const { limit } = req.query;
+    let query = `
+      SELECT id, title, imageUrl, description, thumbnailUrl, videoUrl, clickAction, \`order\`, isActive, expiresAt, createdAt, updatedAt
       FROM stories 
       ORDER BY \`order\` ASC
-      LIMIT ?
-    `, [parseInt(limit)]);
+    `;
+    
+    let params = [];
+    if (limit) {
+      query += ' LIMIT ?';
+      params.push(parseInt(limit));
+    }
+    
+    const [stories] = await currentPool.execute(query, params);
 
     // JSON alanlarını parse et
     const parsedStories = stories.map(story => ({
