@@ -3523,7 +3523,7 @@ app.post('/api/payments/process', async (req, res) => {
       paidPrice: order.totalAmount,
       currency: 'TRY',
       basketId: orderId,
-      callbackUrl: paymentCallbackUrl, // 3D Secure için zorunlu
+      callbackUrl: callbackUrl, // 3D Secure için zorunlu
       paymentCard: {
         cardHolderName: paymentCard.cardHolderName,
         cardNumber: paymentCard.cardNumber.replace(/\s/g, ''),
