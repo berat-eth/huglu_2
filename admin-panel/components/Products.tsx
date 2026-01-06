@@ -426,16 +426,31 @@ export default function Products() {
 
   const buildUpdatePayload = () => {
     const payload: any = {}
-    if (form.name !== undefined) payload.name = form.name
-    if (form.description !== undefined) payload.description = form.description
-    if (form.price !== undefined) payload.price = Number(form.price)
-    if (form.taxRate !== undefined) payload.taxRate = Number(form.taxRate)
+    if (form.name !== undefined && form.name !== null && form.name !== '') payload.name = form.name
+    if (form.description !== undefined && form.description !== null) payload.description = form.description
+    if (form.price !== undefined && form.price !== null && form.price !== '') {
+      const priceNum = Number(form.price)
+      if (!isNaN(priceNum) && priceNum >= 0) {
+        payload.price = priceNum
+      }
+    }
+    if (form.taxRate !== undefined && form.taxRate !== null && form.taxRate !== '') {
+      const taxNum = Number(form.taxRate)
+      if (!isNaN(taxNum) && taxNum >= 0) {
+        payload.taxRate = taxNum
+      }
+    }
     if (form.priceIncludesTax !== undefined) payload.priceIncludesTax = !!form.priceIncludesTax
-    if (form.category !== undefined) payload.category = form.category
-    if (form.image !== undefined) payload.image = form.image
-    if (form.images !== undefined) payload.images = form.images
-    if (form.stock !== undefined) payload.stock = Number(form.stock)
-    if (form.brand !== undefined) payload.brand = form.brand
+    if (form.category !== undefined && form.category !== null && form.category !== '') payload.category = form.category
+    if (form.image !== undefined && form.image !== null && form.image !== '') payload.image = form.image
+    if (form.images !== undefined && form.images !== null) payload.images = form.images
+    if (form.stock !== undefined && form.stock !== null && form.stock !== '') {
+      const stockNum = Number(form.stock)
+      if (!isNaN(stockNum) && stockNum >= 0) {
+        payload.stock = stockNum
+      }
+    }
+    if (form.brand !== undefined && form.brand !== null && form.brand !== '') payload.brand = form.brand
     if (form.hasVariations !== undefined) payload.hasVariations = !!form.hasVariations
     if (form.isActive !== undefined) payload.isActive = !!form.isActive
     if (form.excludeFromXml !== undefined) payload.excludeFromXml = !!form.excludeFromXml
