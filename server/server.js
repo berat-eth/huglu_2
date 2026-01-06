@@ -25789,6 +25789,14 @@ YARDIM EDEBİLECEĞİN KONULAR:
       const userName = fullName[0] || 'John';
       const userSurname = fullName.slice(1).join(' ') || 'Doe';
 
+      // registrationAddress zorunlu - boş olamaz
+      const registrationAddress = (buyer?.registrationAddress && buyer.registrationAddress.trim()) 
+        || (user.address && user.address.trim()) 
+        || 'Istanbul, Turkey'; // Varsayılan adres
+
+      // address alanları için de aynı kontrol
+      const address = registrationAddress;
+
       // Iyzico için ödeme verisi hazırla
       const paymentData = {
         price: amount,
@@ -25809,7 +25817,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
           gsmNumber: buyer?.gsmNumber || user.phone || '+905555555555',
           email: buyer?.email || user.email || 'test@test.com',
           identityNumber: buyer?.identityNumber || '11111111111',
-          registrationAddress: buyer?.registrationAddress || user.address || '',
+          registrationAddress: registrationAddress, // Artık boş olamaz
           ip: '127.0.0.1',
           city: buyer?.city || 'Istanbul',
           country: buyer?.country || 'Turkey',
@@ -25819,14 +25827,14 @@ YARDIM EDEBİLECEĞİN KONULAR:
           contactName: `${userName} ${userSurname}`,
           city: buyer?.city || 'Istanbul',
           country: 'Turkey',
-          address: buyer?.registrationAddress || user.address || '',
+          address: address, // Artık boş olamaz
           zipCode: buyer?.zipCode || '34000'
         },
         billingAddress: {
           contactName: `${userName} ${userSurname}`,
           city: buyer?.city || 'Istanbul',
           country: 'Turkey',
-          address: buyer?.registrationAddress || user.address || '',
+          address: address, // Artık boş olamaz
           zipCode: buyer?.zipCode || '34000'
         },
         basketItems: [{
