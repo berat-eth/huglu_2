@@ -3567,7 +3567,22 @@ app.post('/api/payments/process', async (req, res) => {
     // Process payment with İyzico
     const paymentResult = await iyzicoService.processPayment(paymentData);
 
-    if (paymentResult.success) {
+    // 3D Secure kontrolü
+    if (paymentResult.success && paymentResult.requires3DS) {
+      // 3D Secure gerekiyor - HTML content'i frontend'e gönder
+      console.log('🔐 3D Secure required - sending HTML to frontend');
+      return res.json({
+        success: true,
+        requires3DS: true,
+        threeDSHtmlContent: paymentResult.threeDSHtmlContent,
+        conversationId: paymentResult.conversationId,
+        orderId: orderId,
+        message: '3D Secure doğrulaması gerekiyor'
+      });
+    }
+
+    if (paymentResult.success && paymentResult.paymentId) {
+      // Başarılı ödeme (3D Secure gerekmedi veya tamamlandı)
       // Update order status and payment info
       await poolWrapper.execute(
         `UPDATE orders SET 
@@ -3738,6 +3753,156 @@ app.get('/api/payments/:paymentId/status', async (req, res) => {
       success: false,
       message: 'Error retrieving payment status'
     });
+  }
+});
+
+// 3D Secure Callback Endpoint
+app.post('/api/payments/3ds-callback', async (req, res) => {
+  try {
+    console.log('🔐 3D Secure callback received');
+    console.log('📋 Callback data:', JSON.stringify(req.body, null, 2));
+
+    const { conversationId, paymentId, status, mdStatus } = req.body;
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Conversation ID is required'
+      });
+    }
+
+    // Conversation ID'den order ID'yi çıkar (format: order_156_1767704921122)
+    const orderIdMatch = conversationId.match(/order_(\d+)_/);
+    if (!orderIdMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid conversation ID format'
+      });
+    }
+
+    const orderId = parseInt(orderIdMatch[1]);
+    const tenantId = req.tenant?.id || 1;
+
+    // Ödeme durumunu kontrol et
+    if (status === 'success' && mdStatus === '1') {
+      // 3D Secure başarılı - Ödeme tamamlandı
+      console.log('✅ 3D Secure successful - Payment completed');
+      
+      // Order'ı güncelle
+      await poolWrapper.execute(
+        `UPDATE orders SET 
+         status = 'paid', 
+         paymentStatus = 'completed',
+         paymentId = ?,
+         paymentProvider = 'iyzico',
+         paidAt = NOW()
+         WHERE id = ? AND tenantId = ?`,
+        [paymentId, orderId, tenantId]
+      );
+
+      // Payment transaction kaydet
+      const [orderRows] = await poolWrapper.execute(
+        'SELECT totalAmount FROM orders WHERE id = ? AND tenantId = ?',
+        [orderId, tenantId]
+      );
+      const orderAmount = orderRows.length > 0 ? orderRows[0].totalAmount : 0;
+
+      await poolWrapper.execute(
+        `INSERT INTO payment_transactions 
+         (tenantId, orderId, paymentId, provider, amount, currency, status, transactionData, createdAt)
+         VALUES (?, ?, ?, 'iyzico', ?, 'TRY', 'success', ?, NOW())`,
+        [
+          tenantId,
+          orderId,
+          paymentId,
+          orderAmount,
+          JSON.stringify({ conversationId, mdStatus, status })
+        ]
+      );
+
+      // Frontend'e başarılı yanıt gönder
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ödeme Başarılı</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: green;">✅ Ödeme Başarılı!</h1>
+              <p>Siparişiniz alındı. Sayfa kısa süre içinde yönlendirilecektir.</p>
+              <script>
+                setTimeout(function() {
+                  if (window.opener) {
+                    window.opener.postMessage({ 
+                      type: 'PAYMENT_SUCCESS', 
+                      orderId: ${orderId}, 
+                      paymentId: '${paymentId}' 
+                    }, '*');
+                    window.close();
+                  } else {
+                    window.location.href = '/orders/${orderId}';
+                  }
+                }, 2000);
+              </script>
+            </div>
+          </body>
+        </html>
+      `);
+    } else {
+      // 3D Secure başarısız
+      console.log('❌ 3D Secure failed - Payment rejected');
+      
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ödeme Başarısız</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: red;">❌ Ödeme Başarısız</h1>
+              <p>3D Secure doğrulaması başarısız oldu. Lütfen tekrar deneyin.</p>
+              <script>
+                setTimeout(function() {
+                  if (window.opener) {
+                    window.opener.postMessage({ 
+                      type: 'PAYMENT_FAILED', 
+                      orderId: ${orderId}, 
+                      error: '3D Secure verification failed' 
+                    }, '*');
+                    window.close();
+                  } else {
+                    window.location.href = '/checkout';
+                  }
+                }, 2000);
+              </script>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+  } catch (error) {
+    console.error('❌ 3D Secure callback error:', error);
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Hata</title>
+          <meta charset="UTF-8">
+        </head>
+        <body>
+          <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+            <h1 style="color: red;">❌ Hata</h1>
+            <p>Ödeme işlemi sırasında bir hata oluştu.</p>
+          </div>
+        </body>
+      </html>
+    `);
   }
 });
 

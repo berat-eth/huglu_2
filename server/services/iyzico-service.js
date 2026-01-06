@@ -34,10 +34,12 @@ class IyzicoService {
   }
 
   // Kredi kartı ile ödeme - KART BİLGİLERİ KAYIT EDİLMİYOR
+  // 3D Secure zorunlu - Production'da callbackUrl gereklidir
   async processPayment(paymentData) {
     try {
       console.log('🔄 Iyzico payment processing - CARD DATA NOT STORED');
       console.log('⚠️ SECURITY: Card information is processed but NOT saved');
+      console.log('🔐 3D Secure: ENABLED (Production requirement)');
       
       const {
         price,
@@ -48,8 +50,13 @@ class IyzicoService {
         buyer,
         shippingAddress,
         billingAddress,
-        basketItems
+        basketItems,
+        callbackUrl // 3D Secure callback URL
       } = paymentData;
+
+      // 3D Secure için callback URL zorunlu
+      const baseUrl = process.env.BASE_URL || process.env.API_BASE_URL || 'https://api.huglutekstil.com';
+      const defaultCallbackUrl = `${baseUrl}/api/payments/3ds-callback`;
 
       const request = {
         locale: Iyzipay.LOCALE.TR,
@@ -61,6 +68,8 @@ class IyzicoService {
         basketId: basketId.toString(),
         paymentChannel: Iyzipay.PAYMENT_CHANNEL.WEB,
         paymentGroup: Iyzipay.PAYMENT_GROUP.PRODUCT,
+        // 3D Secure callback URL - Production'da zorunlu
+        callbackUrl: callbackUrl || defaultCallbackUrl,
         paymentCard: {
           cardHolderName: paymentCard.cardHolderName,
           cardNumber: paymentCard.cardNumber,
@@ -129,10 +138,13 @@ class IyzicoService {
             console.log('✅ İyzico payment result:', {
               status: result.status,
               paymentId: result.paymentId,
-              conversationId: result.conversationId
+              conversationId: result.conversationId,
+              threeDSHtmlContent: result.threeDSHtmlContent ? 'Present (3D Secure required)' : 'Not present'
             });
 
-            if (result.status === 'success') {
+            // 3D Secure response kontrolü
+            if (result.status === 'success' && result.paymentId) {
+              // Direkt başarılı ödeme (3D Secure gerekmedi veya tamamlandı)
               resolve({
                 success: true,
                 paymentId: result.paymentId,
@@ -149,9 +161,23 @@ class IyzicoService {
                 cardAssociation: result.cardAssociation,
                 cardFamily: result.cardFamily,
                 cardToken: result.cardToken,
-                fraudStatus: result.fraudStatus
+                fraudStatus: result.fraudStatus,
+                requires3DS: false,
+                threeDSHtmlContent: null
+              });
+            } else if (result.status === 'success' && result.threeDSHtmlContent) {
+              // 3D Secure gerekiyor - HTML content döndür
+              console.log('🔐 3D Secure required - returning HTML content for frontend');
+              resolve({
+                success: true,
+                requires3DS: true,
+                threeDSHtmlContent: result.threeDSHtmlContent,
+                conversationId: result.conversationId,
+                paymentId: null, // Henüz ödeme tamamlanmadı
+                message: '3D Secure doğrulaması gerekiyor'
               });
             } else {
+              // Ödeme başarısız
               reject({
                 success: false,
                 error: 'PAYMENT_FAILED',
