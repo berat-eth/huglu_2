@@ -107,8 +107,15 @@ class ApiClient {
     }
     
     // Admin endpoint'leri için admin key ekle
-    // /admin/ veya /dealership/ (admin panelinde kullanılan) endpoint'leri için
+    // /admin/ veya /dealership/ endpoint'leri için
     if (endpoint.startsWith('/admin/') || endpoint.startsWith('/dealership/')) {
+      base['X-Admin-Key'] = this.adminKey;
+    }
+    
+    // /wholesale/ endpoint'leri için admin key ekle (apply ve status hariç - bunlar public)
+    if (endpoint.startsWith('/wholesale/') && 
+        !endpoint.startsWith('/wholesale/apply') && 
+        !endpoint.startsWith('/wholesale/status')) {
       base['X-Admin-Key'] = this.adminKey;
     }
     
