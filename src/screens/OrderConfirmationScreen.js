@@ -79,12 +79,126 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const routeShipping = route?.params?.shipping;
   const paymentMethod = route?.params?.paymentMethod;
   const routeShippingAddress = route?.params?.shippingAddress;
+  const paymentCompleted = route?.params?.paymentCompleted; // Ödeme zaten yapılmış mı?
+  const orderIdFromRoute = route?.params?.orderId; // PaymentMethodScreen'den gelen orderId
+  const paymentIdFromRoute = route?.params?.paymentId; // PaymentMethodScreen'den gelen paymentId
 
   useEffect(() => {
-    loadOrderData();
-    loadShippingAddress();
-    loadCustomerInfo();
+    // Eğer ödeme zaten yapılmışsa, sipariş bilgilerini yükle ve success modal'ı göster
+    if (paymentCompleted && orderIdFromRoute) {
+      handlePaymentCompleted();
+    } else {
+      loadOrderData();
+      loadShippingAddress();
+      loadCustomerInfo();
+    }
   }, []);
+
+  // Ödeme tamamlandığında çağrılacak fonksiyon
+  const handlePaymentCompleted = async () => {
+    try {
+      setLoading(true);
+      const storedUserId = await AsyncStorage.getItem('userId');
+      
+      if (!storedUserId) {
+        setErrorMessage('Lütfen giriş yapın');
+        setShowErrorModal(true);
+        return;
+      }
+
+      // Sipariş bilgilerini yükle
+      if (orderIdFromRoute) {
+        try {
+          const orderResponse = await ordersAPI.getById(orderIdFromRoute);
+          if (orderResponse.data?.success) {
+            const order = orderResponse.data.data || orderResponse.data.order;
+            // Sipariş ürünlerini yükle
+            if (order.items) {
+              setCartItems(order.items);
+            }
+            setTotal(order.totalAmount || routeTotal || 0);
+            setSubtotal(routeSubtotal || (order.totalAmount - (routeShipping || 0)));
+            setShipping(routeShipping || 0);
+          }
+        } catch (orderError) {
+          console.error('Sipariş bilgileri yüklenemedi:', orderError);
+          // Route'dan gelen değerleri kullan
+          setTotal(routeTotal || 0);
+          setSubtotal(routeSubtotal || 0);
+          setShipping(routeShipping || 0);
+        }
+      }
+
+      // Analytics: Purchase tracking
+      if (orderIdFromRoute) {
+        try {
+          await analytics.trackPurchase(orderIdFromRoute, {
+            amount: routeTotal || 0,
+            itemCount: cartItems.length,
+            paymentMethod: paymentMethod || 'card',
+            shipping: routeShipping || 0,
+            subtotal: routeSubtotal || 0
+          });
+        } catch (analyticsError) {
+          console.log('Analytics purchase error:', analyticsError);
+        }
+      }
+
+      // Alışveriş EXP'si ekle
+      if (orderIdFromRoute) {
+        try {
+          await userLevelAPI.addPurchaseExp(storedUserId, routeTotal || 0, orderIdFromRoute);
+          console.log('✅ Alışveriş EXP eklendi');
+        } catch (expError) {
+          console.log('⚠️ EXP eklenemedi:', expError.message);
+        }
+      }
+
+      // Success modal'ı göster
+      setSuccessModalData({
+        orderId: orderIdFromRoute,
+        expGained: true,
+        paymentMethod: paymentMethod || 'card',
+        paymentInfo: null,
+        totalAmount: routeTotal || 0,
+      });
+      setShowSuccessModal(true);
+
+      // Sepeti temizle ve badge'i güncelle
+      try {
+        console.log('🗑️ Sepet temizleniyor... userId:', storedUserId);
+        const clearResponse = await cartAPI.clear(storedUserId);
+        console.log('✅ Sepet temizleme yanıtı:', clearResponse.data);
+        
+        // Local state'i temizle
+        setCartItems([]);
+        setSubtotal(0);
+        setTotal(0);
+        
+        // Cache'i temizle
+        await AsyncStorage.setItem('cartCount', '0');
+        await AsyncStorage.setItem('cartLastCleared', Date.now().toString());
+        
+        // Badge'i sıfırla
+        await updateCartBadge(storedUserId);
+        console.log('✅ Sepet temizlendi, cache temizlendi ve badge güncellendi');
+      } catch (clearError) {
+        console.error('❌ Sepet temizleme hatası:', clearError);
+        try {
+          await AsyncStorage.setItem('cartCount', '0');
+          await AsyncStorage.setItem('cartLastCleared', Date.now().toString());
+        } catch (cacheError) {
+          console.error('❌ Cache temizleme hatası:', cacheError);
+        }
+      }
+    } catch (error) {
+      console.error('Ödeme tamamlandı işlemi hatası:', error);
+      setErrorMessage('Sipariş bilgileri yüklenirken bir hata oluştu');
+      setShowErrorModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Delivery method değiştiğinde kargo ücretini güncelle
   useEffect(() => {
@@ -318,7 +432,17 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         const cartData = cartResponse.data.cart || cartResponse.data.data || [];
         
         if (!Array.isArray(cartData)) {
-          console.warn('Cart data array değil:', cartData);
+          console.warn('⚠️ Cart data array değil:', cartData);
+          setErrorMessage('Sepet verisi geçersiz format');
+          setShowErrorModal(true);
+          setCartItems([]);
+          return;
+        }
+        
+        if (cartData.length === 0) {
+          console.warn('⚠️ Sepet boş');
+          setErrorMessage('Sepetinizde ürün bulunmuyor');
+          setShowErrorModal(true);
           setCartItems([]);
           return;
         }
@@ -414,7 +538,9 @@ export default function OrderConfirmationScreen({ navigation, route }) {
           setTotal(calculatedTotal);
         }
       } else {
-        console.log('Sepet boş veya başarısız yanıt');
+        console.error('❌ Sepet yanıtı başarısız:', cartResponse.data);
+        setErrorMessage('Sepet bilgileri alınamadı. Lütfen tekrar deneyin.');
+        setShowErrorModal(true);
         setCartItems([]);
       }
     } catch (error) {
@@ -921,6 +1047,12 @@ export default function OrderConfirmationScreen({ navigation, route }) {
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
         {loading ? (
           <ActivityIndicator size="large" color={COLORS.primary} />
+        ) : paymentCompleted ? (
+          <View style={{ padding: 16 }}>
+            <Text style={{ textAlign: 'center', color: COLORS.gray500, fontSize: 14 }}>
+              Ödeme başarıyla tamamlandı
+            </Text>
+          </View>
         ) : (
           <Button
             title={`Siparişi Tamamla - ₺${total.toFixed(2)}`}

@@ -67,13 +67,18 @@ export default function CartScreen({ navigation }) {
       let response;
       if (shouldBypassCache) {
         // Cache bypass için timestamp ile API çağrısı yap
-        const { getApiUrl } = require('../config/api.config');
+        const { getApiUrl, API_CONFIG } = require('../config/api.config');
         const apiBaseUrl = getApiUrl();
+        const tenantId = await AsyncStorage.getItem('tenantId') || '1';
         const apiUrl = `${apiBaseUrl}/cart/${storedUserId}?t=${now}`;
         const fetchResponse = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'X-API-Key': API_CONFIG.API_KEY,
+            'X-Tenant-Id': tenantId,
+            'Accept': 'application/json',
+            'User-Agent': 'HugluMobileApp/1.0',
           },
         });
         const data = await fetchResponse.json();

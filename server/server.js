@@ -21010,19 +21010,60 @@ async function startServer() {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
 
+      // Önce cart tablosunda price kolonu var mı kontrol et
+      let hasPriceColumn = false;
+      try {
+        const [columns] = await poolWrapper.execute(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'cart'
+          AND COLUMN_NAME = 'price'
+        `);
+        hasPriceColumn = columns.length > 0;
+      } catch (colError) {
+        console.warn('⚠️ Price column check failed, assuming it exists:', colError.message);
+        hasPriceColumn = true; // Varsayılan olarak var kabul et
+      }
+
       // Optimize: Sadece gerekli column'lar
-      const q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt, 
-                        p.name, p.price, p.image, p.stock 
-       FROM cart c 
-       JOIN products p ON c.productId = p.id 
-       WHERE c.userId = ? AND c.tenantId = ?
-       ORDER BY c.createdAt DESC`;
+      // Cart tablosundaki price kolonunu kullan (sepete eklenen fiyat)
+      // Eğer price kolonu yoksa products tablosundan al
+      let q;
+      if (hasPriceColumn) {
+        q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt,
+                      COALESCE(c.price, p.price) as price,
+                      p.price as originalPrice,
+                      p.name as productName,
+                      p.name,
+                      p.image as productImage,
+                      p.image,
+                      p.stock 
+         FROM cart c 
+         JOIN products p ON c.productId = p.id 
+         WHERE c.userId = ? AND c.tenantId = ?
+         ORDER BY c.createdAt DESC`;
+      } else {
+        q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt,
+                      p.price as price,
+                      p.price as originalPrice,
+                      p.name as productName,
+                      p.name,
+                      p.image as productImage,
+                      p.image,
+                      p.stock 
+         FROM cart c 
+         JOIN products p ON c.productId = p.id 
+         WHERE c.userId = ? AND c.tenantId = ?
+         ORDER BY c.createdAt DESC`;
+      }
       const params = [userId, tenantId];
       const [rows] = await poolWrapper.execute(q, params);
 
-      res.json({ success: true, data: rows });
+      console.log(`✅ Server: Cart items retrieved for user ${userId}: ${rows.length} items`);
+      res.json({ success: true, cart: rows, data: rows });
     } catch (error) {
-      console.error(' Error getting cart:', error);
+      console.error('❌ Error getting cart:', error);
       res.status(500).json({ success: false, message: 'Error getting cart' });
     }
   });

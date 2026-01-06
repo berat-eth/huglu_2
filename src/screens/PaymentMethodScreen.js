@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { COLORS } from '../constants/colors';
-import { cartAPI, walletAPI } from '../services/api';
+import { cartAPI, walletAPI, ordersAPI, paymentAPI, userAPI } from '../services/api';
 import { isNFCAvailable, readContactlessCard, processContactlessPayment } from '../services/nfcPayment';
 import { useAlert } from '../hooks/useAlert';
 
@@ -19,6 +19,8 @@ export default function PaymentMethodScreen({ navigation, route }) {
   const [shipping, setShipping] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userId, setUserId] = useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
   
   // Kart bilgileri
   const [cardNumber, setCardNumber] = useState('');
@@ -41,7 +43,25 @@ export default function PaymentMethodScreen({ navigation, route }) {
   useEffect(() => {
     loadPaymentData();
     checkNFCAvailability();
+    loadCartItems();
   }, []);
+
+  // Sepet ürünlerini yükle
+  const loadCartItems = async () => {
+    try {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      if (!storedUserId) return;
+
+      const cartResponse = await cartAPI.get(storedUserId);
+      if (cartResponse.data?.success) {
+        const cartData = cartResponse.data.cart || cartResponse.data.data || [];
+        setCartItems(Array.isArray(cartData) ? cartData : []);
+      }
+    } catch (error) {
+      console.error('Sepet yükleme hatası:', error);
+      setCartItems([]);
+    }
+  };
 
   // NFC animasyonu
   useEffect(() => {
@@ -104,21 +124,28 @@ export default function PaymentMethodScreen({ navigation, route }) {
         console.log('API\'den sepet verisi çekiliyor...');
         const cartResponse = await cartAPI.get(storedUserId);
         if (cartResponse.data?.success) {
-          const cartData = cartResponse.data.cart || [];
-          const FREE_SHIPPING_LIMIT = 600;
-          const calculatedSubtotal = cartData.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          const calculatedShipping = calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
-          const calculatedTotal = calculatedSubtotal + calculatedShipping;
-          
-          setSubtotal(calculatedSubtotal);
-          setShipping(calculatedShipping);
-          setCartTotal(calculatedTotal);
-          
-          console.log('API\'den hesaplanan değerler:', {
-            subtotal: calculatedSubtotal,
-            shipping: calculatedShipping,
-            total: calculatedTotal
-          });
+          const cartData = cartResponse.data.cart || cartResponse.data.data || [];
+          if (Array.isArray(cartData) && cartData.length > 0) {
+            const FREE_SHIPPING_LIMIT = 600;
+            const calculatedSubtotal = cartData.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseInt(item.quantity || 1)), 0);
+            const calculatedShipping = calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
+            const calculatedTotal = calculatedSubtotal + calculatedShipping;
+            
+            setSubtotal(calculatedSubtotal);
+            setShipping(calculatedShipping);
+            setCartTotal(calculatedTotal);
+            
+            console.log('API\'den hesaplanan değerler:', {
+              subtotal: calculatedSubtotal,
+              shipping: calculatedShipping,
+              total: calculatedTotal,
+              itemCount: cartData.length
+            });
+          } else {
+            console.warn('⚠️ Sepet boş veya geçersiz format');
+            alert.show('Hata', 'Sepetinizde ürün bulunmuyor');
+            navigation.goBack();
+          }
         }
       }
 
@@ -147,6 +174,286 @@ export default function PaymentMethodScreen({ navigation, route }) {
       alert.show('Hata', 'Ödeme bilgileri yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Kredi kartı ile ödeme işlemi
+  const handleCardPayment = async () => {
+    try {
+      setProcessingPayment(true);
+
+      if (!userId) {
+        alert.show('Hata', 'Lütfen giriş yapın');
+        navigation.navigate('Login');
+        return;
+      }
+
+      // Kart bilgilerini doğrula
+      const cleanCardNumber = cardNumber.replace(/\s/g, '');
+      if (!cleanCardNumber || cleanCardNumber.length < 16) {
+        alert.show('Hata', 'Lütfen geçerli bir kart numarası girin');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!cardName || cardName.trim().length < 3) {
+        alert.show('Hata', 'Lütfen kart üzerindeki ismi girin');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!expiryDate || expiryDate.length < 5) {
+        alert.show('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!cvv || cvv.length < 3) {
+        alert.show('Hata', 'Lütfen CVV kodunu girin');
+        setProcessingPayment(false);
+        return;
+      }
+
+      // Kart bilgilerini geçici olarak AsyncStorage'a kaydet
+      const cardData = {
+        cardNumber: cleanCardNumber,
+        cardName: cardName.trim(),
+        expiryDate: expiryDate,
+        cvv: cvv
+      };
+      await AsyncStorage.setItem('tempCardData', JSON.stringify(cardData));
+
+      // Sepet verilerini çek
+      const cartResponse = await cartAPI.get(userId);
+      const cartData = cartResponse.data?.cart || cartResponse.data?.data || [];
+      
+      if (!cartResponse.data?.success || !Array.isArray(cartData) || cartData.length === 0) {
+        console.error('❌ Sepet boş veya geçersiz:', {
+          success: cartResponse.data?.success,
+          cart: cartResponse.data?.cart,
+          data: cartResponse.data?.data,
+          cartLength: Array.isArray(cartData) ? cartData.length : 'not array'
+        });
+        alert.show('Hata', 'Sepetinizde ürün bulunmuyor');
+        await AsyncStorage.removeItem('tempCardData');
+        setProcessingPayment(false);
+        return;
+      }
+      
+      // Müşteri bilgilerini çek
+      let customerInfo = {
+        name: '',
+        surname: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        zipCode: ''
+      };
+
+      try {
+        const userResponse = await userAPI.getProfile(parseInt(userId));
+        if (userResponse.data?.success) {
+          const user = userResponse.data.data || userResponse.data.user || {};
+          const fullName = (user.name || '').split(' ');
+          customerInfo.name = fullName[0] || 'John';
+          customerInfo.surname = fullName.slice(1).join(' ') || 'Doe';
+          customerInfo.email = user.email || 'test@test.com';
+          customerInfo.phone = user.phone || '+905555555555';
+          customerInfo.address = user.address || '';
+          customerInfo.city = user.city || 'Istanbul';
+          customerInfo.zipCode = user.zipCode || '34000';
+        }
+      } catch (userError) {
+        console.warn('Müşteri bilgileri alınamadı, varsayılan değerler kullanılıyor:', userError);
+      }
+
+      // Sipariş oluştur (pending durumunda)
+      const orderData = {
+        userId: parseInt(userId),
+        totalAmount: cartTotal,
+        status: 'pending',
+        shippingAddress: customerInfo.address || 'Adres bilgisi eksik',
+        paymentMethod: 'card',
+        deliveryMethod: 'shipping',
+        city: customerInfo.city,
+        district: '',
+        fullAddress: customerInfo.address,
+        customerName: `${customerInfo.name} ${customerInfo.surname}`,
+        customerEmail: customerInfo.email,
+        customerPhone: customerInfo.phone,
+        items: cartData.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          productName: item.productName || item.name || null,
+          productDescription: item.productDescription || item.description || null,
+          productCategory: item.productCategory || item.category || null,
+          productBrand: item.productBrand || item.brand || null,
+          productImage: item.productImage || item.image || null,
+          selectedVariations: typeof item.selectedVariations === 'string' 
+            ? item.selectedVariations 
+            : (item.selectedVariations ? JSON.stringify(item.selectedVariations) : null)
+        }))
+      };
+
+      console.log('Sipariş oluşturuluyor...');
+      const orderResponse = await ordersAPI.create(orderData);
+      
+      if (!orderResponse.data?.success) {
+        await AsyncStorage.removeItem('tempCardData');
+        alert.show('Hata', orderResponse.data?.message || 'Sipariş oluşturulamadı');
+        setProcessingPayment(false);
+        return;
+      }
+
+      const orderId = orderResponse.data.data?.orderId || orderResponse.data.orderId;
+      console.log('Sipariş oluşturuldu, OrderId:', orderId);
+
+      // Son kullanma tarihini parse et (MM/YY formatından)
+      const [expireMonth, expireYear] = expiryDate.split('/');
+      const fullExpireYear = '20' + expireYear; // YY -> YYYY
+
+      // İyzico ödeme isteği hazırla
+      const paymentRequest = {
+        orderId: orderId,
+        paymentCard: {
+          cardHolderName: cardName.trim(),
+          cardNumber: cleanCardNumber,
+          expireMonth: expireMonth,
+          expireYear: fullExpireYear,
+          cvc: cvv
+        },
+        buyer: {
+          id: parseInt(userId),
+          name: customerInfo.name,
+          surname: customerInfo.surname,
+          gsmNumber: customerInfo.phone,
+          email: customerInfo.email,
+          identityNumber: '11111111111', // Varsayılan TCKN
+          registrationAddress: customerInfo.address,
+          ip: '127.0.0.1', // Mobile app için varsayılan IP
+          city: customerInfo.city,
+          country: 'Turkey',
+          zipCode: customerInfo.zipCode
+        },
+        shippingAddress: {
+          contactName: `${customerInfo.name} ${customerInfo.surname}`,
+          city: customerInfo.city,
+          country: 'Turkey',
+          address: customerInfo.address,
+          zipCode: customerInfo.zipCode
+        },
+        billingAddress: {
+          contactName: `${customerInfo.name} ${customerInfo.surname}`,
+          city: customerInfo.city,
+          country: 'Turkey',
+          address: customerInfo.address,
+          zipCode: customerInfo.zipCode
+        }
+      };
+
+      console.log('İyzico ödeme isteği gönderiliyor...');
+      const paymentResponse = await paymentAPI.process(paymentRequest);
+
+      // Kart bilgilerini AsyncStorage'dan sil (güvenlik)
+      await AsyncStorage.removeItem('tempCardData');
+
+      if (paymentResponse.data?.success) {
+        console.log('Ödeme başarılı!', paymentResponse.data);
+        
+        // OrderConfirmationScreen'e yönlendir
+        navigation.navigate('OrderConfirmation', {
+          paymentMethod: 'card',
+          total: cartTotal,
+          subtotal: subtotal,
+          shipping: shipping,
+          orderId: orderId,
+          paymentId: paymentResponse.data.data?.paymentId,
+          cardInfo: {
+            last4: paymentResponse.data.data?.cardInfo?.lastFourDigits || cleanCardNumber.slice(-4),
+            cardType: paymentResponse.data.data?.cardInfo?.cardType || 'Unknown'
+          },
+          paymentCompleted: true // Ödeme zaten yapıldığını belirt
+        });
+      } else {
+        // Ödeme başarısız - hata mesajını kullanıcı dostu hale getir
+        let errorMessage = paymentResponse.data?.message || 'Ödeme işlemi başarısız oldu';
+        
+        // İyzico hata mesajlarını Türkçe'ye çevir
+        const errorTranslations = {
+          'Card number is invalid': 'Kart numarası geçersiz',
+          'Expiry date is invalid': 'Son kullanma tarihi geçersiz',
+          'CVC is invalid': 'Güvenlik kodu (CVV) geçersiz',
+          'Insufficient funds': 'Kartınızda yeterli bakiye bulunmamaktadır',
+          'Card is blocked': 'Kartınız bloke edilmiş',
+          'Transaction not permitted': 'İşlem izni verilmedi',
+          'Invalid request': 'Geçersiz istek',
+          'General error': 'Genel hata',
+          'Payment failed': 'Ödeme başarısız',
+          'PAYMENT_ERROR': 'Ödeme işlemi sırasında bir hata oluştu',
+          'PAYMENT_FAILED': 'Ödeme reddedildi'
+        };
+
+        // Hata mesajını çevir
+        Object.keys(errorTranslations).forEach(key => {
+          if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+            errorMessage = errorTranslations[key];
+          }
+        });
+
+        alert.show('Ödeme Hatası', errorMessage);
+        setProcessingPayment(false);
+      }
+
+    } catch (error) {
+      console.error('Ödeme işlemi hatası:', error);
+      
+      // Kart bilgilerini AsyncStorage'dan sil
+      try {
+        await AsyncStorage.removeItem('tempCardData');
+      } catch (e) {
+        console.error('AsyncStorage temizleme hatası:', e);
+      }
+
+      // Hata mesajını göster ve kullanıcı dostu hale getir
+      let errorMessage = 'Ödeme işlemi sırasında bir hata oluştu';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // İyzico hata mesajlarını Türkçe'ye çevir
+      const errorTranslations = {
+        'Card number is invalid': 'Kart numarası geçersiz',
+        'Expiry date is invalid': 'Son kullanma tarihi geçersiz',
+        'CVC is invalid': 'Güvenlik kodu (CVV) geçersiz',
+        'Insufficient funds': 'Kartınızda yeterli bakiye bulunmamaktadır',
+        'Card is blocked': 'Kartınız bloke edilmiş',
+        'Transaction not permitted': 'İşlem izni verilmedi',
+        'Invalid request': 'Geçersiz istek',
+        'General error': 'Genel hata',
+        'Payment failed': 'Ödeme başarısız',
+        'Network Error': 'İnternet bağlantınızı kontrol edin',
+        'timeout': 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin',
+        'ECONNABORTED': 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin'
+      };
+
+      // Hata mesajını çevir
+      Object.keys(errorTranslations).forEach(key => {
+        if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+          errorMessage = errorTranslations[key];
+        }
+      });
+
+      // Network hataları için özel mesaj
+      if (!error.response && error.message) {
+        if (error.message.includes('Network') || error.message.includes('timeout')) {
+          errorMessage = 'İnternet bağlantınızı kontrol edin ve tekrar deneyin';
+        }
+      }
+      
+      alert.show('Hata', errorMessage);
+      setProcessingPayment(false);
     }
   };
 
@@ -525,37 +832,20 @@ export default function PaymentMethodScreen({ navigation, route }) {
               <Text style={styles.totalAmount}>₺{cartTotal.toFixed(2)}</Text>
             </View>
             <Button
-              title={`₺${cartTotal.toFixed(2)} Öde`}
-              onPress={() => {
-                // Kart ile ödeme seçiliyse kart bilgilerini kontrol et
+              title={processingPayment ? 'İşleniyor...' : `₺${cartTotal.toFixed(2)} Öde`}
+              onPress={async () => {
+                // Kart ile ödeme seçiliyse iyzico ödeme işlemini başlat
                 if (selectedPayment === 'new_card') {
-                  if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
-                    alert.show('Hata', 'Lütfen geçerli bir kart numarası girin');
-                    return;
-                  }
-                  if (!cardName || cardName.trim().length < 3) {
-                    alert.show('Hata', 'Lütfen kart üzerindeki ismi girin');
-                    return;
-                  }
-                  if (!expiryDate || expiryDate.length < 5) {
-                    alert.show('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
-                    return;
-                  }
-                  if (!cvv || cvv.length < 3) {
-                    alert.show('Hata', 'Lütfen CVV kodunu girin');
-                    return;
-                  }
+                  await handleCardPayment();
+                  return;
                 }
 
+                // Diğer ödeme yöntemleri için eski akışı kullan
                 console.log('OrderConfirmation\'a gönderilen veriler:', {
                   paymentMethod: selectedPayment,
                   total: cartTotal,
                   subtotal: subtotal,
                   shipping: shipping,
-                  cardInfo: selectedPayment === 'new_card' ? {
-                    last4: cardNumber.replace(/\s/g, '').slice(-4),
-                    cardName: cardName,
-                  } : null
                 });
                 
                 navigation.navigate('OrderConfirmation', { 
@@ -563,12 +853,9 @@ export default function PaymentMethodScreen({ navigation, route }) {
                   total: cartTotal,
                   subtotal: subtotal,
                   shipping: shipping,
-                  cardInfo: selectedPayment === 'new_card' ? {
-                    last4: cardNumber.replace(/\s/g, '').slice(-4),
-                    cardName: cardName,
-                  } : null
                 });
               }}
+              disabled={processingPayment}
             />
           </>
         )}
