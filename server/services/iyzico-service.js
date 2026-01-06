@@ -202,36 +202,80 @@ class IyzicoService {
   }
 
   // 3D Secure tamamlama - Callback'ten sonra çağrılmalı
+  // İyzico dokümantasyonuna göre: callback'ten sonra threedsPayment.create çağrılmalı
   async complete3DSPayment(paymentId, conversationId, callbackData) {
     try {
-      console.log('🔄 Completing 3DS payment...', { paymentId, conversationId });
+      console.log('🔄 Completing 3DS payment with threedsPayment.create...', { 
+        paymentId, 
+        conversationId,
+        mdStatus: callbackData?.mdStatus,
+        status: callbackData?.status
+      });
       
+      // mdStatus kontrolü - mdStatus = '1' olmalı (başarılı)
+      if (!callbackData || !callbackData.mdStatus) {
+        console.error('❌ mdStatus parametresi eksik');
+        throw {
+          success: false,
+          error: 'INVALID_CALLBACK',
+          message: 'mdStatus parametresi callback verisinde bulunamadı'
+        };
+      }
+
+      if (callbackData.mdStatus !== '1') {
+        console.error('❌ mdStatus başarısız:', callbackData.mdStatus);
+        throw {
+          success: false,
+          error: '3DS_VERIFICATION_FAILED',
+          message: '3D Secure doğrulaması başarısız (mdStatus: ' + callbackData.mdStatus + ')',
+          mdStatus: callbackData.mdStatus
+        };
+      }
+
+      // threedsPayment.create için request hazırla
+      // Callback'ten gelen tüm parametreleri request'e ekle
       const request = {
         locale: Iyzipay.LOCALE.TR,
         conversationId: conversationId,
-        paymentId: paymentId
+        paymentId: paymentId,
+        // Callback'ten gelen parametreler
+        mdStatus: callbackData.mdStatus,
+        status: callbackData.status || 'success'
       };
 
+      // Eğer callback'te başka parametreler varsa ekle
+      if (callbackData.eci) request.eci = callbackData.eci;
+      if (callbackData.cavv) request.cavv = callbackData.cavv;
+      if (callbackData.xid) request.xid = callbackData.xid;
+
+      console.log('📤 threedsPayment.create request:', {
+        conversationId: request.conversationId,
+        paymentId: request.paymentId,
+        mdStatus: request.mdStatus,
+        status: request.status
+      });
+
       return new Promise((resolve, reject) => {
-        // Callback'ten gelen verilerle ödeme tamamlanır
-        // İyzico otomatik olarak callback'ten sonra ödemeyi tamamlar
-        // Burada sadece ödeme durumunu kontrol ediyoruz
-        this.iyzipay.payment.retrieve(request, (err, result) => {
+        // İyzico dokümantasyonuna göre: threedsPayment.create çağrılmalı
+        this.iyzipay.threedsPayment.create(request, (err, result) => {
           if (err) {
-            console.error('❌ 3DS payment retrieve error:', err);
+            console.error('❌ threedsPayment.create error:', err);
             reject({
               success: false,
               error: 'PAYMENT_ERROR',
-              message: '3D Secure ödeme durumu kontrol edilemedi',
+              message: '3D Secure ödeme tamamlanamadı',
               details: err
             });
           } else {
-            console.log('✅ 3DS payment retrieve result:', {
+            console.log('✅ threedsPayment.create result:', {
               status: result.status,
               paymentStatus: result.paymentStatus,
-              paymentId: result.paymentId
+              paymentId: result.paymentId,
+              errorMessage: result.errorMessage,
+              errorCode: result.errorCode
             });
 
+            // Sadece status = 'success' ve paymentStatus = 'SUCCESS' ise başarılı
             if (result.status === 'success' && result.paymentStatus === 'SUCCESS') {
               resolve({
                 success: true,
@@ -240,12 +284,14 @@ class IyzicoService {
                 message: 'Ödeme başarıyla tamamlandı'
               });
             } else {
+              // Ödeme başarısız
               reject({
                 success: false,
                 error: 'PAYMENT_FAILED',
                 message: result.errorMessage || '3D Secure ödeme başarısız',
                 errorCode: result.errorCode,
-                errorGroup: result.errorGroup
+                errorGroup: result.errorGroup,
+                paymentStatus: result.paymentStatus
               });
             }
           }
@@ -253,6 +299,13 @@ class IyzicoService {
       });
     } catch (error) {
       console.error('❌ 3DS complete error:', error);
+      
+      // Eğer zaten bir error object ise direkt fırlat
+      if (error.success !== undefined) {
+        throw error;
+      }
+      
+      // Değilse yeni error object oluştur
       throw {
         success: false,
         error: 'SERVICE_ERROR',

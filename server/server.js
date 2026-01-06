@@ -3799,6 +3799,81 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
       `);
     }
 
+    // mdStatus kontrolü - Güvenlik için kritik!
+    // mdStatus = '1' olmalı (başarılı), diğer değerler başarısız
+    if (!mdStatus) {
+      console.error('❌ mdStatus parametresi eksik');
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ödeme Başarısız</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: red;">❌ Ödeme Başarısız</h1>
+              <p>3D Secure doğrulama verisi eksik. Lütfen tekrar deneyin.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
+    if (mdStatus !== '1') {
+      console.error('❌ mdStatus başarısız:', mdStatus);
+      // mdStatus !== '1' ise ödeme başarısız - Siparişi iptal et
+      // Conversation ID'den order/request ID'yi çıkar ve iptal et
+      const orderIdMatch = conversationId.match(/order_(\d+)_/);
+      const walletRechargeMatch = conversationId.match(/order_(RCH-[^_]+)_/);
+      const tenantId = req.tenant?.id || 1;
+
+      if (orderIdMatch) {
+        const orderId = parseInt(orderIdMatch[1]);
+        try {
+          // Siparişi iptal et
+          await poolWrapper.execute(
+            `UPDATE orders SET status = 'cancelled', paymentStatus = 'failed' WHERE id = ? AND tenantId = ?`,
+            [orderId, tenantId]
+          );
+          console.log('✅ Order cancelled due to mdStatus failure:', orderId);
+        } catch (err) {
+          console.error('Error cancelling order:', err);
+        }
+      } else if (walletRechargeMatch) {
+        const requestId = walletRechargeMatch[1];
+        try {
+          // Wallet recharge request'i iptal et
+          await poolWrapper.execute(
+            `UPDATE wallet_recharge_requests SET status = 'failed', errorMessage = ? WHERE id = ? AND tenantId = ?`,
+            ['3D Secure doğrulaması başarısız (mdStatus: ' + mdStatus + ')', requestId, tenantId]
+          );
+          console.log('✅ Wallet recharge request failed due to mdStatus:', requestId);
+        } catch (err) {
+          console.error('Error updating wallet recharge request:', err);
+        }
+      }
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ödeme Başarısız</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: red;">❌ Ödeme Başarısız</h1>
+              <p>3D Secure doğrulaması başarısız oldu. Lütfen tekrar deneyin.</p>
+              <p style="font-size: 12px; color: #666;">mdStatus: ${mdStatus}</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
     // Conversation ID'den order ID veya request ID'yi çıkar
     // Format: order_156_1767704921122 veya wallet recharge için order_RCH-xxx_xxx
     const orderIdMatch = conversationId.match(/order_(\d+)_/);
@@ -3834,8 +3909,20 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
     const tenantId = req.tenant?.id || 1;
 
     // 3D Secure Complete - Iyzico dokümantasyonuna göre callback'ten sonra çağrılmalı
+    // mdStatus kontrolü yukarıda yapıldı, buraya geldiyse mdStatus === '1'
     try {
       console.log('🔄 Completing 3DS payment with Iyzico...');
+      console.log('📋 Callback parameters:', {
+        mdStatus: callbackData.mdStatus,
+        status: callbackData.status,
+        paymentId: callbackData.paymentId,
+        conversationId: callbackData.conversationId,
+        hasEci: !!callbackData.eci,
+        hasCavv: !!callbackData.cavv,
+        hasXid: !!callbackData.xid
+      });
+      
+      // Callback'ten gelen tüm parametreleri complete3DSPayment fonksiyonuna gönder
       const completeResult = await iyzicoService.complete3DSPayment(paymentId, conversationId, callbackData);
 
       if (completeResult.success) {
@@ -3934,29 +4021,125 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
           </html>
         `);
       } else {
-        // 3D Secure tamamlama başarısız - Siparişi sil
-        console.log('🗑️ Deleting order due to 3D Secure failure');
+        // 3D Secure tamamlama başarısız - threedsPayment.create başarısız oldu
+        console.error('❌ threedsPayment.create başarısız:', completeResult);
         
-        // Önce sipariş item'larını sil
-        await poolWrapper.execute(
-          'DELETE FROM order_items WHERE orderId = ? AND tenantId = ?',
-          [orderId, tenantId]
-        );
+        // Siparişi veya wallet recharge request'i iptal et
+        if (isWalletRecharge && requestId) {
+          // Wallet recharge request'i iptal et
+          try {
+            await poolWrapper.execute(
+              `UPDATE wallet_recharge_requests 
+               SET status = 'failed', 
+               errorMessage = ?,
+               completedAt = NOW()
+               WHERE id = ? AND tenantId = ?`,
+              [
+                completeResult.message || '3D Secure ödeme başarısız',
+                requestId,
+                tenantId
+              ]
+            );
+            console.log('✅ Wallet recharge request failed:', requestId);
+          } catch (err) {
+            console.error('Error updating wallet recharge request:', err);
+          }
+        } else if (orderId) {
+          // Siparişi iptal et (silme yerine durum güncelleme - audit için)
+          try {
+            await poolWrapper.execute(
+              `UPDATE orders 
+               SET status = 'cancelled', 
+               paymentStatus = 'failed',
+               paymentId = NULL
+               WHERE id = ? AND tenantId = ?`,
+              [orderId, tenantId]
+            );
+            console.log('✅ Order cancelled due to 3D Secure failure:', orderId);
+          } catch (err) {
+            console.error('Error cancelling order:', err);
+          }
+        }
         
-        // Sonra siparişi sil
-        await poolWrapper.execute(
-          'DELETE FROM orders WHERE id = ? AND tenantId = ?',
-          [orderId, tenantId]
-        );
+        // Hata mesajını hazırla
+        const errorMessage = completeResult.message || '3D Secure tamamlanamadı';
+        const errorCode = completeResult.errorCode || 'UNKNOWN';
         
-        console.log('✅ Order deleted due to 3D Secure failure');
-        
-        throw new Error(completeResult.message || '3D Secure tamamlanamadı');
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Ödeme Başarısız</title>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body>
+              <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                <h1 style="color: red;">❌ Ödeme Başarısız</h1>
+                <p>3D Secure doğrulaması başarısız oldu. Lütfen tekrar deneyin.</p>
+                <p style="font-size: 12px; color: #666;">${errorMessage}</p>
+                <script>
+                  setTimeout(function() {
+                    if (window.opener) {
+                      window.opener.postMessage({ 
+                        type: 'PAYMENT_FAILED', 
+                        ${orderId ? `orderId: ${orderId},` : ''}
+                        error: '${errorMessage}',
+                        errorCode: '${errorCode}'
+                      }, '*');
+                      window.close();
+                    } else {
+                      window.location.href = '/checkout';
+                    }
+                  }, 3000);
+                </script>
+              </div>
+            </body>
+          </html>
+        `);
       }
     } catch (completeError) {
       console.error('❌ 3D Secure complete error:', completeError);
       
+      // Hata durumunda siparişi veya wallet recharge request'i iptal et
+      if (isWalletRecharge && requestId) {
+        try {
+          await poolWrapper.execute(
+            `UPDATE wallet_recharge_requests 
+             SET status = 'failed', 
+             errorMessage = ?,
+             completedAt = NOW()
+             WHERE id = ? AND tenantId = ?`,
+            [
+              completeError.message || '3D Secure işlemi sırasında hata oluştu',
+              requestId,
+              tenantId
+            ]
+          );
+          console.log('✅ Wallet recharge request failed due to error:', requestId);
+        } catch (err) {
+          console.error('Error updating wallet recharge request:', err);
+        }
+      } else if (orderId) {
+        try {
+          await poolWrapper.execute(
+            `UPDATE orders 
+             SET status = 'cancelled', 
+             paymentStatus = 'failed',
+             paymentId = NULL
+             WHERE id = ? AND tenantId = ?`,
+            [orderId, tenantId]
+          );
+          console.log('✅ Order cancelled due to error:', orderId);
+        } catch (err) {
+          console.error('Error cancelling order:', err);
+        }
+      }
+      
       // 3D Secure başarısız
+      const errorMessage = completeError.message || completeError.details || 'Bilinmeyen hata';
+      const errorCode = completeError.error || 'SERVICE_ERROR';
+      
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -3969,14 +4152,15 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
             <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
               <h1 style="color: red;">❌ Ödeme Başarısız</h1>
               <p>3D Secure doğrulaması başarısız oldu. Lütfen tekrar deneyin.</p>
-              <p style="font-size: 12px; color: #666;">${completeError.message || 'Bilinmeyen hata'}</p>
+              <p style="font-size: 12px; color: #666;">${errorMessage}</p>
               <script>
                 setTimeout(function() {
                   if (window.opener) {
                     window.opener.postMessage({ 
                       type: 'PAYMENT_FAILED', 
-                      orderId: ${orderId}, 
-                      error: '3D Secure verification failed' 
+                      ${orderId ? `orderId: ${orderId},` : ''}
+                      error: '${errorMessage}',
+                      errorCode: '${errorCode}'
                     }, '*');
                     window.close();
                   } else {
