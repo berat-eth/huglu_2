@@ -201,6 +201,67 @@ class IyzicoService {
     }
   }
 
+  // 3D Secure tamamlama - Callback'ten sonra çağrılmalı
+  async complete3DSPayment(paymentId, conversationId, callbackData) {
+    try {
+      console.log('🔄 Completing 3DS payment...', { paymentId, conversationId });
+      
+      const request = {
+        locale: Iyzipay.LOCALE.TR,
+        conversationId: conversationId,
+        paymentId: paymentId
+      };
+
+      return new Promise((resolve, reject) => {
+        // Callback'ten gelen verilerle ödeme tamamlanır
+        // İyzico otomatik olarak callback'ten sonra ödemeyi tamamlar
+        // Burada sadece ödeme durumunu kontrol ediyoruz
+        this.iyzipay.payment.retrieve(request, (err, result) => {
+          if (err) {
+            console.error('❌ 3DS payment retrieve error:', err);
+            reject({
+              success: false,
+              error: 'PAYMENT_ERROR',
+              message: '3D Secure ödeme durumu kontrol edilemedi',
+              details: err
+            });
+          } else {
+            console.log('✅ 3DS payment retrieve result:', {
+              status: result.status,
+              paymentStatus: result.paymentStatus,
+              paymentId: result.paymentId
+            });
+
+            if (result.status === 'success' && result.paymentStatus === 'SUCCESS') {
+              resolve({
+                success: true,
+                paymentId: result.paymentId,
+                conversationId: result.conversationId,
+                message: 'Ödeme başarıyla tamamlandı'
+              });
+            } else {
+              reject({
+                success: false,
+                error: 'PAYMENT_FAILED',
+                message: result.errorMessage || '3D Secure ödeme başarısız',
+                errorCode: result.errorCode,
+                errorGroup: result.errorGroup
+              });
+            }
+          }
+        });
+      });
+    } catch (error) {
+      console.error('❌ 3DS complete error:', error);
+      throw {
+        success: false,
+        error: 'SERVICE_ERROR',
+        message: '3D Secure tamamlama hatası',
+        details: error.message
+      };
+    }
+  }
+
   // Ödeme sorgulama
   async retrievePayment(paymentId, conversationId) {
     try {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +29,11 @@ export default function WalletScreen({ navigation }) {
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+  
+  // 3D Secure durumları
+  const [show3DSModal, setShow3DSModal] = useState(false);
+  const [threeDSHtmlContent, setThreeDSHtmlContent] = useState('');
+  const [threeDSRequestId, setThreeDSRequestId] = useState('');
 
   useEffect(() => {
     loadWalletData();
@@ -51,6 +57,33 @@ export default function WalletScreen({ navigation }) {
     setTimeout(() => {
       setShowCardModal(true);
     }, 100);
+  };
+
+  // 3D Secure callback işleme
+  const handle3DSCallback = async () => {
+    try {
+      console.log('🔄 3DS Callback işleniyor...');
+      setProcessingPayment(true);
+      
+      // Kısa bir gecikme - callback'in tamamlanması için
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Cüzdan bakiyesini kontrol et ve yenile
+      await loadWalletData();
+      
+      // Başarı mesajı göster
+      alert.show('Başarılı', '3D Secure doğrulaması tamamlandı. Cüzdan bakiyeniz güncellendi.');
+      setShow3DSModal(false);
+      setThreeDSHtmlContent('');
+      
+    } catch (error) {
+      console.error('3DS Callback işleme hatası:', error);
+      alert.show('Hata', '3D Secure işlemi sırasında bir hata oluştu');
+      setShow3DSModal(false);
+      setThreeDSHtmlContent('');
+    } finally {
+      setProcessingPayment(false);
+    }
   };
 
   const handleCardPayment = async () => {
@@ -122,6 +155,22 @@ export default function WalletScreen({ navigation }) {
         zipCode: ''
       };
 
+      // Kullanıcının kayıtlı varsayılan adresini al
+      let defaultAddress = null;
+      try {
+        const addressResponse = await userAPI.getAddresses(userId);
+        if (addressResponse.data?.success) {
+          const addresses = addressResponse.data.data || [];
+          // Önce varsayılan adresi bul
+          defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0] || null;
+          if (defaultAddress) {
+            console.log('✅ Kullanıcının kayıtlı varsayılan adresi bulundu:', defaultAddress.id);
+          }
+        }
+      } catch (addressError) {
+        console.warn('⚠️ Adres bilgileri alınamadı:', addressError);
+      }
+
       try {
         const userResponse = await userAPI.getProfile(parseInt(userId));
         console.log('👤 Kullanıcı bilgileri:', userResponse.data);
@@ -132,20 +181,40 @@ export default function WalletScreen({ navigation }) {
           customerInfo.surname = fullName.slice(1).join(' ') || 'Doe';
           customerInfo.email = user.email || 'test@test.com';
           customerInfo.phone = user.phone || '+905555555555';
-          customerInfo.address = user.address || '';
-          customerInfo.city = user.city || 'Istanbul';
-          customerInfo.zipCode = user.zipCode || '34000';
+          
+          // Adres bilgilerini belirle - önce kayıtlı adresten, sonra user'dan
+          if (defaultAddress) {
+            customerInfo.address = defaultAddress.address || '';
+            customerInfo.city = defaultAddress.city || 'Istanbul';
+            customerInfo.zipCode = defaultAddress.postalCode || '34000';
+            customerInfo.phone = defaultAddress.phone || customerInfo.phone;
+            // İsim bilgisini de adresten al
+            if (defaultAddress.fullName) {
+              const addressFullName = defaultAddress.fullName.split(' ');
+              customerInfo.name = addressFullName[0] || customerInfo.name;
+              customerInfo.surname = addressFullName.slice(1).join(' ') || customerInfo.surname;
+            }
+          } else {
+            customerInfo.address = user.address || '';
+            customerInfo.city = user.city || 'Istanbul';
+            customerInfo.zipCode = user.zipCode || '34000';
+          }
         }
       } catch (userError) {
-        console.warn('⚠️ Müşteri bilgileri alınamadı, varsayılan değerler kullanılıyor:', userError);
-        // Varsayılan değerler
-        customerInfo.name = 'John';
-        customerInfo.surname = 'Doe';
-        customerInfo.email = 'test@test.com';
-        customerInfo.phone = '+905555555555';
-        customerInfo.address = '';
-        customerInfo.city = 'Istanbul';
-        customerInfo.zipCode = '34000';
+        console.warn('⚠️ Müşteri bilgileri alınamadı:', userError);
+        // Adres bilgisi yoksa hata döndür
+        if (!defaultAddress && !customerInfo.address) {
+          alert.show('Hata', 'Adres bilgisi bulunamadı. Lütfen önce bir adres ekleyin.');
+          setProcessingPayment(false);
+          return;
+        }
+      }
+
+      // Adres bilgisi hala yoksa hata döndür
+      if (!customerInfo.address || customerInfo.address.trim() === '') {
+        alert.show('Hata', 'Adres bilgisi bulunamadı. Lütfen önce bir adres ekleyin.');
+        setProcessingPayment(false);
+        return;
       }
 
       console.log('💳 Kart bilgileri hazırlanıyor...');
@@ -191,6 +260,17 @@ export default function WalletScreen({ navigation }) {
       console.log('📥 API yanıtı:', response.data);
       
       if (response && response.data?.success) {
+        // 3D Secure kontrolü
+        if (response.data?.requires3DS && response.data?.threeDSHtmlContent) {
+          console.log('🔐 3D Secure gerekiyor - WebView açılıyor');
+          setThreeDSHtmlContent(response.data.threeDSHtmlContent);
+          setThreeDSRequestId(response.data.data?.requestId || '');
+          setShow3DSModal(true);
+          setShowCardModal(false);
+          setProcessingPayment(false);
+          return;
+        }
+
         console.log('✅ Ödeme başarılı!');
         alert.show('Başarılı', `₺${amountToCharge} cüzdanınıza yüklendi!`);
         setShowCardModal(false);
@@ -988,6 +1068,74 @@ export default function WalletScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* 3D Secure Modal */}
+      <Modal
+        visible={show3DSModal}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => {
+          setShow3DSModal(false);
+          setThreeDSHtmlContent('');
+        }}
+      >
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.threeDSHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setShow3DSModal(false);
+                setThreeDSHtmlContent('');
+                setProcessingPayment(false);
+              }}
+              style={styles.threeDSCloseButton}
+            >
+              <Ionicons name="close" size={24} color={COLORS.textMain} />
+            </TouchableOpacity>
+            <Text style={styles.threeDSTitle}>3D Secure Doğrulama</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {threeDSHtmlContent ? (
+            <WebView
+              source={{ html: threeDSHtmlContent }}
+              style={styles.webView}
+              onNavigationStateChange={(navState) => {
+                console.log('🔐 3DS Navigation:', navState.url);
+                
+                // Callback URL'e yönlendirme kontrolü
+                if (navState.url && navState.url.includes('/api/payments/3ds-callback')) {
+                  console.log('✅ 3DS Callback URL\'ye yönlendirildi');
+                  // Callback'ten sonra ödeme durumunu kontrol et
+                  handle3DSCallback();
+                }
+              }}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView hatası:', nativeEvent);
+                alert.show('Hata', '3D Secure sayfası yüklenirken bir hata oluştu');
+              }}
+              onHttpError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView HTTP hatası:', nativeEvent);
+              }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.webViewLoadingText}>3D Secure sayfası yükleniyor...</Text>
+                </View>
+              )}
+            />
+          ) : (
+            <View style={styles.webViewLoading}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.webViewLoadingText}>Yükleniyor...</Text>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
       <alert.AlertComponent />
     </SafeAreaView>
   );
@@ -1775,5 +1923,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  // 3D Secure Modal Styles
+  threeDSHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+    backgroundColor: COLORS.white,
+  },
+  threeDSCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  threeDSTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  webViewLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+  },
+  webViewLoadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
 });

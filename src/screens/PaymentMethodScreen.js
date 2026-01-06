@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
@@ -33,6 +34,12 @@ export default function PaymentMethodScreen({ navigation, route }) {
   const [isReadingCard, setIsReadingCard] = useState(false);
   const [nfcModalVisible, setNfcModalVisible] = useState(false);
   const [nfcAnimation] = useState(new Animated.Value(0));
+  
+  // 3D Secure durumları
+  const [show3DSModal, setShow3DSModal] = useState(false);
+  const [threeDSHtmlContent, setThreeDSHtmlContent] = useState('');
+  const [threeDSConversationId, setThreeDSConversationId] = useState('');
+  const [threeDSOrderId, setThreeDSOrderId] = useState('');
 
   // Route'dan gelen parametreleri al
   const routeTotal = route?.params?.cartTotal;
@@ -372,6 +379,17 @@ export default function PaymentMethodScreen({ navigation, route }) {
       await AsyncStorage.removeItem('tempCardData');
 
       if (paymentResponse.data?.success) {
+        // 3D Secure kontrolü
+        if (paymentResponse.data?.requires3DS && paymentResponse.data?.threeDSHtmlContent) {
+          console.log('🔐 3D Secure gerekiyor - WebView açılıyor');
+          setThreeDSHtmlContent(paymentResponse.data.threeDSHtmlContent);
+          setThreeDSConversationId(paymentResponse.data.conversationId || '');
+          setThreeDSOrderId(orderId);
+          setShow3DSModal(true);
+          setProcessingPayment(false);
+          return;
+        }
+
         console.log('Ödeme başarılı!', paymentResponse.data);
         
         // OrderConfirmationScreen'e yönlendir
@@ -382,6 +400,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
           shipping: shipping,
           orderId: orderId,
           paymentId: paymentResponse.data.data?.paymentId,
+          cartItems: cartData, // Sepet ürünlerini gönder
           cardInfo: {
             last4: paymentResponse.data.data?.cardInfo?.lastFourDigits || cleanCardNumber.slice(-4),
             cardType: paymentResponse.data.data?.cardInfo?.cardType || 'Unknown'
@@ -468,6 +487,60 @@ export default function PaymentMethodScreen({ navigation, route }) {
       }
       
       alert.show('Hata', errorMessage);
+      setProcessingPayment(false);
+    }
+  };
+
+  // 3D Secure callback işleme
+  const handle3DSCallback = async () => {
+    try {
+      console.log('🔄 3DS Callback işleniyor...');
+      setProcessingPayment(true);
+      
+      // Kısa bir gecikme - callback'in tamamlanması için
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Ödeme durumunu kontrol et
+      if (threeDSOrderId) {
+        try {
+          const orderResponse = await ordersAPI.getById(threeDSOrderId);
+          if (orderResponse.data?.success) {
+            const order = orderResponse.data.data || orderResponse.data.order;
+            
+            if (order.status === 'paid' || order.paymentStatus === 'completed') {
+              console.log('✅ Ödeme başarılı!');
+              setShow3DSModal(false);
+              setThreeDSHtmlContent('');
+              
+              // OrderConfirmationScreen'e yönlendir
+              navigation.navigate('OrderConfirmation', {
+                paymentMethod: 'card',
+                total: cartTotal,
+                subtotal: subtotal,
+                shipping: shipping,
+                orderId: threeDSOrderId,
+                cartItems: cartItems,
+                paymentCompleted: true
+              });
+              return;
+            }
+          }
+        } catch (orderError) {
+          console.error('Sipariş kontrolü hatası:', orderError);
+        }
+      }
+      
+      // Eğer ödeme durumu belirlenemezse, kullanıcıya bilgi ver
+      alert.show('Bilgi', '3D Secure doğrulaması tamamlandı. Ödeme durumunuz kontrol ediliyor...');
+      setShow3DSModal(false);
+      setThreeDSHtmlContent('');
+      
+    } catch (error) {
+      console.error('3DS Callback işleme hatası:', error);
+      alert.show('Hata', '3D Secure işlemi sırasında bir hata oluştu');
+      setShow3DSModal(false);
+      setThreeDSHtmlContent('');
+    } finally {
       setProcessingPayment(false);
     }
   };
@@ -834,6 +907,74 @@ export default function PaymentMethodScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* 3D Secure Modal */}
+      <Modal
+        visible={show3DSModal}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => {
+          setShow3DSModal(false);
+          setThreeDSHtmlContent('');
+        }}
+      >
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.threeDSHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setShow3DSModal(false);
+                setThreeDSHtmlContent('');
+                setProcessingPayment(false);
+              }}
+              style={styles.threeDSCloseButton}
+            >
+              <Ionicons name="close" size={24} color={COLORS.textMain} />
+            </TouchableOpacity>
+            <Text style={styles.threeDSTitle}>3D Secure Doğrulama</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {threeDSHtmlContent ? (
+            <WebView
+              source={{ html: threeDSHtmlContent }}
+              style={styles.webView}
+              onNavigationStateChange={(navState) => {
+                console.log('🔐 3DS Navigation:', navState.url);
+                
+                // Callback URL'e yönlendirme kontrolü
+                if (navState.url && navState.url.includes('/api/payments/3ds-callback')) {
+                  console.log('✅ 3DS Callback URL\'ye yönlendirildi');
+                  // Callback'ten sonra ödeme durumunu kontrol et
+                  handle3DSCallback();
+                }
+              }}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView hatası:', nativeEvent);
+                alert.show('Hata', '3D Secure sayfası yüklenirken bir hata oluştu');
+              }}
+              onHttpError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView HTTP hatası:', nativeEvent);
+              }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.webViewLoadingText}>3D Secure sayfası yükleniyor...</Text>
+                </View>
+              )}
+            />
+          ) : (
+            <View style={styles.webViewLoading}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.webViewLoadingText}>Yükleniyor...</Text>
+            </View>
+          )}
+        </SafeAreaView>
       </Modal>
 
       {/* Bottom Bar */}
@@ -1222,5 +1363,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.textMain,
+  },
+  // 3D Secure Modal Styles
+  threeDSHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+    backgroundColor: COLORS.white,
+  },
+  threeDSCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  threeDSTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  webViewLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+  },
+  webViewLoadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
 });

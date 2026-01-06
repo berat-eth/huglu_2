@@ -83,6 +83,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const paymentCompleted = route?.params?.paymentCompleted; // Ödeme zaten yapılmış mı?
   const orderIdFromRoute = route?.params?.orderId; // PaymentMethodScreen'den gelen orderId
   const paymentIdFromRoute = route?.params?.paymentId; // PaymentMethodScreen'den gelen paymentId
+  const routeCartItems = route?.params?.cartItems; // PaymentMethodScreen'den gelen sepet ürünleri
 
   useEffect(() => {
     // Eğer ödeme zaten yapılmışsa, sipariş bilgilerini yükle ve success modal'ı göster
@@ -113,8 +114,10 @@ export default function OrderConfirmationScreen({ navigation, route }) {
           const orderResponse = await ordersAPI.getById(orderIdFromRoute);
           if (orderResponse.data?.success) {
             const order = orderResponse.data.data || orderResponse.data.order;
-            // Sipariş ürünlerini yükle
-            if (order.items) {
+            // Sipariş ürünlerini yükle - önce route'dan, sonra order'dan
+            if (routeCartItems && Array.isArray(routeCartItems) && routeCartItems.length > 0) {
+              setCartItems(routeCartItems);
+            } else if (order.items && Array.isArray(order.items) && order.items.length > 0) {
               setCartItems(order.items);
             }
             setTotal(order.totalAmount || routeTotal || 0);
@@ -124,10 +127,21 @@ export default function OrderConfirmationScreen({ navigation, route }) {
         } catch (orderError) {
           console.error('Sipariş bilgileri yüklenemedi:', orderError);
           // Route'dan gelen değerleri kullan
+          if (routeCartItems && Array.isArray(routeCartItems) && routeCartItems.length > 0) {
+            setCartItems(routeCartItems);
+          }
           setTotal(routeTotal || 0);
           setSubtotal(routeSubtotal || 0);
           setShipping(routeShipping || 0);
         }
+      } else {
+        // OrderId yoksa route'dan gelen cartItems'i kullan
+        if (routeCartItems && Array.isArray(routeCartItems) && routeCartItems.length > 0) {
+          setCartItems(routeCartItems);
+        }
+        setTotal(routeTotal || 0);
+        setSubtotal(routeSubtotal || 0);
+        setShipping(routeShipping || 0);
       }
 
       // Analytics: Purchase tracking

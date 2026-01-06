@@ -3799,9 +3799,21 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
       `);
     }
 
-    // Conversation ID'den order ID'yi çıkar (format: order_156_1767704921122)
+    // Conversation ID'den order ID veya request ID'yi çıkar
+    // Format: order_156_1767704921122 veya wallet recharge için order_RCH-xxx_xxx
     const orderIdMatch = conversationId.match(/order_(\d+)_/);
-    if (!orderIdMatch) {
+    const walletRechargeMatch = conversationId.match(/order_(RCH-[^_]+)_/);
+    
+    let orderId = null;
+    let requestId = null;
+    let isWalletRecharge = false;
+    
+    if (orderIdMatch) {
+      orderId = parseInt(orderIdMatch[1]);
+    } else if (walletRechargeMatch) {
+      requestId = walletRechargeMatch[1];
+      isWalletRecharge = true;
+    } else {
       return res.status(400).send(`
         <!DOCTYPE html>
         <html>
@@ -3819,7 +3831,6 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
       `);
     }
 
-    const orderId = parseInt(orderIdMatch[1]);
     const tenantId = req.tenant?.id || 1;
 
     // 3D Secure Complete - Iyzico dokümantasyonuna göre callback'ten sonra çağrılmalı
@@ -3831,17 +3842,45 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
         // 3D Secure başarılı - Ödeme tamamlandı
         console.log('✅ 3D Secure completed successfully - Payment ID:', completeResult.paymentId);
         
-        // Order'ı güncelle
-        await poolWrapper.execute(
-          `UPDATE orders SET 
-           status = 'paid', 
-           paymentStatus = 'completed',
-           paymentId = ?,
-           paymentProvider = 'iyzico',
-           paidAt = NOW()
-           WHERE id = ? AND tenantId = ?`,
-          [completeResult.paymentId, orderId, tenantId]
-        );
+        if (isWalletRecharge && requestId) {
+          // Wallet recharge için işlem
+          console.log('💰 Processing wallet recharge 3DS completion');
+          
+          // Recharge request'i bul ve amount'u al
+          const [rechargeRows] = await poolWrapper.execute(
+            'SELECT userId, amount FROM wallet_recharge_requests WHERE id = ? AND tenantId = ?',
+            [requestId, tenantId]
+          );
+          
+          if (rechargeRows.length > 0) {
+            const recharge = rechargeRows[0];
+            const userId = recharge.userId;
+            const amount = recharge.amount;
+            
+            // Bakiyeyi güncelle
+            await updateWalletBalance(userId, tenantId, amount, 'card_recharge', requestId);
+            
+            // Request durumunu güncelle
+            await poolWrapper.execute(
+              'UPDATE wallet_recharge_requests SET status = ?, completedAt = NOW() WHERE id = ?',
+              ['completed', requestId]
+            );
+            
+            console.log('✅ Wallet recharge completed via 3DS');
+          }
+        } else if (orderId) {
+          // Order'ı güncelle
+          await poolWrapper.execute(
+            `UPDATE orders SET 
+             status = 'paid', 
+             paymentStatus = 'completed',
+             paymentId = ?,
+             paymentProvider = 'iyzico',
+             paidAt = NOW()
+             WHERE id = ? AND tenantId = ?`,
+            [completeResult.paymentId, orderId, tenantId]
+          );
+        }
 
         // Payment transaction kaydet
         const [orderRows] = await poolWrapper.execute(
@@ -25755,7 +25794,24 @@ YARDIM EDEBİLECEĞİN KONULAR:
         // Kredi kartı için Iyzico entegrasyonu
         try {
           // processCardPayment fonksiyonunu çağır
-          const iyzicoResponse = await processCardPayment(requestId, amount, userId, paymentCard, buyer);
+          const iyzicoResponse = await processCardPayment(requestId, amount, userId, req.tenant.id, paymentCard, buyer);
+
+          // 3D Secure kontrolü
+          if (iyzicoResponse.success && iyzicoResponse.requires3DS) {
+            // 3D Secure gerekiyor - HTML content'i frontend'e gönder
+            console.log('🔐 3D Secure required for wallet recharge - sending HTML to frontend');
+            return res.json({
+              success: true,
+              requires3DS: true,
+              threeDSHtmlContent: iyzicoResponse.threeDSHtmlContent,
+              conversationId: iyzicoResponse.conversationId,
+              data: {
+                requestId,
+                status: 'pending_3ds',
+                message: '3D Secure doğrulaması gerekiyor'
+              }
+            });
+          }
 
           if (iyzicoResponse.success) {
             // Başarılı ödeme - bakiyeyi güncelle
@@ -26012,7 +26068,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Yardımcı fonksiyonlar
-  async function processCardPayment(requestId, amount, userId, paymentCard, buyer) {
+  async function processCardPayment(requestId, amount, userId, tenantId, paymentCard, buyer) {
     console.log('🔄 Processing card payment - NO CARD DATA STORED');
     console.log('⚠️ SECURITY: Card information is processed but NOT stored in database');
     
@@ -26035,7 +26091,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
         };
       }
 
-      // Kullanıcı bilgilerini al (city kolonu users tablosunda yok, buyer'dan alınacak)
+      // Kullanıcı bilgilerini al
       const [userRows] = await poolWrapper.execute(
         'SELECT name, email, phone, address FROM users WHERE id = ? LIMIT 1',
         [userId]
@@ -26046,18 +26102,77 @@ YARDIM EDEBİLECEĞİN KONULAR:
       const userName = fullName[0] || 'John';
       const userSurname = fullName.slice(1).join(' ') || 'Doe';
 
-      // registrationAddress zorunlu - boş olamaz
-      const registrationAddress = (buyer?.registrationAddress && buyer.registrationAddress.trim()) 
-        || (user.address && user.address.trim()) 
-        || 'Istanbul, Turkey'; // Varsayılan adres
+      // Kullanıcının kayıtlı varsayılan adresini al
+      let defaultAddress = null;
+      try {
+        const [addressRows] = await poolWrapper.execute(
+          `SELECT * FROM user_addresses 
+           WHERE userId = ? AND tenantId = ? AND isDefault = true 
+           ORDER BY addressType = 'shipping' DESC, createdAt DESC 
+           LIMIT 1`,
+          [userId, tenantId]
+        );
+        
+        if (addressRows.length > 0) {
+          defaultAddress = addressRows[0];
+          console.log('✅ Kullanıcının kayıtlı varsayılan adresi bulundu:', defaultAddress.id);
+        } else {
+          // Varsayılan adres yoksa, herhangi bir adres al
+          const [anyAddressRows] = await poolWrapper.execute(
+            `SELECT * FROM user_addresses 
+             WHERE userId = ? AND tenantId = ? 
+             ORDER BY createdAt DESC 
+             LIMIT 1`,
+            [userId, tenantId]
+          );
+          
+          if (anyAddressRows.length > 0) {
+            defaultAddress = anyAddressRows[0];
+            console.log('✅ Kullanıcının kayıtlı adresi bulundu:', defaultAddress.id);
+          }
+        }
+      } catch (addressError) {
+        console.warn('⚠️ Adres sorgulama hatası:', addressError);
+      }
 
-      // address alanları için de aynı kontrol
-      const address = registrationAddress;
+      // Adres bilgilerini belirle - önce buyer'dan, sonra kayıtlı adresten, son olarak user'dan
+      const registrationAddress = (buyer?.registrationAddress && buyer.registrationAddress.trim()) 
+        || (defaultAddress?.address && defaultAddress.address.trim())
+        || (user.address && user.address.trim())
+        || null;
+
+      const addressCity = buyer?.city 
+        || defaultAddress?.city 
+        || 'Istanbul';
+
+      const addressZipCode = buyer?.zipCode 
+        || defaultAddress?.postalCode 
+        || '34000';
+
+      const addressDistrict = defaultAddress?.district || '';
+
+      // Adres bilgisi yoksa hata döndür
+      if (!registrationAddress) {
+        return {
+          success: false,
+          message: 'Adres bilgisi bulunamadı. Lütfen önce bir adres ekleyin.'
+        };
+      }
+
+      // Tam adres string'i oluştur
+      const fullAddressString = [
+        registrationAddress,
+        addressDistrict ? addressDistrict : null,
+        addressCity
+      ].filter(Boolean).join(', ');
 
       // Iyzico için ödeme verisi hazırla
       // 3D Secure callback URL - Production'da zorunlu
       const baseUrl = process.env.BASE_URL || process.env.API_BASE_URL || 'https://api.huglutekstil.com';
       const callbackUrl = `${baseUrl}/api/payments/3ds-callback`;
+
+      const contactName = defaultAddress?.fullName 
+        || `${userName} ${userSurname}`;
 
       const paymentData = {
         price: amount,
@@ -26066,7 +26181,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
         basketId: requestId,
         callbackUrl: callbackUrl, // 3D Secure için zorunlu
         paymentCard: {
-          cardHolderName: paymentCard.cardHolderName || `${userName} ${userSurname}`,
+          cardHolderName: paymentCard.cardHolderName || contactName,
           cardNumber: paymentCard.cardNumber.replace(/\s/g, ''),
           expireMonth: paymentCard.expireMonth,
           expireYear: paymentCard.expireYear,
@@ -26076,28 +26191,28 @@ YARDIM EDEBİLECEĞİN KONULAR:
           id: userId,
           name: buyer?.name || userName,
           surname: buyer?.surname || userSurname,
-          gsmNumber: buyer?.gsmNumber || user.phone || '+905555555555',
+          gsmNumber: buyer?.gsmNumber || defaultAddress?.phone || user.phone || '+905555555555',
           email: buyer?.email || user.email || 'test@test.com',
           identityNumber: buyer?.identityNumber || '11111111111',
-          registrationAddress: registrationAddress, // Artık boş olamaz
+          registrationAddress: fullAddressString,
           ip: '127.0.0.1',
-          city: buyer?.city || 'Istanbul',
+          city: addressCity,
           country: buyer?.country || 'Turkey',
-          zipCode: buyer?.zipCode || '34000'
+          zipCode: addressZipCode
         },
         shippingAddress: {
-          contactName: `${userName} ${userSurname}`,
-          city: buyer?.city || 'Istanbul',
+          contactName: contactName,
+          city: addressCity,
           country: 'Turkey',
-          address: address, // Artık boş olamaz
-          zipCode: buyer?.zipCode || '34000'
+          address: fullAddressString,
+          zipCode: addressZipCode
         },
         billingAddress: {
-          contactName: `${userName} ${userSurname}`,
-          city: buyer?.city || 'Istanbul',
+          contactName: contactName,
+          city: addressCity,
           country: 'Turkey',
-          address: address, // Artık boş olamaz
-          zipCode: buyer?.zipCode || '34000'
+          address: fullAddressString,
+          zipCode: addressZipCode
         },
         basketItems: [{
           id: 'wallet_recharge',
