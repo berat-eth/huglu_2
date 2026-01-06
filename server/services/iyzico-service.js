@@ -2,49 +2,56 @@ const Iyzipay = require('iyzipay');
 
 class IyzicoService {
   constructor() {
-    // İyzico konfigürasyonu - PRODUCTION MODE
+    // İyzico konfigürasyonu - SANDBOX MODE
     // Environment variable'ları kontrol et, yoksa hata ver
     const apiKey = process.env.IYZICO_API_KEY;
     const secretKey = process.env.IYZICO_SECRET_KEY;
-    const uri = process.env.IYZICO_URI || process.env.IYZICO_BASE_URL || 'https://api.iyzipay.com';
+    // Sandbox modu aktif - varsayılan olarak sandbox URL'i kullan
+    const uri = process.env.IYZICO_URI || process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
 
     if (!apiKey || !secretKey) {
       console.error('❌ IYZICO API KEY veya SECRET KEY bulunamadı!');
       console.error('⚠️ Lütfen .env dosyasına şunları ekleyin:');
-      console.error('   IYZICO_API_KEY=your_production_api_key');
-      console.error('   IYZICO_SECRET_KEY=your_production_secret_key');
-      console.error('   IYZICO_URI=https://api.iyzipay.com (opsiyonel)');
+      console.error('   IYZICO_API_KEY=your_sandbox_api_key');
+      console.error('   IYZICO_SECRET_KEY=your_sandbox_secret_key');
+      console.error('   IYZICO_URI=https://sandbox-api.iyzipay.com (opsiyonel, varsayılan sandbox)');
       throw new Error('Iyzico API credentials not configured');
     }
 
-    // Sandbox kontrolü - API key sandbox ile başlıyorsa uyarı ver
-    if (apiKey.startsWith('sandbox-') || secretKey.startsWith('sandbox-')) {
-      console.warn('⚠️ UYARI: Sandbox API key\'leri kullanılıyor!');
-      console.warn('⚠️ Production için gerçek API key\'leri kullanın!');
+    // Production kontrolü - Eğer production API key'leri kullanılıyorsa uyarı ver
+    if (!apiKey.startsWith('sandbox-') && !secretKey.startsWith('sandbox-') && uri.includes('api.iyzipay.com') && !uri.includes('sandbox')) {
+      console.warn('⚠️ UYARI: Production API key\'leri kullanılıyor!');
+      console.warn('⚠️ Sandbox için sandbox- ile başlayan API key\'leri kullanın!');
     }
 
     this.iyzipay = new Iyzipay({
       apiKey: apiKey,
       secretKey: secretKey,
-      uri: uri // Production: https://api.iyzipay.com
+      uri: uri // Sandbox: https://sandbox-api.iyzipay.com
     });
 
     // URI'yi sakla (endpoint loglama için)
     this.baseUri = uri;
 
-    console.log('✅ Iyzico Service initialized - PRODUCTION MODE');
+    const isSandbox = uri.includes('sandbox') || apiKey.startsWith('sandbox-');
+    console.log(`✅ Iyzico Service initialized - ${isSandbox ? 'SANDBOX MODE' : 'PRODUCTION MODE'}`);
     console.log(`📍 Iyzico URI: ${uri}`);
+    if (isSandbox) {
+      console.log('🧪 SANDBOX MODE: Test ödemeleri için kullanılabilir');
+    }
   }
 
   // Kredi kartı ile ödeme - KART BİLGİLERİ KAYIT EDİLMİYOR
-  // 3D Secure zorunlu - Production'da callbackUrl gereklidir
+  // 3D Secure zorunlu - Sandbox ve Production'da callbackUrl gereklidir
   // Iyzico dokümantasyonuna göre: https://docs.iyzico.com/odeme-metotlari/api/3ds/3ds-entegrasyonu/3ds-baslatma
   async processPayment(paymentData) {
     try {
+      const isSandbox = this.baseUri.includes('sandbox');
       console.log('🔄 Iyzico payment processing - CARD DATA NOT STORED');
       console.log('⚠️ SECURITY: Card information is processed but NOT saved');
-      console.log('🔐 3D Secure: ENABLED (Production requirement)');
+      console.log(`🔐 3D Secure: ENABLED (${isSandbox ? 'Sandbox' : 'Production'} requirement)`);
       console.log('📚 Using 3DS Initialize endpoint as per Iyzico documentation');
+      console.log(`🌐 Mode: ${isSandbox ? 'SANDBOX' : 'PRODUCTION'}`);
       
       const {
         price,

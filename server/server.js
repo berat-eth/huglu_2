@@ -4221,17 +4221,19 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
   }
 });
 
-// Test cards endpoint (sandbox only)
+// Test cards endpoint (sandbox için)
 app.get('/api/payments/test-cards', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({
-      success: false,
-      message: 'Test cards not available in production'
-    });
+  // Sandbox modunda test kartları gösterilir
+  const iyzicoUri = process.env.IYZICO_URI || process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
+  const isSandbox = iyzicoUri.includes('sandbox');
+  
+  if (!isSandbox) {
+    console.warn('⚠️ Test kartları sadece sandbox modunda kullanılabilir');
   }
 
   res.json({
     success: true,
+    mode: isSandbox ? 'sandbox' : 'production',
     data: IyzicoService.getTestCards()
   });
 });

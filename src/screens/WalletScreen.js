@@ -61,15 +61,27 @@ export default function WalletScreen({ navigation }) {
 
   // 3D Secure callback işleme
   const handle3DSCallback = async () => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔄 3DS CALLBACK İŞLENİYOR (WALLET RECHARGE)');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('💳 RequestId:', threeDSRequestId);
+    console.log('📅 Zaman:', new Date().toISOString());
+    
     try {
-      console.log('🔄 3DS Callback işleniyor...');
       setProcessingPayment(true);
       
       // Kısa bir gecikme - callback'in tamamlanması için
+      console.log('⏳ Callback tamamlanması bekleniyor (2 saniye)...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Cüzdan bakiyesini kontrol et ve yenile
+      console.log('💰 Cüzdan bakiyesi kontrol ediliyor ve yenileniyor...');
       await loadWalletData();
+      
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('✅ 3DS CÜZDAN YÜKLEME BAŞARILI');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('💳 RequestId:', threeDSRequestId);
       
       // Başarı mesajı göster
       alert.show('Başarılı', '3D Secure doğrulaması tamamlandı. Cüzdan bakiyeniz güncellendi.');
@@ -77,7 +89,15 @@ export default function WalletScreen({ navigation }) {
       setThreeDSHtmlContent('');
       
     } catch (error) {
-      console.error('3DS Callback işleme hatası:', error);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('❌ 3DS CALLBACK İŞLEME HATASI (WALLET RECHARGE)');
+      console.log('═══════════════════════════════════════════════════════');
+      console.error('📋 Hata Detayları:', {
+        message: error.message,
+        stack: error.stack,
+        requestId: threeDSRequestId
+      });
+      
       alert.show('Hata', '3D Secure işlemi sırasında bir hata oluştu');
       setShow3DSModal(false);
       setThreeDSHtmlContent('');
@@ -87,22 +107,29 @@ export default function WalletScreen({ navigation }) {
   };
 
   const handleCardPayment = async () => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('💳 CÜZDAN YÜKLEME İŞLEMİ BAŞLATILIYOR');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('📅 Zaman:', new Date().toISOString());
+    console.log('👤 UserId:', userId);
+    
     // Modal'daki tutarı kullan (cardModalAmount)
     const amountToCharge = cardModalAmount || selectedAmount;
     
-    console.log('💳 Kredi kartı ödemesi başlatılıyor...');
-    console.log('💰 Modal tutarı:', cardModalAmount);
-    console.log('💰 Seçilen tutar:', selectedAmount);
-    console.log('💰 Kullanılacak tutar:', amountToCharge);
-    console.log('👤 UserId:', userId);
+    console.log('💰 Tutar Bilgileri:', {
+      modalTutari: cardModalAmount,
+      secilenTutar: selectedAmount,
+      kullanilacakTutar: amountToCharge
+    });
     
     if (!amountToCharge || amountToCharge <= 0 || isNaN(amountToCharge)) {
-      console.error('❌ Geçersiz tutar:', amountToCharge);
+      console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz tutar:', amountToCharge);
       alert.show('Hata', `Lütfen geçerli bir tutar seçin. Mevcut tutar: ₺${amountToCharge || 0}`);
       return;
     }
 
     if (!userId) {
+      console.error('❌ CÜZDAN YÜKLEME HATASI: Kullanıcı ID bulunamadı');
       alert.show('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');
       return;
     }
@@ -110,39 +137,60 @@ export default function WalletScreen({ navigation }) {
     try {
       setProcessingPayment(true);
 
+      console.log('🔍 Kart bilgileri doğrulanıyor...');
+      
       // Kart bilgilerini doğrula
       const cleanCardNumber = cardNumber.replace(/\s/g, '');
+      console.log('💳 Kart Bilgileri:', {
+        kartNumarasi: cleanCardNumber ? '****' + cleanCardNumber.slice(-4) : 'EKSİK',
+        kartUzerindekiIsim: cardName ? cardName.substring(0, 3) + '***' : 'EKSİK',
+        sonKullanma: expiryDate || 'EKSİK',
+        cvv: cvv ? '***' : 'EKSİK'
+      });
+      
       if (!cleanCardNumber || cleanCardNumber.length < 16) {
+        console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz kart numarası');
         alert.show('Hata', 'Lütfen geçerli bir kart numarası girin');
         setProcessingPayment(false);
         return;
       }
       if (!cardName || cardName.trim().length < 3) {
+        console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz kart üzerindeki isim');
         alert.show('Hata', 'Lütfen kart üzerindeki ismi girin');
         setProcessingPayment(false);
         return;
       }
       if (!expiryDate || expiryDate.length < 5) {
+        console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz son kullanma tarihi');
         alert.show('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
         setProcessingPayment(false);
         return;
       }
       if (!cvv || cvv.length < 3) {
+        console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz CVV');
         alert.show('Hata', 'Lütfen CVV kodunu girin');
         setProcessingPayment(false);
         return;
       }
+      
+      console.log('✅ Kart bilgileri doğrulandı');
 
       // Son kullanma tarihini parse et
+      console.log('📅 Son kullanma tarihi parse ediliyor...');
       const [expireMonth, expireYear] = expiryDate.split('/');
       if (!expireMonth || !expireYear || expireMonth.length !== 2 || expireYear.length !== 2) {
+        console.error('❌ CÜZDAN YÜKLEME HATASI: Geçersiz son kullanma tarihi formatı');
         alert.show('Hata', 'Son kullanma tarihi formatı geçersiz (AA/YY)');
         setProcessingPayment(false);
         return;
       }
       const fullExpireYear = '20' + expireYear;
 
-      console.log('📅 Son kullanma:', expireMonth, fullExpireYear);
+      console.log('✅ Son kullanma tarihi parse edildi:', {
+        expireMonth,
+        expireYear,
+        fullExpireYear
+      });
 
       // Kullanıcı bilgilerini al
       let customerInfo = {
@@ -156,6 +204,7 @@ export default function WalletScreen({ navigation }) {
       };
 
       // Kullanıcının kayıtlı varsayılan adresini al
+      console.log('📍 Kullanıcı adres bilgileri çekiliyor...');
       let defaultAddress = null;
       try {
         const addressResponse = await userAPI.getAddresses(userId);
@@ -164,7 +213,14 @@ export default function WalletScreen({ navigation }) {
           // Önce varsayılan adresi bul
           defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0] || null;
           if (defaultAddress) {
-            console.log('✅ Kullanıcının kayıtlı varsayılan adresi bulundu:', defaultAddress.id);
+            console.log('✅ Kullanıcının kayıtlı varsayılan adresi bulundu:', {
+              addressId: defaultAddress.id,
+              city: defaultAddress.city,
+              district: defaultAddress.district,
+              hasAddress: !!defaultAddress.address
+            });
+          } else {
+            console.warn('⚠️ Kullanıcının kayıtlı adresi bulunamadı');
           }
         }
       } catch (addressError) {
@@ -172,8 +228,13 @@ export default function WalletScreen({ navigation }) {
       }
 
       try {
+        console.log('👤 Kullanıcı profil bilgileri çekiliyor...');
         const userResponse = await userAPI.getProfile(parseInt(userId));
-        console.log('👤 Kullanıcı bilgileri:', userResponse.data);
+        console.log('👤 Kullanıcı profil yanıtı:', {
+          success: userResponse.data?.success,
+          hasData: !!userResponse.data?.data,
+          hasUser: !!userResponse.data?.user
+        });
         if (userResponse.data?.success) {
           const user = userResponse.data.data || userResponse.data.user || {};
           const fullName = (user.name || '').split(' ');
@@ -217,8 +278,15 @@ export default function WalletScreen({ navigation }) {
         return;
       }
 
-      console.log('💳 Kart bilgileri hazırlanıyor...');
-      console.log('👤 Müşteri bilgileri:', customerInfo);
+      console.log('💳 Ödeme isteği hazırlanıyor...');
+      console.log('👤 Müşteri bilgileri:', {
+        name: customerInfo.name + ' ' + customerInfo.surname,
+        email: customerInfo.email,
+        phone: customerInfo.phone,
+        city: customerInfo.city,
+        zipCode: customerInfo.zipCode,
+        hasAddress: !!customerInfo.address
+      });
 
       // Wallet recharge request ile ödeme
       const paymentCard = {
@@ -239,13 +307,22 @@ export default function WalletScreen({ navigation }) {
         registrationAddress: customerInfo.address
       };
 
-      console.log('📤 API isteği gönderiliyor...');
-      console.log('📋 Parametreler:', {
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📤 WALLET RECHARGE API İSTEĞİ GÖNDERİLİYOR');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📋 İstek Parametreleri:', {
         userId: parseInt(userId),
         amount: amountToCharge,
         paymentMethod: 'card',
-        paymentCard: { ...paymentCard, cardNumber: '****' + cleanCardNumber.slice(-4), cvc: '***' },
-        buyer
+        paymentCard: { 
+          ...paymentCard, 
+          cardNumber: '****' + cleanCardNumber.slice(-4), 
+          cvc: '***' 
+        },
+        buyer: {
+          ...buyer,
+          registrationAddress: buyer.registrationAddress ? buyer.registrationAddress.substring(0, 30) + '...' : 'EKSİK'
+        }
       });
 
       const response = await walletAPI.rechargeRequest(
@@ -257,12 +334,32 @@ export default function WalletScreen({ navigation }) {
         buyer
       );
 
-      console.log('📥 API yanıtı:', response.data);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📥 WALLET RECHARGE API YANITI ALINDI');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📋 Yanıt Detayları:', {
+        success: response.data?.success,
+        requires3DS: response.data?.requires3DS,
+        hasThreeDSHtmlContent: !!response.data?.threeDSHtmlContent,
+        conversationId: response.data?.conversationId,
+        requestId: response.data?.data?.requestId,
+        status: response.data?.data?.status,
+        message: response.data?.message,
+        error: response.data?.error
+      });
       
       if (response && response.data?.success) {
         // 3D Secure kontrolü
         if (response.data?.requires3DS && response.data?.threeDSHtmlContent) {
-          console.log('🔐 3D Secure gerekiyor - WebView açılıyor');
+          console.log('═══════════════════════════════════════════════════════');
+          console.log('🔐 3D SECURE GEREKİYOR (WALLET RECHARGE)');
+          console.log('═══════════════════════════════════════════════════════');
+          console.log('📋 ConversationId:', response.data.conversationId);
+          console.log('💳 RequestId:', response.data.data?.requestId);
+          console.log('📄 HTML Content Length:', response.data.threeDSHtmlContent?.length || 0);
+          console.log('💰 Tutar:', amountToCharge);
+          console.log('🌐 WebView açılıyor...');
+          
           setThreeDSHtmlContent(response.data.threeDSHtmlContent);
           setThreeDSRequestId(response.data.data?.requestId || '');
           setShow3DSModal(true);
@@ -271,7 +368,13 @@ export default function WalletScreen({ navigation }) {
           return;
         }
 
-        console.log('✅ Ödeme başarılı!');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('✅ CÜZDAN YÜKLEME BAŞARILI (3DS GEREKMEDİ)');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('💰 Yüklenen Tutar:', amountToCharge);
+        console.log('💳 RequestId:', response.data.data?.requestId);
+        console.log('💵 Yeni Bakiye:', response.data.data?.newBalance);
+        
         alert.show('Başarılı', `₺${amountToCharge} cüzdanınıza yüklendi!`);
         setShowCardModal(false);
         setCardNumber('');
@@ -283,11 +386,22 @@ export default function WalletScreen({ navigation }) {
         setCustomAmount('');
         await loadWalletData(); // Verileri yenile
       } else {
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('❌ CÜZDAN YÜKLEME BAŞARISIZ');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('📋 Hata Detayları:', {
+          message: response?.data?.message,
+          error: response?.data?.error,
+          errorCode: response?.data?.errorCode,
+          errorGroup: response?.data?.errorGroup,
+          status: response?.status,
+          statusText: response?.statusText
+        });
+        
         // Hata mesajını Türkçe'ye çevir
         let errorMessage = response?.data?.message || response?.data?.error || 'Yükleme işlemi başarısız';
         
         console.error('❌ Ödeme hatası:', errorMessage);
-        console.error('📋 Tam yanıt:', JSON.stringify(response?.data, null, 2));
         
         const errorTranslations = {
           'Card number is invalid': 'Kart numarası geçersiz',
@@ -312,11 +426,15 @@ export default function WalletScreen({ navigation }) {
         alert.show('Hata', errorMessage);
       }
     } catch (error) {
-      console.error('❌ Yükleme hatası:', error);
-      console.error('📋 Hata detayları:', {
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('❌ CÜZDAN YÜKLEME HATASI (EXCEPTION)');
+      console.log('═══════════════════════════════════════════════════════');
+      console.error('📋 Hata Detayları:', {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        stack: error.stack
       });
       
       let errorMessage = 'Yükleme işlemi sırasında bir hata oluştu';
@@ -1100,11 +1218,21 @@ export default function WalletScreen({ navigation }) {
               source={{ html: threeDSHtmlContent }}
               style={styles.webView}
               onNavigationStateChange={(navState) => {
-                console.log('🔐 3DS Navigation:', navState.url);
+                console.log('🌐 3DS WebView Navigation (Wallet):', {
+                  url: navState.url,
+                  title: navState.title,
+                  loading: navState.loading,
+                  canGoBack: navState.canGoBack
+                });
                 
                 // Callback URL'e yönlendirme kontrolü
                 if (navState.url && navState.url.includes('/api/payments/3ds-callback')) {
-                  console.log('✅ 3DS Callback URL\'ye yönlendirildi');
+                  console.log('═══════════════════════════════════════════════════════');
+                  console.log('✅ 3DS CALLBACK URL\'YE YÖNLENDİRİLDİ (WALLET)');
+                  console.log('═══════════════════════════════════════════════════════');
+                  console.log('🔗 Callback URL:', navState.url);
+                  console.log('💳 RequestId:', threeDSRequestId);
+                  console.log('📅 Zaman:', new Date().toISOString());
                   // Callback'ten sonra ödeme durumunu kontrol et
                   handle3DSCallback();
                 }
