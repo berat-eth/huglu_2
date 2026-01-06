@@ -29,6 +29,9 @@ class IyzicoService {
       uri: uri // Production: https://api.iyzipay.com
     });
 
+    // URI'yi sakla (endpoint loglama için)
+    this.baseUri = uri;
+
     console.log('✅ Iyzico Service initialized - PRODUCTION MODE');
     console.log(`📍 Iyzico URI: ${uri}`);
   }
@@ -134,8 +137,29 @@ class IyzicoService {
       });
 
       // 3D Secure Initialize - Iyzico dokümantasyonuna göre
-      // POST /payment/3dsecure/initialize endpoint'i kullanılmalı
+      // POST https://api.iyzipay.com/payment/3dsecure/initialize endpoint'i kullanılmalı
       // Dokümantasyon: https://docs.iyzico.com/odeme-metotlari/api/3ds/3ds-entegrasyonu/3ds-baslatma
+      const endpoint = `${this.baseUri}/payment/3dsecure/initialize`;
+      console.log('📡 3D Secure Initialize Endpoint:', endpoint);
+      console.log('📤 Request payload (masked):', JSON.stringify({
+        locale: request.locale,
+        conversationId: request.conversationId,
+        price: request.price,
+        basketId: request.basketId,
+        callbackUrl: request.callbackUrl,
+        paymentCard: { 
+          ...request.paymentCard, 
+          cardNumber: '****' + request.paymentCard.cardNumber.replace(/\s/g, '').slice(-4), 
+          cvc: '***' 
+        },
+        buyer: {
+          id: request.buyer.id,
+          name: request.buyer.name,
+          surname: request.buyer.surname,
+          email: request.buyer.email
+        }
+      }, null, 2));
+
       return new Promise((resolve, reject) => {
         this.iyzipay.threedsInitialize.create(request, (err, result) => {
           if (err) {
