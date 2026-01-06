@@ -16,10 +16,29 @@ export default function CartScreen({ navigation }) {
   const [promoCode, setPromoCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [shippingSettings, setShippingSettings] = useState({ freeShippingLimit: 600, shippingCost: 30 });
 
   useEffect(() => {
     loadCart();
+    loadShippingSettings();
   }, []);
+
+  const loadShippingSettings = async () => {
+    try {
+      const API_BASE_URL = 'https://api.huglutekstil.com/api';
+      const response = await fetch(`${API_BASE_URL}/settings/public/shipping`);
+      const data = await response.json();
+      if (data.success && data.data) {
+        setShippingSettings({
+          freeShippingLimit: data.data.freeShippingLimit || 600,
+          shippingCost: data.data.shippingCost || 30
+        });
+      }
+    } catch (error) {
+      console.error('Kargo ayarları yüklenemedi:', error);
+      // Varsayılan değerleri kullan
+    }
+  };
 
   // Sayfa her açıldığında sepeti yeniden yükle (sipariş sonrası temizlenmiş sepeti göstermek için)
   useFocusEffect(
@@ -204,13 +223,13 @@ export default function CartScreen({ navigation }) {
     }
   };
 
-  const FREE_SHIPPING_LIMIT = 600;
+  const FREE_SHIPPING_LIMIT = shippingSettings.freeShippingLimit;
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_LIMIT - subtotal);
   const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_LIMIT) * 100);
   const hasFreeShipping = subtotal >= FREE_SHIPPING_LIMIT;
   
-  const shipping = hasFreeShipping ? 0 : 30;
+  const shipping = hasFreeShipping ? 0 : shippingSettings.shippingCost;
   const tax = 0;
   const total = subtotal + shipping + tax;
 

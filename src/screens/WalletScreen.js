@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
-import { walletAPI } from '../services/api';
+import { walletAPI, userAPI } from '../services/api';
 import { useAlert } from '../hooks/useAlert';
 
 export default function WalletScreen({ navigation }) {
@@ -20,6 +20,13 @@ export default function WalletScreen({ navigation }) {
   const [vouchers, setVouchers] = useState([]);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     loadWalletData();
@@ -30,19 +37,156 @@ export default function WalletScreen({ navigation }) {
   };
 
   const processRecharge = async (amount) => {
+    setShowRechargeModal(false);
+    setSelectedAmount(amount);
+    setShowCardModal(true);
+  };
+
+  const handleCardPayment = async () => {
+    if (!selectedAmount) return;
+
     try {
-      setShowRechargeModal(false);
-      const response = await walletAPI.rechargeRequest(userId, amount, 'credit_card');
+      setProcessingPayment(true);
+
+      // Kart bilgilerini doğrula
+      const cleanCardNumber = cardNumber.replace(/\s/g, '');
+      if (!cleanCardNumber || cleanCardNumber.length < 16) {
+        alert.show('Hata', 'Lütfen geçerli bir kart numarası girin');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!cardName || cardName.trim().length < 3) {
+        alert.show('Hata', 'Lütfen kart üzerindeki ismi girin');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!expiryDate || expiryDate.length < 5) {
+        alert.show('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
+        setProcessingPayment(false);
+        return;
+      }
+      if (!cvv || cvv.length < 3) {
+        alert.show('Hata', 'Lütfen CVV kodunu girin');
+        setProcessingPayment(false);
+        return;
+      }
+
+      // Son kullanma tarihini parse et
+      const [expireMonth, expireYear] = expiryDate.split('/');
+      const fullExpireYear = '20' + expireYear;
+
+      // Kullanıcı bilgilerini al
+      let customerInfo = {
+        name: '',
+        surname: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        zipCode: ''
+      };
+
+      try {
+        const userResponse = await userAPI.getProfile(parseInt(userId));
+        if (userResponse.data?.success) {
+          const user = userResponse.data.data || userResponse.data.user || {};
+          const fullName = (user.name || '').split(' ');
+          customerInfo.name = fullName[0] || 'John';
+          customerInfo.surname = fullName.slice(1).join(' ') || 'Doe';
+          customerInfo.email = user.email || 'test@test.com';
+          customerInfo.phone = user.phone || '+905555555555';
+          customerInfo.address = user.address || '';
+          customerInfo.city = user.city || 'Istanbul';
+          customerInfo.zipCode = user.zipCode || '34000';
+        }
+      } catch (userError) {
+        console.warn('Müşteri bilgileri alınamadı, varsayılan değerler kullanılıyor:', userError);
+      }
+
+      // Wallet recharge request ile ödeme
+      const response = await walletAPI.rechargeRequest(userId, selectedAmount, 'credit_card', null, {
+        cardHolderName: cardName.trim(),
+        cardNumber: cleanCardNumber,
+        expireMonth: expireMonth,
+        expireYear: fullExpireYear,
+        cvc: cvv
+      }, {
+        name: customerInfo.name,
+        surname: customerInfo.surname,
+        email: customerInfo.email,
+        gsmNumber: customerInfo.phone,
+        city: customerInfo.city,
+        zipCode: customerInfo.zipCode,
+        registrationAddress: customerInfo.address
+      });
       
       if (response.data?.success) {
-        alert.show('Başarılı', `₺${amount} yükleme talebiniz alındı.`);
+        alert.show('Başarılı', `₺${selectedAmount} cüzdanınıza yüklendi!`);
+        setShowCardModal(false);
+        setCardNumber('');
+        setCardName('');
+        setExpiryDate('');
+        setCvv('');
+        setSelectedAmount(null);
         loadWalletData(); // Verileri yenile
       } else {
-        alert.show('Hata', response.data?.message || 'Yükleme talebi oluşturulamadı');
+        // Hata mesajını Türkçe'ye çevir
+        let errorMessage = response.data?.message || 'Yükleme işlemi başarısız';
+        
+        const errorTranslations = {
+          'Card number is invalid': 'Kart numarası geçersiz',
+          'Expiry date is invalid': 'Son kullanma tarihi geçersiz',
+          'CVC is invalid': 'Güvenlik kodu (CVV) geçersiz',
+          'Insufficient funds': 'Kartınızda yeterli bakiye bulunmamaktadır',
+          'Card is blocked': 'Kartınız bloke edilmiş',
+          'Transaction not permitted': 'İşlem izni verilmedi',
+          'Invalid request': 'Geçersiz istek',
+          'General error': 'Genel hata',
+          'Payment failed': 'Ödeme başarısız'
+        };
+
+        Object.keys(errorTranslations).forEach(key => {
+          if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+            errorMessage = errorTranslations[key];
+          }
+        });
+
+        alert.show('Hata', errorMessage);
       }
     } catch (error) {
       console.error('Yükleme hatası:', error);
-      alert.show('Hata', 'Yükleme işlemi sırasında bir hata oluştu');
+      
+      let errorMessage = 'Yükleme işlemi sırasında bir hata oluştu';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // İyzico hata mesajlarını Türkçe'ye çevir
+      const errorTranslations = {
+        'Card number is invalid': 'Kart numarası geçersiz',
+        'Expiry date is invalid': 'Son kullanma tarihi geçersiz',
+        'CVC is invalid': 'Güvenlik kodu (CVV) geçersiz',
+        'Insufficient funds': 'Kartınızda yeterli bakiye bulunmamaktadır',
+        'Card is blocked': 'Kartınız bloke edilmiş',
+        'Transaction not permitted': 'İşlem izni verilmedi',
+        'Invalid request': 'Geçersiz istek',
+        'General error': 'Genel hata',
+        'Payment failed': 'Ödeme başarısız',
+        'Network Error': 'İnternet bağlantınızı kontrol edin'
+      };
+
+      Object.keys(errorTranslations).forEach(key => {
+        if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+          errorMessage = errorTranslations[key];
+        }
+      });
+
+      alert.show('Hata', errorMessage);
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -198,7 +342,7 @@ export default function WalletScreen({ navigation }) {
                 <View>
                   <View style={styles.cardBrand}>
                     <Ionicons name="leaf-outline" size={16} color={COLORS.white} />
-                    <Text style={styles.cardBrandText}>HUGLU PRO</Text>
+                    <Text style={styles.cardBrandText}>HPAY +</Text>
                   </View>
                   <Text style={styles.pointsAmount}>{points} Puan</Text>
                   <View style={styles.rewardBadge}>
@@ -440,31 +584,98 @@ export default function WalletScreen({ navigation }) {
                     key={amount}
                     style={[
                       styles.amountOption,
-                      selectedAmount === amount && styles.amountOptionSelected
+                      selectedAmount === amount && !customAmount && styles.amountOptionSelected
                     ]}
-                    onPress={() => setSelectedAmount(amount)}
+                    onPress={() => {
+                      setSelectedAmount(amount);
+                      setCustomAmount('');
+                    }}
                     activeOpacity={0.7}
                   >
                     <View style={styles.amountIconContainer}>
                       <Ionicons 
                         name="cash-outline" 
                         size={24} 
-                        color={selectedAmount === amount ? COLORS.primary : COLORS.gray400} 
+                        color={selectedAmount === amount && !customAmount ? COLORS.primary : COLORS.gray400} 
                       />
                     </View>
                     <Text style={[
                       styles.amountText,
-                      selectedAmount === amount && styles.amountTextSelected
+                      selectedAmount === amount && !customAmount && styles.amountTextSelected
                     ]}>
                       ₺{amount}
                     </Text>
-                    {selectedAmount === amount && (
+                    {selectedAmount === amount && !customAmount && (
                       <View style={styles.selectedCheckmark}>
                         <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
                       </View>
                     )}
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              {/* Custom Amount Input */}
+              <View style={styles.customAmountContainer}>
+                <Text style={styles.customAmountLabel}>Veya Özel Tutar</Text>
+                <View style={[
+                  styles.customAmountInputWrapper,
+                  customAmount && selectedAmount && selectedAmount >= 10 && selectedAmount <= 10000 && styles.customAmountInputWrapperActive
+                ]}>
+                  <Text style={styles.currencySymbol}>₺</Text>
+                  <TextInput
+                    style={styles.customAmountInput}
+                    placeholder="0"
+                    placeholderTextColor={COLORS.gray400}
+                    value={customAmount}
+                    onChangeText={(text) => {
+                      // Sadece rakam ve nokta kabul et
+                      const cleaned = text.replace(/[^\d.]/g, '');
+                      // Birden fazla nokta engelle
+                      const parts = cleaned.split('.');
+                      const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+                      
+                      if (formatted === '' || formatted === '.') {
+                        setCustomAmount('');
+                        setSelectedAmount(null);
+                      } else {
+                        const numValue = parseFloat(formatted);
+                        if (!isNaN(numValue)) {
+                          if (numValue >= 10 && numValue <= 10000) {
+                            setCustomAmount(formatted);
+                            setSelectedAmount(numValue);
+                          } else if (formatted.length <= 6) {
+                            // Kullanıcı yazmaya devam ediyor, geçici olarak kaydet
+                            setCustomAmount(formatted);
+                            setSelectedAmount(null);
+                          }
+                        } else {
+                          setCustomAmount('');
+                          setSelectedAmount(null);
+                        }
+                      }
+                    }}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <Text style={styles.customAmountHint}>
+                  Minimum: ₺10 - Maksimum: ₺10,000
+                </Text>
+                {customAmount && selectedAmount && selectedAmount >= 10 && selectedAmount <= 10000 && (
+                  <View style={styles.customAmountCheckmark}>
+                    <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    <Text style={styles.customAmountCheckmarkText}>Geçerli tutar</Text>
+                  </View>
+                )}
+                {customAmount && (!selectedAmount || selectedAmount < 10 || selectedAmount > 10000) && (
+                  <View style={styles.customAmountError}>
+                    <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                    <Text style={styles.customAmountErrorText}>
+                      {selectedAmount && selectedAmount < 10 ? 'Minimum tutar ₺10' : 
+                       selectedAmount && selectedAmount > 10000 ? 'Maksimum tutar ₺10,000' : 
+                       'Geçerli bir tutar girin'}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {/* Action Buttons */}
@@ -474,6 +685,7 @@ export default function WalletScreen({ navigation }) {
                   onPress={() => {
                     setShowRechargeModal(false);
                     setSelectedAmount(null);
+                    setCustomAmount('');
                   }}
                 >
                   <Text style={styles.cancelButtonText}>İptal</Text>
@@ -487,6 +699,7 @@ export default function WalletScreen({ navigation }) {
                     if (selectedAmount) {
                       processRecharge(selectedAmount);
                       setSelectedAmount(null);
+                      setCustomAmount('');
                     }
                   }}
                   disabled={!selectedAmount}
@@ -495,6 +708,167 @@ export default function WalletScreen({ navigation }) {
                   <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Credit Card Payment Modal */}
+      <Modal
+        visible={showCardModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowCardModal(false);
+          setCardNumber('');
+          setCardName('');
+          setExpiryDate('');
+          setCvv('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cardModalContainer}>
+            <View style={styles.cardModalContent}>
+              {/* Modal Header */}
+              <View style={styles.cardModalHeader}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowCardModal(false);
+                    setCardNumber('');
+                    setCardName('');
+                    setExpiryDate('');
+                    setCvv('');
+                  }}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.textMain} />
+                </TouchableOpacity>
+                <Text style={styles.cardModalTitle}>Kredi Kartı ile Ödeme</Text>
+                <View style={{ width: 24 }} />
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Amount Display */}
+                <View style={styles.amountDisplay}>
+                  <Text style={styles.amountLabel}>Yüklenecek Tutar</Text>
+                  <Text style={styles.amountValue}>₺{selectedAmount || 0}</Text>
+                </View>
+
+                {/* Card Form */}
+                <View style={styles.cardForm}>
+                  {/* Kart Numarası */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Kart Numarası</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="1234 5678 9012 3456"
+                      placeholderTextColor={COLORS.gray400}
+                      value={cardNumber}
+                      onChangeText={(text) => {
+                        const formatted = text.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                        setCardNumber(formatted.slice(0, 19));
+                      }}
+                      keyboardType="numeric"
+                      maxLength={19}
+                    />
+                  </View>
+
+                  {/* Kart Üzerindeki İsim */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="AD SOYAD"
+                      placeholderTextColor={COLORS.gray400}
+                      value={cardName}
+                      onChangeText={setCardName}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+
+                  {/* Son Kullanma ve CVV */}
+                  <View style={styles.inputRow}>
+                    <View style={[styles.inputGroup, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>Son Kullanma</Text>
+                      <TextInput
+                        style={styles.cardInput}
+                        placeholder="AA/YY"
+                        placeholderTextColor={COLORS.gray400}
+                        value={expiryDate}
+                        onChangeText={(text) => {
+                          const cleaned = text.replace(/\D/g, '');
+                          if (cleaned.length >= 2) {
+                            setExpiryDate(cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4));
+                          } else {
+                            setExpiryDate(cleaned);
+                          }
+                        }}
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+
+                    <View style={[styles.inputGroup, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>CVV</Text>
+                      <TextInput
+                        style={styles.cardInput}
+                        placeholder="123"
+                        placeholderTextColor={COLORS.gray400}
+                        value={cvv}
+                        onChangeText={(text) => setCvv(text.replace(/\D/g, '').slice(0, 3))}
+                        keyboardType="numeric"
+                        maxLength={3}
+                        secureTextEntry
+                      />
+                    </View>
+                  </View>
+
+                  {/* Güvenlik Bilgisi */}
+                  <View style={styles.securityBanner}>
+                    <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+                    <Text style={styles.securityText}>
+                      Kart bilgileriniz 256-bit SSL ile şifrelenir
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.cardModalActions}>
+                  <TouchableOpacity
+                    style={styles.cancelCardButton}
+                    onPress={() => {
+                      setShowCardModal(false);
+                      setCardNumber('');
+                      setCardName('');
+                      setExpiryDate('');
+                      setCvv('');
+                    }}
+                    disabled={processingPayment}
+                  >
+                    <Text style={styles.cancelCardButtonText}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.confirmCardButton,
+                      processingPayment && styles.confirmCardButtonDisabled
+                    ]}
+                    onPress={handleCardPayment}
+                    disabled={processingPayment}
+                  >
+                    {processingPayment ? (
+                      <>
+                        <ActivityIndicator size="small" color={COLORS.white} />
+                        <Text style={styles.confirmCardButtonText}>İşleniyor...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.confirmCardButtonText}>Ödeme Yap</Text>
+                        <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </View>
         </View>
@@ -1015,7 +1389,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    marginBottom: 20,
+  },
+  customAmountContainer: {
     marginBottom: 24,
+  },
+  customAmountLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 12,
+  },
+  customAmountInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 2,
+    borderColor: COLORS.gray200,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  customAmountInputWrapperActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(17, 212, 33, 0.05)',
+  },
+  currencySymbol: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    marginRight: 8,
+  },
+  customAmountInput: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    paddingVertical: 16,
+  },
+  customAmountHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  customAmountCheckmark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  customAmountCheckmarkText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  customAmountError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  customAmountErrorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
   },
   amountOption: {
     width: '47%',
@@ -1086,6 +1526,131 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  // Card Modal Styles
+  cardModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  cardModalContent: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  cardModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  amountDisplay: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: COLORS.backgroundLight,
+    margin: 20,
+    borderRadius: 16,
+  },
+  amountLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+  },
+  amountValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  cardForm: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+    marginBottom: 8,
+  },
+  cardInput: {
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: COLORS.textMain,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  securityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: 'rgba(17, 212, 33, 0.1)',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  securityText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    flex: 1,
+  },
+  cardModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    paddingTop: 0,
+  },
+  cancelCardButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelCardButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  confirmCardButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  confirmCardButtonDisabled: {
+    backgroundColor: COLORS.gray300,
+  },
+  confirmCardButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.white,

@@ -425,35 +425,85 @@ export default function Products() {
   }
 
   const buildUpdatePayload = () => {
+    if (!showEditModal.product) return {}
+    
+    const original = showEditModal.product as any
     const payload: any = {}
-    if (form.name !== undefined && form.name !== null && form.name !== '') payload.name = form.name
-    if (form.description !== undefined && form.description !== null) payload.description = form.description
-    if (form.price !== undefined && form.price !== null && form.price !== '') {
-      const priceNum = Number(form.price)
-      if (!isNaN(priceNum) && priceNum >= 0) {
-        payload.price = priceNum
-      }
+    
+    // Sadece değişen alanları ekle
+    if (form.name !== undefined && form.name !== null && form.name !== '' && form.name !== original.name) {
+      payload.name = form.name
     }
-    if (form.taxRate !== undefined && form.taxRate !== null && form.taxRate !== '') {
-      const taxNum = Number(form.taxRate)
-      if (!isNaN(taxNum) && taxNum >= 0) {
-        payload.taxRate = taxNum
-      }
+    
+    const originalDescription = original.description || ''
+    const formDescription = form.description || ''
+    if (form.description !== undefined && form.description !== null && formDescription !== originalDescription) {
+      payload.description = formDescription || null
     }
-    if (form.priceIncludesTax !== undefined) payload.priceIncludesTax = !!form.priceIncludesTax
-    if (form.category !== undefined && form.category !== null && form.category !== '') payload.category = form.category
-    if (form.image !== undefined && form.image !== null && form.image !== '') payload.image = form.image
-    if (form.images !== undefined && form.images !== null) payload.images = form.images
-    if (form.stock !== undefined && form.stock !== null && form.stock !== '') {
-      const stockNum = Number(form.stock)
-      if (!isNaN(stockNum) && stockNum >= 0) {
-        payload.stock = stockNum
-      }
+    
+    const originalPrice = original.price ?? 0
+    const formPrice = form.price !== undefined && form.price !== null && form.price !== '' ? Number(form.price) : null
+    if (formPrice !== null && !isNaN(formPrice) && formPrice >= 0 && formPrice !== originalPrice) {
+      payload.price = formPrice
     }
-    if (form.brand !== undefined && form.brand !== null && form.brand !== '') payload.brand = form.brand
-    if (form.hasVariations !== undefined) payload.hasVariations = !!form.hasVariations
-    if (form.isActive !== undefined) payload.isActive = !!form.isActive
-    if (form.excludeFromXml !== undefined) payload.excludeFromXml = !!form.excludeFromXml
+    
+    const originalTaxRate = original.taxRate ?? 0
+    const formTaxRate = form.taxRate !== undefined && form.taxRate !== null && form.taxRate !== '' ? Number(form.taxRate) : null
+    if (formTaxRate !== null && !isNaN(formTaxRate) && formTaxRate >= 0 && formTaxRate !== originalTaxRate) {
+      payload.taxRate = formTaxRate
+    }
+    
+    const originalPriceIncludesTax = !!original.priceIncludesTax
+    const formPriceIncludesTax = !!form.priceIncludesTax
+    if (form.priceIncludesTax !== undefined && formPriceIncludesTax !== originalPriceIncludesTax) {
+      payload.priceIncludesTax = formPriceIncludesTax
+    }
+    
+    const originalCategory = original.category || ''
+    if (form.category !== undefined && form.category !== null && form.category !== '' && form.category !== originalCategory) {
+      payload.category = form.category
+    }
+    
+    const originalImage = original.image || ''
+    if (form.image !== undefined && form.image !== null && form.image !== '' && form.image !== originalImage) {
+      payload.image = form.image
+    }
+    
+    const originalImages = Array.isArray(original.images) ? original.images : []
+    const formImages = Array.isArray(form.images) ? form.images : []
+    if (form.images !== undefined && form.images !== null && JSON.stringify(formImages) !== JSON.stringify(originalImages)) {
+      payload.images = formImages
+    }
+    
+    const originalStock = original.stock ?? 0
+    const formStock = form.stock !== undefined && form.stock !== null && form.stock !== '' ? Number(form.stock) : null
+    if (formStock !== null && !isNaN(formStock) && formStock >= 0 && formStock !== originalStock) {
+      payload.stock = formStock
+    }
+    
+    const originalBrand = original.brand || ''
+    if (form.brand !== undefined && form.brand !== null && form.brand !== '' && form.brand !== originalBrand) {
+      payload.brand = form.brand
+    }
+    
+    const originalHasVariations = !!original.hasVariations
+    const formHasVariations = !!form.hasVariations
+    if (form.hasVariations !== undefined && formHasVariations !== originalHasVariations) {
+      payload.hasVariations = formHasVariations
+    }
+    
+    const originalIsActive = original.isActive !== undefined ? !!original.isActive : true
+    const formIsActive = !!form.isActive
+    if (form.isActive !== undefined && formIsActive !== originalIsActive) {
+      payload.isActive = formIsActive
+    }
+    
+    const originalExcludeFromXml = !!original.excludeFromXml
+    const formExcludeFromXml = !!form.excludeFromXml
+    if (form.excludeFromXml !== undefined && formExcludeFromXml !== originalExcludeFromXml) {
+      payload.excludeFromXml = formExcludeFromXml
+    }
+    
     return payload
   }
 

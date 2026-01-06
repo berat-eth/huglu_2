@@ -3605,6 +3605,21 @@ async function createDatabaseSchema(pool) {
       `);
       console.log('✅ elevenlabs_config table ready');
 
+      // Shipping Settings table - Kargo ayarları
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS shipping_settings (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL DEFAULT 1,
+          freeShippingLimit DECIMAL(10,2) DEFAULT 600.00,
+          shippingCost DECIMAL(10,2) DEFAULT 30.00,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_tenant (tenantId),
+          FOREIGN KEY (tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ shipping_settings table ready');
+
       // Snort Logs table - Snort IDS loglarını veritabanında sakla
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS snort_logs (

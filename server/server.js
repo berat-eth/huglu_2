@@ -46,6 +46,7 @@ const userDataRoutes = require('./routes/user-data');
 const userSpecificDataRoutes = require('./routes/user-specific-data');
 const chatSessionsRoutes = require('./routes/chat-sessions');
 const adminGeminiRoutes = require('./routes/admin-gemini');
+const adminSettingsRoutes = require('./routes/admin-settings');
 const elevenlabsRoutes = require('./routes/elevenlabs');
 const segmentsRoutes = require('./routes/segments');
 const { RecommendationService } = require('./services/recommendation-service');
@@ -2024,6 +2025,10 @@ app.use('/api/chat/sessions', chatSessionsRoutes);
 // Admin Gemini Routes
 // authenticateAdmin zaten dosyada tanımlı (satır 3796)
 app.use('/api/admin/gemini', authenticateAdmin, adminGeminiRoutes);
+
+// Admin Settings Routes
+app.use('/api/admin/settings', authenticateAdmin, adminSettingsRoutes);
+app.use('/api/settings', adminSettingsRoutes); // Public endpoint için
 
 // ElevenLabs Routes (admin authentication required)
 app.use('/api/admin/elevenlabs', authenticateAdmin, elevenlabsRoutes);
@@ -25441,7 +25446,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
   // Cüzdan para yükleme isteği oluştur
   app.post('/api/wallet/recharge-request', validateUserIdMatch('body'), async (req, res) => {
     try {
-      const { userId, amount, paymentMethod, bankInfo } = req.body;
+      const { userId, amount, paymentMethod, bankInfo, paymentCard, buyer } = req.body;
 
       if (!userId || !amount || !paymentMethod) {
         return res.status(400).json({
@@ -25467,10 +25472,11 @@ YARDIM EDEBİLECEĞİN KONULAR:
         [requestId, userId, req.tenant.id, amount, paymentMethod, JSON.stringify(bankInfo || {})]
       );
 
-      if (paymentMethod === 'card') {
+      if (paymentMethod === 'card' || paymentMethod === 'credit_card') {
         // Kredi kartı için Iyzico entegrasyonu
         try {
-          const iyzicoResponse = await processCardPayment(requestId, amount, userId);
+          // processCardPayment fonksiyonunu çağır
+          const iyzicoResponse = await processCardPayment(requestId, amount, userId, paymentCard, buyer);
 
           if (iyzicoResponse.success) {
             // Başarılı ödeme - bakiyeyi güncelle
@@ -25488,31 +25494,32 @@ YARDIM EDEBİLECEĞİN KONULAR:
                 requestId,
                 status: 'completed',
                 newBalance: await getWalletBalance(userId, req.tenant.id),
-                message: 'Para yükleme başarılı!'
+                message: 'Para yükleme başarılı!',
+                paymentId: iyzicoResponse.paymentId
               }
             });
           } else {
             // Ödeme başarısız
             await poolWrapper.execute(
               'UPDATE wallet_recharge_requests SET status = ?, errorMessage = ? WHERE id = ?',
-              ['failed', iyzicoResponse.message, requestId]
+              ['failed', iyzicoResponse.message || 'Ödeme başarısız', requestId]
             );
 
             return res.json({
               success: false,
-              message: iyzicoResponse.message
+              message: iyzicoResponse.message || 'Ödeme başarısız'
             });
           }
         } catch (error) {
           console.error(' Card payment error:', error);
           await poolWrapper.execute(
             'UPDATE wallet_recharge_requests SET status = ?, errorMessage = ? WHERE id = ?',
-            ['failed', 'Kart ödemesinde hata oluştu', requestId]
+            ['failed', error.message || 'Kart ödemesinde hata oluştu', requestId]
           );
 
           return res.status(500).json({
             success: false,
-            message: 'Kart ödemesinde hata oluştu'
+            message: error.message || 'Kart ödemesinde hata oluştu'
           });
         }
       } else if (paymentMethod === 'bank_transfer') {
@@ -25726,22 +25733,81 @@ YARDIM EDEBİLECEĞİN KONULAR:
   });
 
   // Yardımcı fonksiyonlar
-  async function processCardPayment(requestId, amount, userId) {
+  async function processCardPayment(requestId, amount, userId, paymentCard, buyer) {
     console.log('🔄 Processing card payment - NO CARD DATA STORED');
     console.log('⚠️ SECURITY: Card information is processed but NOT stored in database');
 
     try {
-      // Iyzico entegrasyonu burada yapılacak
-      // Kart bilgileri sadece ödeme işlemi için kullanılır, kayıt edilmez
+      // Kart bilgileri kontrolü
+      if (!paymentCard || !paymentCard.cardNumber || !paymentCard.expireMonth || !paymentCard.expireYear || !paymentCard.cvc) {
+        return {
+          success: false,
+          message: 'Kart bilgileri eksik'
+        };
+      }
 
-      // Simüle edilmiş ödeme işlemi
-      const paymentResult = {
-        success: true,
-        message: 'Ödeme başarılı',
-        transactionId: `TXN-${Date.now()}`,
-        amount: amount,
-        timestamp: new Date().toISOString()
+      // Kullanıcı bilgilerini al
+      const [userRows] = await poolWrapper.execute(
+        'SELECT name, email, phone, address, city FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
+
+      const user = userRows[0] || {};
+      const fullName = (user.name || 'John Doe').split(' ');
+      const userName = fullName[0] || 'John';
+      const userSurname = fullName.slice(1).join(' ') || 'Doe';
+
+      // Iyzico için ödeme verisi hazırla
+      const paymentData = {
+        price: amount,
+        paidPrice: amount,
+        currency: 'TRY',
+        basketId: requestId,
+        paymentCard: {
+          cardHolderName: paymentCard.cardHolderName || `${userName} ${userSurname}`,
+          cardNumber: paymentCard.cardNumber.replace(/\s/g, ''),
+          expireMonth: paymentCard.expireMonth,
+          expireYear: paymentCard.expireYear,
+          cvc: paymentCard.cvc
+        },
+        buyer: {
+          id: userId,
+          name: buyer?.name || userName,
+          surname: buyer?.surname || userSurname,
+          gsmNumber: buyer?.gsmNumber || user.phone || '+905555555555',
+          email: buyer?.email || user.email || 'test@test.com',
+          identityNumber: buyer?.identityNumber || '11111111111',
+          registrationAddress: buyer?.registrationAddress || user.address || '',
+          ip: '127.0.0.1',
+          city: buyer?.city || user.city || 'Istanbul',
+          country: buyer?.country || 'Turkey',
+          zipCode: buyer?.zipCode || '34000'
+        },
+        shippingAddress: {
+          contactName: `${userName} ${userSurname}`,
+          city: user.city || 'Istanbul',
+          country: 'Turkey',
+          address: user.address || '',
+          zipCode: '34000'
+        },
+        billingAddress: {
+          contactName: `${userName} ${userSurname}`,
+          city: user.city || 'Istanbul',
+          country: 'Turkey',
+          address: user.address || '',
+          zipCode: '34000'
+        },
+        basketItems: [{
+          id: 'wallet_recharge',
+          name: 'Cüzdan Bakiye Yükleme',
+          category1: 'Wallet',
+          category2: 'Recharge',
+          price: amount
+        }]
       };
+
+      // Iyzico ile ödeme işlemi
+      const paymentResult = await iyzicoService.processPayment(paymentData);
 
       console.log(' Payment processed successfully - card data discarded');
       return paymentResult;
@@ -25750,7 +25816,7 @@ YARDIM EDEBİLECEĞİN KONULAR:
       console.error(' Card payment processing error:', error);
       return {
         success: false,
-        message: 'Ödeme işlemi başarısız',
+        message: error.message || 'Ödeme işlemi başarısız',
         error: error.message
       };
     }

@@ -37,6 +37,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
   const [deliveryMethod, setDeliveryMethod] = useState('shipping'); // 'shipping' or 'pickup'
   const [selectedStore, setSelectedStore] = useState(null);
   const [showStoreModal, setShowStoreModal] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState({ freeShippingLimit: 600, shippingCost: 30 });
 
   // Mağaza listesi
   const STORES = [
@@ -200,18 +201,38 @@ export default function OrderConfirmationScreen({ navigation, route }) {
     }
   };
 
+  // Kargo ayarlarını yükle
+  useEffect(() => {
+    const loadShippingSettings = async () => {
+      try {
+        const API_BASE_URL = 'https://api.huglutekstil.com/api';
+        const response = await fetch(`${API_BASE_URL}/settings/public/shipping`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          setShippingSettings({
+            freeShippingLimit: data.data.freeShippingLimit || 600,
+            shippingCost: data.data.shippingCost || 30
+          });
+        }
+      } catch (error) {
+        console.error('Kargo ayarları yüklenemedi:', error);
+      }
+    };
+    loadShippingSettings();
+  }, []);
+
   // Delivery method değiştiğinde kargo ücretini güncelle
   useEffect(() => {
     if (deliveryMethod === 'pickup') {
       setShipping(0);
       setTotal(subtotal);
     } else {
-      const FREE_SHIPPING_LIMIT = 600;
-      const newShipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
+      const FREE_SHIPPING_LIMIT = shippingSettings.freeShippingLimit;
+      const newShipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : shippingSettings.shippingCost;
       setShipping(newShipping);
       setTotal(subtotal + newShipping);
     }
-  }, [deliveryMethod, subtotal]);
+  }, [deliveryMethod, subtotal, shippingSettings]);
 
   // Sayfa her açıldığında adresi ve ödeme yöntemlerini yeniden yükle
   useEffect(() => {

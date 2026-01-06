@@ -126,9 +126,24 @@ export default function PaymentMethodScreen({ navigation, route }) {
         if (cartResponse.data?.success) {
           const cartData = cartResponse.data.cart || cartResponse.data.data || [];
           if (Array.isArray(cartData) && cartData.length > 0) {
-            const FREE_SHIPPING_LIMIT = 600;
+            // Kargo ayarlarını yükle
+            let freeShippingLimit = 600;
+            let shippingCost = 30;
+            try {
+              const API_BASE_URL = 'https://api.huglutekstil.com/api';
+              const shippingResponse = await fetch(`${API_BASE_URL}/settings/public/shipping`);
+              const shippingData = await shippingResponse.json();
+              if (shippingData.success && shippingData.data) {
+                freeShippingLimit = shippingData.data.freeShippingLimit || 600;
+                shippingCost = shippingData.data.shippingCost || 30;
+              }
+            } catch (error) {
+              console.error('Kargo ayarları yüklenemedi:', error);
+            }
+            
+            const FREE_SHIPPING_LIMIT = freeShippingLimit;
             const calculatedSubtotal = cartData.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseInt(item.quantity || 1)), 0);
-            const calculatedShipping = calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : 30;
+            const calculatedShipping = calculatedSubtotal >= FREE_SHIPPING_LIMIT ? 0 : shippingCost;
             const calculatedTotal = calculatedSubtotal + calculatedShipping;
             
             setSubtotal(calculatedSubtotal);

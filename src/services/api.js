@@ -255,8 +255,8 @@ export const walletAPI = {
     api.post('/wallet/transfer', { fromUserId, toUserId, amount, description }),
   
   // Bakiye Yükleme
-  rechargeRequest: (userId, amount, paymentMethod) => 
-    api.post('/wallet/recharge-request', { userId, amount, paymentMethod }),
+  rechargeRequest: (userId, amount, paymentMethod, bankInfo, paymentCard, buyer) => 
+    api.post('/wallet/recharge-request', { userId, amount, paymentMethod, bankInfo, paymentCard, buyer }),
   
   // Çekim Talebi (Banka Hesabına Transfer)
   createWithdrawRequest: (userId, amount, iban, accountHolderName) =>

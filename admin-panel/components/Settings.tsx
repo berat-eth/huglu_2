@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, User, Bell, Lock, Globe, Palette, Database, Mail, Smartphone, Shield, Save, Eye, EyeOff, UserPlus, Edit, Trash2, CheckCircle, XCircle, X, Brain, TestTube2, Wrench } from 'lucide-react'
+import { Settings as SettingsIcon, User, Bell, Lock, Globe, Palette, Database, Mail, Smartphone, Shield, Save, Eye, EyeOff, UserPlus, Edit, Trash2, CheckCircle, XCircle, X, Brain, TestTube2, Wrench, Truck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api, type ApiResponse } from '@/lib/api'
 import { aiProvidersService, type AIProvider, type AIProviderConfig } from '@/lib/services/ai-providers'
@@ -84,6 +84,14 @@ export default function Settings() {
     })
     const [maintenanceLoading, setMaintenanceLoading] = useState(false)
     const [maintenanceMessage, setMaintenanceMessage] = useState<string | null>(null)
+
+    // Kargo Ayarları State
+    const [shippingSettings, setShippingSettings] = useState({
+        freeShippingLimit: 600,
+        shippingCost: 30
+    })
+    const [shippingLoading, setShippingLoading] = useState(false)
+    const [shippingMessage, setShippingMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
     // Bakım modu durumunu yükle
     useEffect(() => {
@@ -482,6 +490,7 @@ export default function Settings() {
         { id: 'notifications', label: 'Bildirimler', icon: Bell },
         { id: 'security', label: 'Güvenlik', icon: Lock },
         { id: 'appearance', label: 'Görünüm', icon: Palette },
+        { id: 'shipping', label: 'Kargo Ayarları', icon: Truck },
         { id: 'ai-insights-settings', label: 'AI İçgörüleri', icon: Brain },
         { id: 'system', label: 'Sistem', icon: Database },
     ]
@@ -1494,6 +1503,90 @@ export default function Settings() {
                                     <p className="text-sm text-red-700 dark:text-red-400 mb-4">Bu işlemler geri alınamaz</p>
                                     <div className="space-y-3">
                                             <div className="text-sm text-red-700 dark:text-red-400">Aksiyonlar yapılandırılmadı.</div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Kargo Ayarları */}
+                        {activeTab === 'shipping' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-6"
+                            >
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Kargo Ayarları</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Ücretsiz kargo limiti ve kargo ücretini yönetin</p>
+                                </div>
+
+                                {shippingMessage && (
+                                    <div className={`p-4 rounded-xl ${shippingMessage.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
+                                        <p className={`text-sm ${shippingMessage.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                            {shippingMessage.text}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-6">
+                                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                    Ücretsiz Kargo Limiti (₺)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={shippingSettings.freeShippingLimit}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, freeShippingLimit: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="600"
+                                                />
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                    Bu tutar ve üzeri alışverişlerde kargo ücretsiz olacaktır
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                    Kargo Ücreti (₺)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={shippingSettings.shippingCost}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, shippingCost: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="30"
+                                                />
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                    Ücretsiz kargo limitinin altındaki siparişler için uygulanacak kargo ücreti
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={saveShippingSettings}
+                                            disabled={shippingLoading}
+                                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {shippingLoading ? (
+                                                <>
+                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>Kaydediliyor...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="w-5 h-5" />
+                                                    <span>Kaydet</span>
+                                                </>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
