@@ -35,11 +35,13 @@ class IyzicoService {
 
   // Kredi kartı ile ödeme - KART BİLGİLERİ KAYIT EDİLMİYOR
   // 3D Secure zorunlu - Production'da callbackUrl gereklidir
+  // Iyzico dokümantasyonuna göre: https://docs.iyzico.com/odeme-metotlari/api/3ds/3ds-entegrasyonu/3ds-baslatma
   async processPayment(paymentData) {
     try {
       console.log('🔄 Iyzico payment processing - CARD DATA NOT STORED');
       console.log('⚠️ SECURITY: Card information is processed but NOT saved');
       console.log('🔐 3D Secure: ENABLED (Production requirement)');
+      console.log('📚 Using 3DS Initialize endpoint as per Iyzico documentation');
       
       const {
         price,
@@ -51,13 +53,18 @@ class IyzicoService {
         shippingAddress,
         billingAddress,
         basketItems,
-        callbackUrl // 3D Secure callback URL
+        callbackUrl // 3D Secure callback URL - ZORUNLU
       } = paymentData;
 
       // 3D Secure için callback URL zorunlu
       const baseUrl = process.env.BASE_URL || process.env.API_BASE_URL || 'https://api.huglutekstil.com';
       const defaultCallbackUrl = `${baseUrl}/api/payments/3ds-callback`;
 
+      if (!callbackUrl && !defaultCallbackUrl) {
+        throw new Error('3D Secure için callbackUrl zorunludur');
+      }
+
+      // 3D Secure Initialize Request - Iyzico dokümantasyonuna göre
       const request = {
         locale: Iyzipay.LOCALE.TR,
         conversationId: `order_${basketId}_${Date.now()}`,
@@ -68,7 +75,7 @@ class IyzicoService {
         basketId: basketId.toString(),
         paymentChannel: Iyzipay.PAYMENT_CHANNEL.WEB,
         paymentGroup: Iyzipay.PAYMENT_GROUP.PRODUCT,
-        // 3D Secure callback URL - Production'da zorunlu
+        // 3D Secure callback URL - ZORUNLU
         callbackUrl: callbackUrl || defaultCallbackUrl,
         paymentCard: {
           cardHolderName: paymentCard.cardHolderName,
@@ -121,67 +128,59 @@ class IyzicoService {
         conversationId: request.conversationId,
         price: request.price,
         basketId: request.basketId,
-        itemCount: basketItems.length
+        itemCount: basketItems.length,
+        callbackUrl: request.callbackUrl,
+        hasCallbackUrl: !!request.callbackUrl
       });
 
+      // 3D Secure Initialize - Iyzico dokümantasyonuna göre
+      // POST /payment/3dsecure/initialize endpoint'i kullanılmalı
+      // Dokümantasyon: https://docs.iyzico.com/odeme-metotlari/api/3ds/3ds-entegrasyonu/3ds-baslatma
       return new Promise((resolve, reject) => {
-        this.iyzipay.payment.create(request, (err, result) => {
+        this.iyzipay.threedsInitialize.create(request, (err, result) => {
           if (err) {
-            console.error('❌ İyzico payment error:', err);
+            console.error('❌ İyzico 3DS initialize error:', err);
             reject({
               success: false,
               error: 'PAYMENT_ERROR',
-              message: 'Ödeme işlemi başarısız',
+              message: '3D Secure başlatma hatası',
               details: err
             });
           } else {
-            console.log('✅ İyzico payment result:', {
+            console.log('✅ İyzico 3DS initialize result:', {
               status: result.status,
               paymentId: result.paymentId,
               conversationId: result.conversationId,
-              threeDSHtmlContent: result.threeDSHtmlContent ? 'Present (3D Secure required)' : 'Not present'
+              hasThreeDSHtmlContent: !!result.threeDSHtmlContent
             });
 
-            // 3D Secure response kontrolü
-            if (result.status === 'success' && result.paymentId) {
-              // Direkt başarılı ödeme (3D Secure gerekmedi veya tamamlandı)
-              resolve({
-                success: true,
-                paymentId: result.paymentId,
-                conversationId: result.conversationId,
-                authCode: result.authCode,
-                hostReference: result.hostReference,
-                phase: result.phase,
-                paidPrice: result.paidPrice,
-                currency: result.currency,
-                installment: result.installment,
-                binNumber: result.binNumber,
-                lastFourDigits: result.lastFourDigits,
-                cardType: result.cardType,
-                cardAssociation: result.cardAssociation,
-                cardFamily: result.cardFamily,
-                cardToken: result.cardToken,
-                fraudStatus: result.fraudStatus,
-                requires3DS: false,
-                threeDSHtmlContent: null
-              });
-            } else if (result.status === 'success' && result.threeDSHtmlContent) {
-              // 3D Secure gerekiyor - HTML content döndür
-              console.log('🔐 3D Secure required - returning HTML content for frontend');
-              resolve({
-                success: true,
-                requires3DS: true,
-                threeDSHtmlContent: result.threeDSHtmlContent,
-                conversationId: result.conversationId,
-                paymentId: null, // Henüz ödeme tamamlanmadı
-                message: '3D Secure doğrulaması gerekiyor'
-              });
+            if (result.status === 'success') {
+              // 3D Secure başlatıldı - HTML content döndürülmeli
+              if (result.threeDSHtmlContent) {
+                console.log('🔐 3D Secure HTML content received - returning to frontend');
+                resolve({
+                  success: true,
+                  requires3DS: true,
+                  threeDSHtmlContent: result.threeDSHtmlContent,
+                  conversationId: result.conversationId,
+                  paymentId: result.paymentId, // Initialize'da paymentId döner
+                  message: '3D Secure doğrulaması gerekiyor'
+                });
+              } else {
+                // HTML content yoksa hata
+                reject({
+                  success: false,
+                  error: 'PAYMENT_ERROR',
+                  message: '3D Secure HTML içeriği alınamadı',
+                  conversationId: result.conversationId
+                });
+              }
             } else {
-              // Ödeme başarısız
+              // Başlatma başarısız
               reject({
                 success: false,
                 error: 'PAYMENT_FAILED',
-                message: result.errorMessage || 'Ödeme reddedildi',
+                message: result.errorMessage || '3D Secure başlatılamadı',
                 errorCode: result.errorCode,
                 errorGroup: result.errorGroup,
                 conversationId: result.conversationId

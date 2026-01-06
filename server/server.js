@@ -3514,11 +3514,16 @@ app.post('/api/payments/process', async (req, res) => {
     }
 
     // Prepare payment data
+    // 3D Secure callback URL - Production'da zorunlu
+    const baseUrl = process.env.BASE_URL || process.env.API_BASE_URL || 'https://api.huglutekstil.com';
+    const callbackUrl = `${baseUrl}/api/payments/3ds-callback`;
+
     const paymentData = {
       price: order.totalAmount,
       paidPrice: order.totalAmount,
       currency: 'TRY',
       basketId: orderId,
+      callbackUrl: paymentCallbackUrl, // 3D Secure için zorunlu
       paymentCard: {
         cardHolderName: paymentCard.cardHolderName,
         cardNumber: paymentCard.cardNumber.replace(/\s/g, ''),
@@ -3563,6 +3568,8 @@ app.post('/api/payments/process', async (req, res) => {
     };
 
     console.log('🔄 Processing İyzico payment for order:', orderId);
+    console.log('🔐 3D Secure callback URL:', paymentData.callbackUrl);
+    console.log('🔐 3D Secure callback URL:', paymentData.callbackUrl);
 
     // Process payment with İyzico
     const paymentResult = await iyzicoService.processPayment(paymentData);
@@ -3757,104 +3764,136 @@ app.get('/api/payments/:paymentId/status', async (req, res) => {
 });
 
 // 3D Secure Callback Endpoint
+// Iyzico dokümantasyonuna göre: https://docs.iyzico.com/odeme-metotlari/api/3ds/3ds-entegrasyonu/3ds-tamamlama
 app.post('/api/payments/3ds-callback', async (req, res) => {
   try {
     console.log('🔐 3D Secure callback received');
     console.log('📋 Callback data:', JSON.stringify(req.body, null, 2));
 
-    const { conversationId, paymentId, status, mdStatus } = req.body;
+    const callbackData = req.body;
+    const { conversationId, paymentId, status, mdStatus } = callbackData;
 
-    if (!conversationId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Conversation ID is required'
-      });
+    if (!conversationId || !paymentId) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Hata</title>
+            <meta charset="UTF-8">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: red;">❌ Hata</h1>
+              <p>Geçersiz callback verisi</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
 
     // Conversation ID'den order ID'yi çıkar (format: order_156_1767704921122)
     const orderIdMatch = conversationId.match(/order_(\d+)_/);
     if (!orderIdMatch) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid conversation ID format'
-      });
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Hata</title>
+            <meta charset="UTF-8">
+          </head>
+          <body>
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+              <h1 style="color: red;">❌ Hata</h1>
+              <p>Geçersiz conversation ID formatı</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
 
     const orderId = parseInt(orderIdMatch[1]);
     const tenantId = req.tenant?.id || 1;
 
-    // Ödeme durumunu kontrol et
-    if (status === 'success' && mdStatus === '1') {
-      // 3D Secure başarılı - Ödeme tamamlandı
-      console.log('✅ 3D Secure successful - Payment completed');
+    // 3D Secure Complete - Iyzico dokümantasyonuna göre callback'ten sonra çağrılmalı
+    try {
+      console.log('🔄 Completing 3DS payment with Iyzico...');
+      const completeResult = await iyzicoService.complete3DSPayment(paymentId, conversationId, callbackData);
+
+      if (completeResult.success) {
+        // 3D Secure başarılı - Ödeme tamamlandı
+        console.log('✅ 3D Secure completed successfully - Payment ID:', completeResult.paymentId);
+        
+        // Order'ı güncelle
+        await poolWrapper.execute(
+          `UPDATE orders SET 
+           status = 'paid', 
+           paymentStatus = 'completed',
+           paymentId = ?,
+           paymentProvider = 'iyzico',
+           paidAt = NOW()
+           WHERE id = ? AND tenantId = ?`,
+          [completeResult.paymentId, orderId, tenantId]
+        );
+
+        // Payment transaction kaydet
+        const [orderRows] = await poolWrapper.execute(
+          'SELECT totalAmount FROM orders WHERE id = ? AND tenantId = ?',
+          [orderId, tenantId]
+        );
+        const orderAmount = orderRows.length > 0 ? orderRows[0].totalAmount : 0;
+
+        await poolWrapper.execute(
+          `INSERT INTO payment_transactions 
+           (tenantId, orderId, paymentId, provider, amount, currency, status, transactionData, createdAt)
+           VALUES (?, ?, ?, 'iyzico', ?, 'TRY', 'success', ?, NOW())`,
+          [
+            tenantId,
+            orderId,
+            completeResult.paymentId,
+            orderAmount,
+            JSON.stringify({ conversationId, mdStatus, status, completeResult })
+          ]
+        );
+
+        // Frontend'e başarılı yanıt gönder
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Ödeme Başarılı</title>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body>
+              <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                <h1 style="color: green;">✅ Ödeme Başarılı!</h1>
+                <p>Siparişiniz alındı. Sayfa kısa süre içinde yönlendirilecektir.</p>
+                <script>
+                  setTimeout(function() {
+                    if (window.opener) {
+                      window.opener.postMessage({ 
+                        type: 'PAYMENT_SUCCESS', 
+                        orderId: ${orderId}, 
+                        paymentId: '${completeResult.paymentId}' 
+                      }, '*');
+                      window.close();
+                    } else {
+                      window.location.href = '/orders/${orderId}';
+                    }
+                  }, 2000);
+                </script>
+              </div>
+            </body>
+          </html>
+        `);
+      } else {
+        // 3D Secure tamamlama başarısız
+        throw new Error(completeResult.message || '3D Secure tamamlanamadı');
+      }
+    } catch (completeError) {
+      console.error('❌ 3D Secure complete error:', completeError);
       
-      // Order'ı güncelle
-      await poolWrapper.execute(
-        `UPDATE orders SET 
-         status = 'paid', 
-         paymentStatus = 'completed',
-         paymentId = ?,
-         paymentProvider = 'iyzico',
-         paidAt = NOW()
-         WHERE id = ? AND tenantId = ?`,
-        [paymentId, orderId, tenantId]
-      );
-
-      // Payment transaction kaydet
-      const [orderRows] = await poolWrapper.execute(
-        'SELECT totalAmount FROM orders WHERE id = ? AND tenantId = ?',
-        [orderId, tenantId]
-      );
-      const orderAmount = orderRows.length > 0 ? orderRows[0].totalAmount : 0;
-
-      await poolWrapper.execute(
-        `INSERT INTO payment_transactions 
-         (tenantId, orderId, paymentId, provider, amount, currency, status, transactionData, createdAt)
-         VALUES (?, ?, ?, 'iyzico', ?, 'TRY', 'success', ?, NOW())`,
-        [
-          tenantId,
-          orderId,
-          paymentId,
-          orderAmount,
-          JSON.stringify({ conversationId, mdStatus, status })
-        ]
-      );
-
-      // Frontend'e başarılı yanıt gönder
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Ödeme Başarılı</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body>
-            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-              <h1 style="color: green;">✅ Ödeme Başarılı!</h1>
-              <p>Siparişiniz alındı. Sayfa kısa süre içinde yönlendirilecektir.</p>
-              <script>
-                setTimeout(function() {
-                  if (window.opener) {
-                    window.opener.postMessage({ 
-                      type: 'PAYMENT_SUCCESS', 
-                      orderId: ${orderId}, 
-                      paymentId: '${paymentId}' 
-                    }, '*');
-                    window.close();
-                  } else {
-                    window.location.href = '/orders/${orderId}';
-                  }
-                }, 2000);
-              </script>
-            </div>
-          </body>
-        </html>
-      `);
-    } else {
       // 3D Secure başarısız
-      console.log('❌ 3D Secure failed - Payment rejected');
-      
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -3867,6 +3906,7 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
             <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
               <h1 style="color: red;">❌ Ödeme Başarısız</h1>
               <p>3D Secure doğrulaması başarısız oldu. Lütfen tekrar deneyin.</p>
+              <p style="font-size: 12px; color: #666;">${completeError.message || 'Bilinmeyen hata'}</p>
               <script>
                 setTimeout(function() {
                   if (window.opener) {
@@ -3879,7 +3919,7 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
                   } else {
                     window.location.href = '/checkout';
                   }
-                }, 2000);
+                }, 3000);
               </script>
             </div>
           </body>
@@ -25963,11 +26003,16 @@ YARDIM EDEBİLECEĞİN KONULAR:
       const address = registrationAddress;
 
       // Iyzico için ödeme verisi hazırla
+      // 3D Secure callback URL - Production'da zorunlu
+      const baseUrl = process.env.BASE_URL || process.env.API_BASE_URL || 'https://api.huglutekstil.com';
+      const callbackUrl = `${baseUrl}/api/payments/3ds-callback`;
+
       const paymentData = {
         price: amount,
         paidPrice: amount,
         currency: 'TRY',
         basketId: requestId,
+        callbackUrl: callbackUrl, // 3D Secure için zorunlu
         paymentCard: {
           cardHolderName: paymentCard.cardHolderName || `${userName} ${userSurname}`,
           cardNumber: paymentCard.cardNumber.replace(/\s/g, ''),
