@@ -1,0 +1,64 @@
+# Silinecek tabloları buraya yazın (her satıra bir tablo adı)
+# Satır başına # ekleyerek yorum satırı oluşturabilirsiniz
+# Bu dosya remove-unused-tables.js script'i tarafından kullanılır
+
+# ============================================
+# ML ANALİZ SİSTEMİ TABLOLARI (Artık kullanılmıyor)
+# ============================================
+
+# Müşteri Analitikleri
+customer_analytics
+
+# Chatbot Analitikleri
+chatbot_analytics
+
+# ML Tabanlı Ürün Önerileri
+recommendations
+
+# Analitik Eventler
+analytics_events
+
+# Analitik Oturumlar
+analytics_sessions
+
+# Conversion Funnel Analizi
+analytics_funnels
+
+# Kullanıcı Kohort Analizi
+analytics_cohorts
+
+# Oluşturulan Raporlar
+analytics_reports
+
+# Metrik Bazlı Uyarılar
+analytics_alerts
+
+# Günlük/Haftalık Özet Veriler
+analytics_aggregates
+
+# Cihaz Analitik Özetleri
+device_analytics_aggregates
+
+# Kullanıcı Davranış Eventleri
+user_behavior_events
+
+# Eski Kullanıcı Oturumları (v2 kullanılıyorsa)
+user_sessions
+
+# Anonim Cihazlar
+anonymous_devices
+
+# Kullanıcı Eventleri
+user_events
+
+# ============================================
+# DİĞER GEREKSİZ TABLOLAR
+# ============================================
+
+# Örnek kullanım:
+# old_orders
+# temp_data
+# deprecated_users
+
+# NOT: Kritik tablolar (users, products, orders vb.) otomatik olarak filtrelenir
+

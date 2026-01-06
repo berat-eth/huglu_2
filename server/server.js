@@ -2053,6 +2053,8 @@ try {
 try {
   const dealershipRoutes = require('./routes/dealership');
   app.use('/api/dealership', dealershipRoutes);
+  const wholesaleRoutes = require('./routes/wholesale');
+  app.use('/api/wholesale', wholesaleRoutes);
   console.log(' Dealership routes mounted at /api/dealership');
 } catch (e) {
   console.warn(' Dealership routes could not be mounted:', e.message);

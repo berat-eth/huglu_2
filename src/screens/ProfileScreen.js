@@ -17,13 +17,13 @@ const MENU_ITEMS = [
   { id: 5, icon: 'location-outline', title: 'Teslimat Adresleri', screen: 'MyAddresses' },
   { id: 6, icon: 'card-outline', title: 'Ödeme Yöntemleri', screen: 'PaymentMethod' },
   { id: 7, icon: 'return-down-back-outline', title: 'İade Taleplerim', screen: 'ReturnRequests' },
-  { id: 8, icon: 'storefront-outline', title: 'Toptan Satış', screen: 'Wholesale' },
 ];
 
 const APP_SETTINGS = [
   { id: 1, icon: 'gift-outline', title: 'Arkadaşını Davet Et', screen: 'Referral' },
-  { id: 2, icon: 'settings-outline', title: 'Ayarlar', screen: 'Settings' },
-  { id: 3, icon: 'storefront-outline', title: 'Mağazalarımız', screen: 'PhysicalStores' },
+  { id: 2, icon: 'business-outline', title: 'Toptan Satış', screen: 'Wholesale' },
+  { id: 3, icon: 'settings-outline', title: 'Ayarlar', screen: 'Settings' },
+  { id: 4, icon: 'storefront-outline', title: 'Mağazalarımız', screen: 'PhysicalStores' },
 ];
 
 export default function ProfileScreen({ navigation }) {

@@ -14,7 +14,7 @@ import Header from '@/components/Header'
 import Cart from '@/components/Cart'
 import Campaigns from '@/components/Campaigns'
 import Stories from '@/components/Stories'
-import Applications from '@/components/Applications'
+import WholesaleApplications from '@/components/WholesaleApplications'
 import CustomerCare from '@/components/CustomerCare'
 import Segments from '@/components/Segments'
 
@@ -310,7 +310,7 @@ export default function DashboardPage() {
           {activeTab === 'push-notifications' && <PushNotifications />}
           {activeTab === 'reviews' && <Reviews />}
           {activeTab === 'product-questions' && <ProductQuestions />}
-          {activeTab === 'applications' && <Applications />}
+          {activeTab === 'wholesale-applications' && <WholesaleApplications />}
           {activeTab === 'customer-care' && <CustomerCare />}
           {activeTab === 'segments' && <Segments />}
 

@@ -184,7 +184,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
     {
       title: 'B2B',
       items: [
-        { id: 'applications', label: 'Bayilik Başvuruları', icon: FileText },
+        { id: 'wholesale-applications', label: 'Toptan Satış Başvuruları', icon: FileText },
         { id: 'bulk-custom-production', label: 'Özel Toptan Üretim', icon: Crown },
         { id: 'quote-form-requests', label: 'Gelen Form Verileri', icon: FileText },
         { id: 'proforma-invoice', label: 'Proforma Fatura', icon: FileText },

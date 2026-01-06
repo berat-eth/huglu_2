@@ -3635,6 +3635,30 @@ async function createDatabaseSchema(pool) {
       `);
       console.log('✅ snort_logs table ready');
 
+      // Wholesale Applications table
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS wholesale_applications (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          tenantId INT NOT NULL DEFAULT 1,
+          applicationId VARCHAR(50) NOT NULL UNIQUE,
+          companyName VARCHAR(255) NOT NULL,
+          contactPerson VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          phone VARCHAR(50) NOT NULL,
+          businessType ENUM('retail', 'ecommerce', 'distributor', 'other') NOT NULL,
+          status ENUM('pending', 'reviewing', 'approved', 'rejected') DEFAULT 'pending',
+          note TEXT,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tenant (tenantId),
+          INDEX idx_status (status),
+          INDEX idx_email (email),
+          INDEX idx_application_id (applicationId),
+          INDEX idx_created_at (createdAt DESC)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      console.log('✅ wholesale_applications table ready');
+
       // Insert default feature flags if they don't exist
       await pool.execute(`
         INSERT IGNORE INTO platform_brain_feature_flags

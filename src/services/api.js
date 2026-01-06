@@ -598,6 +598,12 @@ export const winBackAPI = {
   claimWinBackOffer: (userId, offerId) => api.post(`/win-back/${userId}/claim`, { offerId }),
 };
 
+// ==================== WHOLESALE API ====================
+export const wholesaleAPI = {
+  apply: (formData) => api.post('/wholesale/apply', formData),
+  getApplicationStatus: (email) => api.get('/wholesale/status', { params: { email } }),
+};
+
 // ==================== HEALTH CHECK & MAINTENANCE ====================
 export const healthAPI = {
   check: () => api.get('/health'),

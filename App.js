@@ -54,6 +54,8 @@ const DailyRewardScreen = lazy(() => import('./src/screens/DailyRewardScreen'));
 const QuestScreen = lazy(() => import('./src/screens/QuestScreen'));
 const WelcomeBonusScreen = lazy(() => import('./src/screens/WelcomeBonusScreen'));
 const SocialShareScreen = lazy(() => import('./src/screens/SocialShareScreen'));
+const WholesaleScreen = lazy(() => import('./src/screens/WholesaleScreen'));
+const WholesaleStatusScreen = lazy(() => import('./src/screens/WholesaleStatusScreen'));
 const MyAddressesScreen = lazy(() => import('./src/screens/MyAddressesScreen'));
 const AddAddressScreen = lazy(() => import('./src/screens/AddAddressScreen'));
 const ReturnRequestScreen = lazy(() => import('./src/screens/ReturnRequestScreen'));
@@ -67,7 +69,6 @@ const CommunityProfileScreen = lazy(() => import('./src/screens/CommunityProfile
 const CommunityDiscoverScreen = lazy(() => import('./src/screens/CommunityDiscoverScreen'));
 const CommunityNotificationsScreen = lazy(() => import('./src/screens/CommunityNotificationsScreen'));
 const CommunityRulesScreen = lazy(() => import('./src/screens/CommunityRulesScreen'));
-const WholesaleScreen = lazy(() => import('./src/screens/WholesaleScreen'));
 
 // Loading component
 const ScreenLoader = () => (
@@ -340,9 +341,6 @@ function App() {
         <Stack.Screen name="PhysicalStores">
           {props => <LazyScreen component={PhysicalStoresScreen} {...props} />}
         </Stack.Screen>
-        <Stack.Screen name="Wholesale">
-          {props => <LazyScreen component={WholesaleScreen} {...props} />}
-        </Stack.Screen>
         <Stack.Screen name="Wallet">
           {props => <LazyScreen component={WalletScreen} {...props} />}
         </Stack.Screen>
@@ -390,6 +388,12 @@ function App() {
         </Stack.Screen>
         <Stack.Screen name="SocialShare">
           {props => <LazyScreen component={SocialShareScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="Wholesale">
+          {props => <LazyScreen component={WholesaleScreen} {...props} />}
+        </Stack.Screen>
+        <Stack.Screen name="WholesaleStatus">
+          {props => <LazyScreen component={WholesaleStatusScreen} {...props} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
