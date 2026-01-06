@@ -98,6 +98,28 @@ function sanitizeLogData(data) {
   for (const key in sanitized) {
     if (sensitiveFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
       sanitized[key] = '***REDACTED***';
+    } else if (key.toLowerCase() === 'paymentcard' || key.toLowerCase() === 'payment_card') {
+      // Kart bilgilerini maskele
+      if (sanitized[key] && typeof sanitized[key] === 'object') {
+        const card = sanitized[key];
+        sanitized[key] = {
+          cardHolderName: card.cardHolderName ? card.cardHolderName.substring(0, 3) + '***' : '***',
+          cardNumber: card.cardNumber ? '****' + card.cardNumber.toString().replace(/\s/g, '').slice(-4) : '****',
+          expireMonth: '**',
+          expireYear: '****',
+          cvc: '***',
+          cvcCode: '***'
+        };
+      }
+    } else if (key.toLowerCase() === 'cardnumber' || key.toLowerCase() === 'card_number') {
+      // Direkt kart numarası varsa maskele
+      if (typeof sanitized[key] === 'string' || typeof sanitized[key] === 'number') {
+        const cardNum = sanitized[key].toString().replace(/\s/g, '');
+        sanitized[key] = '****' + cardNum.slice(-4);
+      }
+    } else if (key.toLowerCase() === 'cvc' || key.toLowerCase() === 'cvv' || key.toLowerCase() === 'cvcCode') {
+      // CVV/CVC maskele
+      sanitized[key] = '***';
     } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
       sanitized[key] = sanitizeLogData(sanitized[key]);
     }
@@ -25736,6 +25758,16 @@ YARDIM EDEBİLECEĞİN KONULAR:
   async function processCardPayment(requestId, amount, userId, paymentCard, buyer) {
     console.log('🔄 Processing card payment - NO CARD DATA STORED');
     console.log('⚠️ SECURITY: Card information is processed but NOT stored in database');
+    
+    // Kart bilgilerini maskele (log için)
+    const maskedCard = paymentCard ? {
+      cardHolderName: paymentCard.cardHolderName ? paymentCard.cardHolderName.substring(0, 3) + '***' : '***',
+      cardNumber: '****' + (paymentCard.cardNumber ? paymentCard.cardNumber.toString().replace(/\s/g, '').slice(-4) : '****'),
+      expireMonth: '**',
+      expireYear: '****',
+      cvc: '***'
+    } : null;
+    console.log('💳 Masked card info:', JSON.stringify(maskedCard, null, 2));
 
     try {
       // Kart bilgileri kontrolü
@@ -25746,9 +25778,9 @@ YARDIM EDEBİLECEĞİN KONULAR:
         };
       }
 
-      // Kullanıcı bilgilerini al
+      // Kullanıcı bilgilerini al (city kolonu users tablosunda yok, buyer'dan alınacak)
       const [userRows] = await poolWrapper.execute(
-        'SELECT name, email, phone, address, city FROM users WHERE id = ? LIMIT 1',
+        'SELECT name, email, phone, address FROM users WHERE id = ? LIMIT 1',
         [userId]
       );
 
@@ -25779,23 +25811,23 @@ YARDIM EDEBİLECEĞİN KONULAR:
           identityNumber: buyer?.identityNumber || '11111111111',
           registrationAddress: buyer?.registrationAddress || user.address || '',
           ip: '127.0.0.1',
-          city: buyer?.city || user.city || 'Istanbul',
+          city: buyer?.city || 'Istanbul',
           country: buyer?.country || 'Turkey',
           zipCode: buyer?.zipCode || '34000'
         },
         shippingAddress: {
           contactName: `${userName} ${userSurname}`,
-          city: user.city || 'Istanbul',
+          city: buyer?.city || 'Istanbul',
           country: 'Turkey',
-          address: user.address || '',
-          zipCode: '34000'
+          address: buyer?.registrationAddress || user.address || '',
+          zipCode: buyer?.zipCode || '34000'
         },
         billingAddress: {
           contactName: `${userName} ${userSurname}`,
-          city: user.city || 'Istanbul',
+          city: buyer?.city || 'Istanbul',
           country: 'Turkey',
-          address: user.address || '',
-          zipCode: '34000'
+          address: buyer?.registrationAddress || user.address || '',
+          zipCode: buyer?.zipCode || '34000'
         },
         basketItems: [{
           id: 'wallet_recharge',

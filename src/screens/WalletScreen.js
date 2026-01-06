@@ -21,6 +21,7 @@ export default function WalletScreen({ navigation }) {
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [customAmount, setCustomAmount] = useState('');
+  const [cardModalAmount, setCardModalAmount] = useState(null); // Modal için tutar
   const [showCardModal, setShowCardModal] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
@@ -37,13 +38,41 @@ export default function WalletScreen({ navigation }) {
   };
 
   const processRecharge = async (amount) => {
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      alert.show('Hata', 'Lütfen geçerli bir tutar seçin');
+      return;
+    }
+    console.log('💰 Para yükleme başlatılıyor, tutar:', amount);
+    const amountNum = parseFloat(amount);
+    setSelectedAmount(amountNum);
+    setCardModalAmount(amountNum); // Modal için tutarı ayrı state'te sakla
     setShowRechargeModal(false);
-    setSelectedAmount(amount);
-    setShowCardModal(true);
+    // Modal açılmadan önce tutarın set edilmesi için kısa bir gecikme
+    setTimeout(() => {
+      setShowCardModal(true);
+    }, 100);
   };
 
   const handleCardPayment = async () => {
-    if (!selectedAmount) return;
+    // Modal'daki tutarı kullan (cardModalAmount)
+    const amountToCharge = cardModalAmount || selectedAmount;
+    
+    console.log('💳 Kredi kartı ödemesi başlatılıyor...');
+    console.log('💰 Modal tutarı:', cardModalAmount);
+    console.log('💰 Seçilen tutar:', selectedAmount);
+    console.log('💰 Kullanılacak tutar:', amountToCharge);
+    console.log('👤 UserId:', userId);
+    
+    if (!amountToCharge || amountToCharge <= 0 || isNaN(amountToCharge)) {
+      console.error('❌ Geçersiz tutar:', amountToCharge);
+      alert.show('Hata', `Lütfen geçerli bir tutar seçin. Mevcut tutar: ₺${amountToCharge || 0}`);
+      return;
+    }
+
+    if (!userId) {
+      alert.show('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
 
     try {
       setProcessingPayment(true);
@@ -73,7 +102,14 @@ export default function WalletScreen({ navigation }) {
 
       // Son kullanma tarihini parse et
       const [expireMonth, expireYear] = expiryDate.split('/');
+      if (!expireMonth || !expireYear || expireMonth.length !== 2 || expireYear.length !== 2) {
+        alert.show('Hata', 'Son kullanma tarihi formatı geçersiz (AA/YY)');
+        setProcessingPayment(false);
+        return;
+      }
       const fullExpireYear = '20' + expireYear;
+
+      console.log('📅 Son kullanma:', expireMonth, fullExpireYear);
 
       // Kullanıcı bilgilerini al
       let customerInfo = {
@@ -88,6 +124,7 @@ export default function WalletScreen({ navigation }) {
 
       try {
         const userResponse = await userAPI.getProfile(parseInt(userId));
+        console.log('👤 Kullanıcı bilgileri:', userResponse.data);
         if (userResponse.data?.success) {
           const user = userResponse.data.data || userResponse.data.user || {};
           const fullName = (user.name || '').split(' ');
@@ -100,17 +137,30 @@ export default function WalletScreen({ navigation }) {
           customerInfo.zipCode = user.zipCode || '34000';
         }
       } catch (userError) {
-        console.warn('Müşteri bilgileri alınamadı, varsayılan değerler kullanılıyor:', userError);
+        console.warn('⚠️ Müşteri bilgileri alınamadı, varsayılan değerler kullanılıyor:', userError);
+        // Varsayılan değerler
+        customerInfo.name = 'John';
+        customerInfo.surname = 'Doe';
+        customerInfo.email = 'test@test.com';
+        customerInfo.phone = '+905555555555';
+        customerInfo.address = '';
+        customerInfo.city = 'Istanbul';
+        customerInfo.zipCode = '34000';
       }
 
+      console.log('💳 Kart bilgileri hazırlanıyor...');
+      console.log('👤 Müşteri bilgileri:', customerInfo);
+
       // Wallet recharge request ile ödeme
-      const response = await walletAPI.rechargeRequest(userId, selectedAmount, 'credit_card', null, {
+      const paymentCard = {
         cardHolderName: cardName.trim(),
         cardNumber: cleanCardNumber,
         expireMonth: expireMonth,
         expireYear: fullExpireYear,
         cvc: cvv
-      }, {
+      };
+
+      const buyer = {
         name: customerInfo.name,
         surname: customerInfo.surname,
         email: customerInfo.email,
@@ -118,20 +168,46 @@ export default function WalletScreen({ navigation }) {
         city: customerInfo.city,
         zipCode: customerInfo.zipCode,
         registrationAddress: customerInfo.address
+      };
+
+      console.log('📤 API isteği gönderiliyor...');
+      console.log('📋 Parametreler:', {
+        userId: parseInt(userId),
+        amount: amountToCharge,
+        paymentMethod: 'card',
+        paymentCard: { ...paymentCard, cardNumber: '****' + cleanCardNumber.slice(-4), cvc: '***' },
+        buyer
       });
+
+      const response = await walletAPI.rechargeRequest(
+        parseInt(userId), 
+        parseFloat(amountToCharge), 
+        'card', 
+        null, 
+        paymentCard, 
+        buyer
+      );
+
+      console.log('📥 API yanıtı:', response.data);
       
-      if (response.data?.success) {
-        alert.show('Başarılı', `₺${selectedAmount} cüzdanınıza yüklendi!`);
+      if (response && response.data?.success) {
+        console.log('✅ Ödeme başarılı!');
+        alert.show('Başarılı', `₺${amountToCharge} cüzdanınıza yüklendi!`);
         setShowCardModal(false);
         setCardNumber('');
         setCardName('');
         setExpiryDate('');
         setCvv('');
         setSelectedAmount(null);
-        loadWalletData(); // Verileri yenile
+        setCardModalAmount(null);
+        setCustomAmount('');
+        await loadWalletData(); // Verileri yenile
       } else {
         // Hata mesajını Türkçe'ye çevir
-        let errorMessage = response.data?.message || 'Yükleme işlemi başarısız';
+        let errorMessage = response?.data?.message || response?.data?.error || 'Yükleme işlemi başarısız';
+        
+        console.error('❌ Ödeme hatası:', errorMessage);
+        console.error('📋 Tam yanıt:', JSON.stringify(response?.data, null, 2));
         
         const errorTranslations = {
           'Card number is invalid': 'Kart numarası geçersiz',
@@ -142,7 +218,9 @@ export default function WalletScreen({ navigation }) {
           'Transaction not permitted': 'İşlem izni verilmedi',
           'Invalid request': 'Geçersiz istek',
           'General error': 'Genel hata',
-          'Payment failed': 'Ödeme başarısız'
+          'Payment failed': 'Ödeme başarısız',
+          'Eksik parametreler': 'Eksik bilgiler var. Lütfen tüm alanları doldurun.',
+          'Tutar 10-10000 TL arasında olmalıdır': 'Tutar 10-10000 TL arasında olmalıdır'
         };
 
         Object.keys(errorTranslations).forEach(key => {
@@ -154,12 +232,19 @@ export default function WalletScreen({ navigation }) {
         alert.show('Hata', errorMessage);
       }
     } catch (error) {
-      console.error('Yükleme hatası:', error);
+      console.error('❌ Yükleme hatası:', error);
+      console.error('📋 Hata detayları:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       
       let errorMessage = 'Yükleme işlemi sırasında bir hata oluştu';
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -175,7 +260,9 @@ export default function WalletScreen({ navigation }) {
         'Invalid request': 'Geçersiz istek',
         'General error': 'Genel hata',
         'Payment failed': 'Ödeme başarısız',
-        'Network Error': 'İnternet bağlantınızı kontrol edin'
+        'Network Error': 'İnternet bağlantınızı kontrol edin',
+        'timeout': 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin.',
+        'Network request failed': 'İnternet bağlantınızı kontrol edin'
       };
 
       Object.keys(errorTranslations).forEach(key => {
@@ -724,6 +811,22 @@ export default function WalletScreen({ navigation }) {
           setCardName('');
           setExpiryDate('');
           setCvv('');
+          setCardModalAmount(null);
+        }}
+        onShow={() => {
+          // Modal açıldığında tutarı kontrol et
+          console.log('📱 Kredi kartı modal açıldı');
+          console.log('💰 Modal tutarı:', cardModalAmount);
+          console.log('💰 Seçilen tutar:', selectedAmount);
+          const finalAmount = cardModalAmount || selectedAmount;
+          if (!finalAmount || finalAmount <= 0) {
+            console.warn('⚠️ Modal açıldı ama tutar seçilmemiş!');
+            // Eğer tutar yoksa modal'ı kapat ve kullanıcıyı bilgilendir
+            setTimeout(() => {
+              setShowCardModal(false);
+              alert.show('Hata', 'Lütfen önce tutar seçin');
+            }, 500);
+          }
         }}
       >
         <View style={styles.modalOverlay}>
@@ -738,6 +841,7 @@ export default function WalletScreen({ navigation }) {
                     setCardName('');
                     setExpiryDate('');
                     setCvv('');
+                    setCardModalAmount(null);
                   }}
                   style={styles.closeButton}
                 >
@@ -751,7 +855,18 @@ export default function WalletScreen({ navigation }) {
                 {/* Amount Display */}
                 <View style={styles.amountDisplay}>
                   <Text style={styles.amountLabel}>Yüklenecek Tutar</Text>
-                  <Text style={styles.amountValue}>₺{selectedAmount || 0}</Text>
+                  <Text style={styles.amountValue}>
+                    {cardModalAmount && cardModalAmount > 0 
+                      ? `₺${cardModalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : selectedAmount && selectedAmount > 0
+                      ? `₺${selectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '₺0.00'}
+                  </Text>
+                  {(!cardModalAmount || cardModalAmount <= 0) && (!selectedAmount || selectedAmount <= 0) && (
+                    <Text style={styles.amountWarning}>
+                      Lütfen para yükleme sayfasından tutar seçin
+                    </Text>
+                  )}
                 </View>
 
                 {/* Card Form */}
@@ -1578,6 +1693,12 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: COLORS.primary,
+  },
+  amountWarning: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 8,
+    textAlign: 'center',
   },
   cardForm: {
     padding: 20,
