@@ -21519,41 +21519,10 @@ async function startServer() {
       const { userId } = req.params;
       const tenantId = req.tenant?.id || 1;
 
-      // Önce cart tablosunda price kolonu var mı kontrol et
-      let hasPriceColumn = false;
-      try {
-        const [columns] = await poolWrapper.execute(`
-          SELECT COLUMN_NAME 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'cart'
-          AND COLUMN_NAME = 'price'
-        `);
-        hasPriceColumn = columns.length > 0;
-      } catch (colError) {
-        console.warn('⚠️ Price column check failed, assuming it exists:', colError.message);
-        hasPriceColumn = true; // Varsayılan olarak var kabul et
-      }
-
-      // Optimize: Sadece gerekli column'lar
-      // Cart tablosundaki price kolonunu kullan (sepete eklenen fiyat)
-      // Eğer price kolonu yoksa products tablosundan al
-      let q;
-      if (hasPriceColumn) {
-        q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt,
-                      COALESCE(c.price, p.price) as price,
-                      p.price as originalPrice,
-                      p.name as productName,
-                      p.name,
-                      p.image as productImage,
-                      p.image,
-                      p.stock 
-         FROM cart c 
-         JOIN products p ON c.productId = p.id 
-         WHERE c.userId = ? AND c.tenantId = ?
-         ORDER BY c.createdAt DESC`;
-      } else {
-        q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt,
+      // Cart tablosunda price kolonu yok - direkt products tablosundan fiyat alınmalı
+      // Database schema'ya göre cart tablosunda price kolonu bulunmuyor
+      // Bu yüzden direkt products tablosundan fiyat kullanıyoruz
+      const q = `SELECT c.id, c.userId, c.deviceId, c.productId, c.quantity, c.variationString, c.selectedVariations, c.createdAt,
                       p.price as price,
                       p.price as originalPrice,
                       p.name as productName,
@@ -21565,7 +21534,6 @@ async function startServer() {
          JOIN products p ON c.productId = p.id 
          WHERE c.userId = ? AND c.tenantId = ?
          ORDER BY c.createdAt DESC`;
-      }
       const params = [userId, tenantId];
       const [rows] = await poolWrapper.execute(q, params);
 
@@ -21658,14 +21626,14 @@ async function startServer() {
       // UNIQUE constraint gerekli: (tenantId, userId, productId, variationString, deviceId)
       const deviceIdValue = (userId === 1) ? (deviceId || '') : null;
 
-      // Cart tablosuna price kolonu eklenmişse kullan, yoksa eski formatı kullan
+      // Cart tablosunda price kolonu yok - Database schema'ya göre sadece products tablosundan fiyat alınır
+      // Bu yüzden INSERT sorgusunda price kolonu kullanılmıyor
       const [result] = await poolWrapper.execute(`
-        INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, price, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE 
           quantity = quantity + VALUES(quantity),
-          selectedVariations = VALUES(selectedVariations),
-          price = VALUES(price)
+          selectedVariations = VALUES(selectedVariations)
       `, [
         tenantId,
         userId,
@@ -21673,30 +21641,8 @@ async function startServer() {
         productId,
         quantity,
         variationString || '',
-        JSON.stringify(selectedVariations || {}),
-        finalPrice
-      ]).catch(async (error) => {
-        // Eğer price kolonu yoksa, eski formatı kullan
-        if (error.code === 'ER_BAD_FIELD_ERROR' && error.message.includes('price')) {
-          console.log('⚠️ Cart tablosunda price kolonu yok, eski format kullanılıyor');
-          return await poolWrapper.execute(`
-            INSERT INTO cart (tenantId, userId, deviceId, productId, quantity, variationString, selectedVariations, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE 
-              quantity = quantity + VALUES(quantity),
-              selectedVariations = VALUES(selectedVariations)
-          `, [
-            tenantId,
-            userId,
-            deviceIdValue,
-            productId,
-            quantity,
-            variationString || '',
-            JSON.stringify(selectedVariations || {})
-          ]);
-        }
-        throw error;
-      });
+        JSON.stringify(selectedVariations || {})
+      ]);
 
       const cartItemId = result.insertId || result.affectedRows;
       console.log(`✅ Server: Cart updated for user ${userId}, item ${cartItemId}`);

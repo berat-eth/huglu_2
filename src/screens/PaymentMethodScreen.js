@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Modal, Animated, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+
+// WebView conditional import - Expo Go'da çalışmaz, development build gerekiyor
+let WebView = null;
+try {
+  const WebViewModule = require('react-native-webview');
+  WebView = WebViewModule.WebView;
+} catch (error) {
+  console.warn('⚠️ WebView modülü yüklenemedi. Development build gerekiyor:', error.message);
+}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -1085,47 +1093,86 @@ export default function PaymentMethodScreen({ navigation, route }) {
           </View>
           
           {threeDSHtmlContent ? (
-            <WebView
-              source={{ html: threeDSHtmlContent }}
-              style={styles.webView}
-              onNavigationStateChange={(navState) => {
-                console.log('🌐 3DS WebView Navigation:', {
-                  url: navState.url,
-                  title: navState.title,
-                  loading: navState.loading,
-                  canGoBack: navState.canGoBack
-                });
-                
-                // Callback URL'e yönlendirme kontrolü
-                if (navState.url && navState.url.includes('/api/payments/3ds-callback')) {
-                  console.log('═══════════════════════════════════════════════════════');
-                  console.log('✅ 3DS CALLBACK URL\'YE YÖNLENDİRİLDİ');
-                  console.log('═══════════════════════════════════════════════════════');
-                  console.log('🔗 Callback URL:', navState.url);
-                  console.log('📅 Zaman:', new Date().toISOString());
-                  // Callback'ten sonra ödeme durumunu kontrol et
-                  handle3DSCallback();
-                }
-              }}
-              onError={(syntheticEvent) => {
-                const { nativeEvent } = syntheticEvent;
-                console.error('❌ WebView hatası:', nativeEvent);
-                alert.show('Hata', '3D Secure sayfası yüklenirken bir hata oluştu');
-              }}
-              onHttpError={(syntheticEvent) => {
-                const { nativeEvent } = syntheticEvent;
-                console.error('❌ WebView HTTP hatası:', nativeEvent);
-              }}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.webViewLoading}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                  <Text style={styles.webViewLoadingText}>3D Secure sayfası yükleniyor...</Text>
-                </View>
-              )}
-            />
+            WebView ? (
+              <WebView
+                source={{ html: threeDSHtmlContent }}
+                style={styles.webView}
+                onNavigationStateChange={(navState) => {
+                  console.log('🌐 3DS WebView Navigation:', {
+                    url: navState.url,
+                    title: navState.title,
+                    loading: navState.loading,
+                    canGoBack: navState.canGoBack
+                  });
+                  
+                  // Callback URL'e yönlendirme kontrolü
+                  if (navState.url && navState.url.includes('/api/payments/3ds-callback')) {
+                    console.log('═══════════════════════════════════════════════════════');
+                    console.log('✅ 3DS CALLBACK URL\'YE YÖNLENDİRİLDİ');
+                    console.log('═══════════════════════════════════════════════════════');
+                    console.log('🔗 Callback URL:', navState.url);
+                    console.log('📅 Zaman:', new Date().toISOString());
+                    // Callback'ten sonra ödeme durumunu kontrol et
+                    handle3DSCallback();
+                  }
+                }}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'PAYMENT_SUCCESS') {
+                      console.log('✅ 3DS Payment Success:', data);
+                      handle3DSCallback();
+                    } else if (data.type === 'PAYMENT_FAILED') {
+                      console.error('❌ 3DS Payment Failed:', data);
+                      alert.show('Hata', data.message || '3D Secure doğrulaması başarısız');
+                      setShow3DSModal(false);
+                      setThreeDSHtmlContent('');
+                      setProcessingPayment(false);
+                    }
+                  } catch (e) {
+                    console.log('📨 WebView message (non-JSON):', event.nativeEvent.data);
+                  }
+                }}
+                onError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent;
+                  console.error('❌ WebView hatası:', nativeEvent);
+                  alert.show('Hata', '3D Secure sayfası yüklenirken bir hata oluştu');
+                }}
+                onHttpError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent;
+                  console.error('❌ WebView HTTP hatası:', nativeEvent);
+                }}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                startInLoadingState={true}
+                renderLoading={() => (
+                  <View style={styles.webViewLoading}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.webViewLoadingText}>3D Secure sayfası yükleniyor...</Text>
+                  </View>
+                )}
+              />
+            ) : (
+              <View style={styles.webViewLoading}>
+                <Ionicons name="warning-outline" size={48} color={COLORS.warning || '#FFA500'} />
+                <Text style={[styles.webViewLoadingText, { marginTop: 16, textAlign: 'center' }]}>
+                  WebView modülü yüklenemedi
+                </Text>
+                <Text style={[styles.webViewLoadingText, { marginTop: 8, fontSize: 14, textAlign: 'center', color: COLORS.textSecondary }]}>
+                  Development build gerekiyor. Expo Go'da WebView çalışmaz.
+                </Text>
+                <TouchableOpacity
+                  style={{ marginTop: 20, padding: 12, backgroundColor: COLORS.primary, borderRadius: 8 }}
+                  onPress={() => {
+                    setShow3DSModal(false);
+                    setThreeDSHtmlContent('');
+                    setProcessingPayment(false);
+                  }}
+                >
+                  <Text style={{ color: COLORS.white, fontWeight: '600' }}>Kapat</Text>
+                </TouchableOpacity>
+              </View>
+            )
           ) : (
             <View style={styles.webViewLoading}>
               <ActivityIndicator size="large" color={COLORS.primary} />
