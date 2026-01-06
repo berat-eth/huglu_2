@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,10 +8,12 @@ import { walletAPI, usersAPI } from '../services/api';
 import InfoModal from '../components/InfoModal';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
+import { useAlert } from '../hooks/useAlert';
 
 const QUICK_AMOUNTS = [10, 25, 50, 100];
 
 export default function WalletTransferScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [transferring, setTransferring] = useState(false);
   const [balance, setBalance] = useState(0);
@@ -58,7 +60,7 @@ export default function WalletTransferScreen({ navigation }) {
       const storedUserName = await AsyncStorage.getItem('userName');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.goBack();
         return;
       }
@@ -456,6 +458,7 @@ export default function WalletTransferScreen({ navigation }) {
           navigation.goBack();
         }}
       />
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

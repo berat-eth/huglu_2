@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { gamificationAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function QuestScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -261,17 +263,17 @@ export default function QuestScreen({ navigation }) {
     try {
       const response = await gamificationAPI.claimQuestReward(questId, userId);
       if (response.data?.success) {
-        Alert.alert(
+        alert.show(
           'Tebrikler! 🎉',
           `Görev tamamlandı! Ödülünüzü kazandınız.`,
           [{ text: 'Tamam', onPress: () => loadQuests() }]
         );
       } else {
-        Alert.alert('Hata', response.data?.message || 'Ödül alınamadı');
+        alert.show('Hata', response.data?.message || 'Ödül alınamadı');
       }
     } catch (error) {
       console.error('Ödül alma hatası:', error);
-      Alert.alert('Hata', 'Ödül alınırken bir hata oluştu');
+      alert.show('Hata', 'Ödül alınırken bir hata oluştu');
     }
   };
 
@@ -384,6 +386,7 @@ export default function QuestScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

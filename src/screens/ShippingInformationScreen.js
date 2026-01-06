@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
+import { useAlert } from '../hooks/useAlert';
 
 const MOCK_ADDRESSES = [
   {
@@ -49,6 +50,7 @@ const DELIVERY_METHODS = [
 ];
 
 export default function ShippingInformationScreen({ navigation, route }) {
+  const alert = useAlert();
   const [selectedAddress, setSelectedAddress] = useState(1);
   const [selectedDelivery, setSelectedDelivery] = useState('standard');
   const [addresses, setAddresses] = useState(MOCK_ADDRESSES);
@@ -63,7 +65,7 @@ export default function ShippingInformationScreen({ navigation, route }) {
     const selectedAddr = addresses.find(a => a.id === selectedAddress);
     
     if (!selectedAddr) {
-      Alert.alert('Hata', 'Lütfen bir teslimat adresi seçin');
+      alert.show('Hata', 'Lütfen bir teslimat adresi seçin');
       return;
     }
 
@@ -77,7 +79,7 @@ export default function ShippingInformationScreen({ navigation, route }) {
   };
 
   const handleAddNewAddress = () => {
-    Alert.alert(
+    alert.show(
       'Yeni Adres',
       'Yeni adres ekleme özelliği yakında eklenecek',
       [{ text: 'Tamam' }]
@@ -85,7 +87,7 @@ export default function ShippingInformationScreen({ navigation, route }) {
   };
 
   const handleEditAddress = (addressId) => {
-    Alert.alert(
+    alert.show(
       'Adresi Düzenle',
       'Adres düzenleme özelliği yakında eklenecek',
       [{ text: 'Tamam' }]
@@ -252,6 +254,7 @@ export default function ShippingInformationScreen({ navigation, route }) {
           <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
         </TouchableOpacity>
       </View>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

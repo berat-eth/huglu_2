@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert, Modal, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Modal, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,7 @@ import { COLORS } from '../constants/colors';
 import { returnRequestsAPI, ordersAPI } from '../services/api';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
+import { useAlert } from '../hooks/useAlert';
 
 const RETURN_REASONS = [
   'Ürün hasarlı/kusurlu geldi',
@@ -35,6 +36,7 @@ const RETURN_METHODS = [
 ];
 
 export default function ReturnRequestScreen({ navigation, route }) {
+  const alert = useAlert();
   const { orderId } = route.params || {};
   
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export default function ReturnRequestScreen({ navigation, route }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.goBack();
         return;
       }
@@ -85,7 +87,7 @@ export default function ReturnRequestScreen({ navigation, route }) {
                            ));
         
         if (!isDelivered) {
-          Alert.alert(
+          alert.show(
             'İade Talebi Oluşturulamaz',
             'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir.',
             [{ text: 'Tamam', onPress: () => navigation.goBack() }]
@@ -97,7 +99,7 @@ export default function ReturnRequestScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Sipariş detayları yüklenemedi:', error);
-      Alert.alert('Hata', 'Sipariş bilgileri yüklenirken bir hata oluştu');
+      alert.show('Hata', 'Sipariş bilgileri yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -125,12 +127,12 @@ export default function ReturnRequestScreen({ navigation, route }) {
   const handleSubmit = async () => {
     // Validasyon
     if (selectedItems.length === 0) {
-      Alert.alert('Uyarı', 'Lütfen iade edilecek ürünleri seçin');
+      alert.show('Uyarı', 'Lütfen iade edilecek ürünleri seçin');
       return;
     }
 
     if (!selectedReason) {
-      Alert.alert('Uyarı', 'Lütfen iade sebebini seçin');
+      alert.show('Uyarı', 'Lütfen iade sebebini seçin');
       return;
     }
 
@@ -452,6 +454,7 @@ export default function ReturnRequestScreen({ navigation, route }) {
           )}
         </TouchableOpacity>
       </View>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

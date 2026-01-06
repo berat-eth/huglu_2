@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { ordersAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 const MOCK_INVOICES = [
   {
@@ -59,6 +60,7 @@ const MOCK_INVOICES = [
 ];
 
 export default function InvoicesScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,7 +86,7 @@ export default function InvoicesScreen({ navigation }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.navigate('Login');
         return;
       }
@@ -174,7 +176,7 @@ export default function InvoicesScreen({ navigation }) {
   };
 
   const handleDownloadPDF = (invoice) => {
-    Alert.alert(
+    alert.show(
       'PDF İndir', 
       `${invoice.orderNumber} numaralı fatura PDF olarak indiriliyor...`,
       [
@@ -441,6 +443,7 @@ export default function InvoicesScreen({ navigation }) {
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

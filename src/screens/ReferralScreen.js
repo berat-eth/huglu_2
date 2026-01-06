@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Clipboard, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Clipboard, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { referralAPI, userLevelAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function ReferralScreen({ navigation }) {
+  const alert = useAlert();
   const [referralCode, setReferralCode] = useState('HUGLU2024');
   const [totalCredits, setTotalCredits] = useState(0);
   const [totalReferrals, setTotalReferrals] = useState(0);
@@ -48,7 +50,7 @@ export default function ReferralScreen({ navigation }) {
 
   const copyToClipboard = async () => {
     await Clipboard.setString(referralCode);
-    Alert.alert('Başarılı', 'Referans kodunuz kopyalandı!');
+    alert.show('Başarılı', 'Referans kodunuz kopyalandı!');
   };
 
   const shareReferralCode = async () => {
@@ -62,7 +64,7 @@ export default function ReferralScreen({ navigation }) {
         // Paylaşım başarılı - Sosyal paylaşım EXP'si ekle
         try {
           await userLevelAPI.addSocialShareExp(userId, 'general', 'referral', referralCode);
-          Alert.alert('Tebrikler! 🎉', 'Referans kodunuzu paylaştığınız için +50 EXP kazandınız!');
+          alert.show('Tebrikler! 🎉', 'Referans kodunuzu paylaştığınız için +50 EXP kazandınız!');
         } catch (expError) {
           console.log('EXP eklenemedi:', expError.message);
         }
@@ -73,7 +75,7 @@ export default function ReferralScreen({ navigation }) {
   };
 
   const shareViaMethod = (method) => {
-    Alert.alert('Paylaş', `${method} ile paylaşım özelliği yakında eklenecek!`);
+    alert.show('Paylaş', `${method} ile paylaşım özelliği yakında eklenecek!`);
   };
 
   return (
@@ -208,6 +210,7 @@ export default function ReferralScreen({ navigation }) {
           <Ionicons name="open-outline" size={14} color={COLORS.gray400} />
         </TouchableOpacity>
       </View>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

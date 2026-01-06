@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { flashDealsAPI, cartAPI } from '../services/api';
 import { updateCartBadge } from '../utils/cartBadge';
+import { useAlert } from '../hooks/useAlert';
 
 const { width } = Dimensions.get('window');
 
 export default function FlashDealsScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [flashDeals, setFlashDeals] = useState([]);
@@ -104,13 +106,13 @@ export default function FlashDealsScreen({ navigation }) {
       const userId = await AsyncStorage.getItem('userId');
       
       if (!userId) {
-        Alert.alert('Giriş Gerekli', 'Sepete ürün eklemek için lütfen giriş yapın');
+        alert.show('Giriş Gerekli', 'Sepete ürün eklemek için lütfen giriş yapın');
         return;
       }
 
       const productId = product.id || product._id;
       if (!productId) {
-        Alert.alert('Hata', 'Ürün bilgisi bulunamadı');
+        alert.show('Hata', 'Ürün bilgisi bulunamadı');
         return;
       }
 
@@ -127,13 +129,13 @@ export default function FlashDealsScreen({ navigation }) {
         
         // Badge'i güncelle
         await updateCartBadge(userId);
-        Alert.alert('Başarılı', 'Ürün sepete eklendi!');
+        alert.show('Başarılı', 'Ürün sepete eklendi!');
       } else {
-        Alert.alert('Hata', response.data?.message || 'Sepete eklenemedi');
+        alert.show('Hata', response.data?.message || 'Sepete eklenemedi');
       }
     } catch (error) {
       console.error('Sepete ekleme hatası:', error);
-      Alert.alert('Hata', 'Ürün sepete eklenirken bir hata oluştu');
+      alert.show('Hata', 'Ürün sepete eklenirken bir hata oluştu');
     }
   };
 
@@ -427,6 +429,7 @@ export default function FlashDealsScreen({ navigation }) {
           })}
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

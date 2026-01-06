@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,8 +7,10 @@ import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { userAPI } from '../services/api';
 import SuccessModal from '../components/SuccessModal';
+import { useAlert } from '../hooks/useAlert';
 
 export default function PrivacySettingsScreen({ navigation }) {
+  const alert = useAlert();
   const [profileVisibility, setProfileVisibility] = useState('public');
   const [showEmail, setShowEmail] = useState(true);
   const [showPhone, setShowPhone] = useState(false);
@@ -63,7 +65,7 @@ export default function PrivacySettingsScreen({ navigation }) {
       const userId = await AsyncStorage.getItem('userId');
       
       if (!userId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         return;
       }
 
@@ -89,7 +91,7 @@ export default function PrivacySettingsScreen({ navigation }) {
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Gizlilik ayarları kaydetme hatası:', error);
-      Alert.alert('Hata', 'Ayarlar kaydedilirken bir hata oluştu');
+      alert.show('Hata', 'Ayarlar kaydedilirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -313,6 +315,7 @@ export default function PrivacySettingsScreen({ navigation }) {
         title="Başarılı"
         message="Gizlilik ayarlarınız kaydedildi"
       />
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

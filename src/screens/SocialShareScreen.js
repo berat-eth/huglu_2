@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Share, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { socialSharingAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function SocialShareScreen({ navigation, route }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
   const [shareRewards, setShareRewards] = useState([]);
@@ -42,7 +44,7 @@ export default function SocialShareScreen({ navigation, route }) {
 
   const shareContent = async (platform) => {
     if (!userId) {
-      Alert.alert('Hata', 'Giriş yapmanız gerekiyor');
+      alert.show('Hata', 'Giriş yapmanız gerekiyor');
       return;
     }
 
@@ -75,12 +77,12 @@ export default function SocialShareScreen({ navigation, route }) {
       });
 
       if (result.action === Share.sharedAction) {
-        Alert.alert('Tebrikler! 🎉', 'Paylaşım için +50 EXP kazandınız!');
+        alert.show('Tebrikler! 🎉', 'Paylaşım için +50 EXP kazandınız!');
         loadShareRewards();
       }
     } catch (error) {
       console.error('Paylaşım hatası:', error);
-      Alert.alert('Hata', 'Paylaşım yapılırken bir hata oluştu');
+      alert.show('Hata', 'Paylaşım yapılırken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -175,6 +177,7 @@ export default function SocialShareScreen({ navigation, route }) {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

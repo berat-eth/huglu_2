@@ -1,5 +1,5 @@
 import Voice from '@react-native-voice/voice';
-import { Platform, Alert, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 
 class VoiceRecognitionService {
   constructor() {
@@ -86,11 +86,8 @@ class VoiceRecognitionService {
           return true;
         } else {
           console.warn('⚠️ Mikrofon izni reddedildi');
-          Alert.alert(
-            'İzin Gerekli',
-            'Sesli arama kullanmak için mikrofon iznine ihtiyacımız var.',
-            [{ text: 'Tamam' }]
-          );
+          // İzin reddedildi - hata callback'i çağrılacak
+          // Alert gösterimi kullanıldığı component'te yapılacak
           return false;
         }
       }

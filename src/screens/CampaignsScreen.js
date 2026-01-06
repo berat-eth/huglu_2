@@ -10,6 +10,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_WIDTH = SCREEN_WIDTH * 0.85;
 
 export default function CampaignsScreen({ navigation }) {
+  const alert = useAlert();
   const [selectedTab, setSelectedTab] = useState('all'); // 'all' or 'available'
   const [campaigns, setCampaigns] = useState([]);
   const [availableCampaigns, setAvailableCampaigns] = useState([]);
@@ -81,7 +82,7 @@ export default function CampaignsScreen({ navigation }) {
 
   const copyCode = (code) => {
     Clipboard.setString(code);
-    Alert.alert('Kopyalandı', `${code} kodu panoya kopyalandı`);
+    alert.show('Kopyalandı', `${code} kodu panoya kopyalandı`);
   };
 
   const handleApplyCampaign = async (campaignId) => {
@@ -93,14 +94,14 @@ export default function CampaignsScreen({ navigation }) {
     try {
       const response = await campaignsAPI.apply(userId, campaignId);
       if (response.data?.success) {
-        Alert.alert('Başarılı', 'Kampanya başarıyla uygulandı');
+        alert.show('Başarılı', 'Kampanya başarıyla uygulandı');
         loadCampaigns(); // Kampanyaları yeniden yükle
       } else {
-        Alert.alert('Hata', response.data?.message || 'Kampanya uygulanamadı');
+        alert.show('Hata', response.data?.message || 'Kampanya uygulanamadı');
       }
     } catch (error) {
       console.error('Kampanya uygulama hatası:', error);
-      Alert.alert('Hata', 'Kampanya uygulanırken bir hata oluştu');
+      alert.show('Hata', 'Kampanya uygulanırken bir hata oluştu');
     }
   };
 
@@ -396,6 +397,7 @@ export default function CampaignsScreen({ navigation }) {
           </View>
         </View>
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

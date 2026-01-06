@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,8 +8,10 @@ import { cartAPI } from '../services/api';
 import { COLORS } from '../constants/colors';
 import { updateCartBadge } from '../utils/cartBadge';
 import analytics from '../services/analytics';
+import { useAlert } from '../hooks/useAlert';
 
 export default function CartScreen({ navigation }) {
+  const alert = useAlert();
   const [cartItems, setCartItems] = useState([]);
   const [promoCode, setPromoCode] = useState('');
   const [loading, setLoading] = useState(true);
@@ -228,7 +230,7 @@ export default function CartScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Miktar güncelleme hatası:', error);
-      Alert.alert('Hata', 'Miktar güncellenirken bir hata oluştu');
+      alert.show('Hata', 'Miktar güncellenirken bir hata oluştu');
     }
   };
 
@@ -263,7 +265,7 @@ export default function CartScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Ürün silme hatası:', error);
-      Alert.alert('Hata', 'Ürün silinirken bir hata oluştu');
+      alert.show('Hata', 'Ürün silinirken bir hata oluştu');
     }
   };
 
@@ -543,6 +545,7 @@ export default function CartScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </SafeAreaView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

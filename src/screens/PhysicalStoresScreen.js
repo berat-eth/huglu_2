@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { COLORS } from '../constants/colors';
+import { useAlert } from '../hooks/useAlert';
 
 const { width, height } = Dimensions.get('window');
 
@@ -77,6 +78,7 @@ const STORES = [
 ];
 
 export default function PhysicalStoresScreen({ navigation }) {
+  const alert = useAlert();
   const [viewMode, setViewMode] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState(null);
@@ -91,7 +93,7 @@ export default function PhysicalStoresScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Konumunuzu görmek için konum izni gerekiyor.');
+        alert.show('İzin Gerekli', 'Konumunuzu görmek için konum izni gerekiyor.');
         return;
       }
 
@@ -485,7 +487,7 @@ export default function PhysicalStoresScreen({ navigation }) {
                       }
                     } catch (error) {
                       console.error('Yol tarifi açma hatası:', error);
-                      Alert.alert('Hata', 'Yol tarifi açılırken bir hata oluştu.');
+                      alert.show('Hata', 'Yol tarifi açılırken bir hata oluştu.');
                     }
                   }}
                 >
@@ -534,7 +536,7 @@ export default function PhysicalStoresScreen({ navigation }) {
                       
                       // XXX gibi placeholder'lar varsa uyarı ver
                       if (phoneNumber.includes('X') || phoneNumber.includes('x')) {
-                        Alert.alert('Bilgi', 'Bu mağaza için telefon numarası henüz tanımlanmamış.');
+                        alert.show('Bilgi', 'Bu mağaza için telefon numarası henüz tanımlanmamış.');
                         return;
                       }
                       
@@ -544,11 +546,11 @@ export default function PhysicalStoresScreen({ navigation }) {
                       if (canOpen) {
                         await Linking.openURL(telUrl);
                       } else {
-                        Alert.alert('Hata', 'Telefon araması başlatılamadı.');
+                        alert.show('Hata', 'Telefon araması başlatılamadı.');
                       }
                     } catch (error) {
                       console.error('Telefon arama hatası:', error);
-                      Alert.alert('Hata', 'Telefon araması başlatılırken bir hata oluştu.');
+                      alert.show('Hata', 'Telefon araması başlatılırken bir hata oluştu.');
                     }
                   }}
                 >
@@ -574,6 +576,7 @@ export default function PhysicalStoresScreen({ navigation }) {
 
       )}
 
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { ordersAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function PickupOrdersScreen({ navigation }) {
+  const alert = useAlert();
   const [selectedTab, setSelectedTab] = useState('active'); // 'active' or 'past'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -209,7 +211,7 @@ export default function PickupOrdersScreen({ navigation }) {
     if (actualStatus !== 'cancelled') {
       navigation.navigate('OrderDetail', { orderId });
     } else {
-      Alert.alert(
+      alert.show(
         'Bilgi',
         'İptal edilmiş siparişlerin detayları görüntülenemez.',
         [{ text: 'Tamam' }]
@@ -388,6 +390,7 @@ export default function PickupOrdersScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

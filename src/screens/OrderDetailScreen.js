@@ -9,7 +9,7 @@ import { ordersAPI, invoicesAPI, returnRequestsAPI } from '../services/api';
 import { getApiUrl } from '../config/api.config';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
-import { Linking, Alert } from 'react-native';
+import { Linking } from 'react-native';
 
 // Google Maps logosunu gizlemek için custom style
 const hideGoogleLogoStyle = [
@@ -26,6 +26,7 @@ const hideGoogleLogoStyle = [
 ];
 
 export default function OrderDetailScreen({ navigation, route }) {
+  const alert = useAlert();
   const { orderId } = route.params || {};
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
@@ -211,7 +212,7 @@ export default function OrderDetailScreen({ navigation, route }) {
 
   const handleCreateReturnRequest = () => {
     if (!isOrderDelivered()) {
-      Alert.alert('Bilgi', 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
+      alert.show('Bilgi', 'İade talebi sadece teslim edilmiş siparişler için oluşturulabilir');
       return;
     }
 
@@ -620,6 +621,7 @@ export default function OrderDetailScreen({ navigation, route }) {
         title="Kopyalandı"
         message="Takip numarası panoya kopyalandı"
       />
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

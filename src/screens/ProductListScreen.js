@@ -9,6 +9,7 @@ import { productsAPI, wishlistAPI, flashDealsAPI } from '../services/api';
 import voiceRecognitionService from '../services/voiceRecognition';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import safeLog from '../utils/safeLogger';
+import { useAlert } from '../hooks/useAlert';
 
 const SORT_OPTIONS = [
   { id: 'default', label: 'Varsayılan', icon: 'list-outline' },
@@ -20,6 +21,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function ProductListScreen({ navigation, route }) {
+  const alert = useAlert();
   const [selectedCategory, setSelectedCategory] = useState(route?.params?.category || 'Tümü');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -267,7 +269,7 @@ export default function ProductListScreen({ navigation, route }) {
 
   const toggleFavorite = async (product) => {
     if (!userId) {
-      Alert.alert('Giriş Gerekli', 'Favorilere eklemek için lütfen giriş yapın');
+      alert.show('Giriş Gerekli', 'Favorilere eklemek için lütfen giriş yapın');
       return;
     }
 
@@ -311,7 +313,7 @@ export default function ProductListScreen({ navigation, route }) {
         if (transcript && transcript.trim().length > 0) {
           setSearchQuery(transcript.trim());
         } else {
-          Alert.alert('Uyarı', 'Ses tanınamadı. Lütfen tekrar deneyin.');
+          alert.show('Uyarı', 'Ses tanınamadı. Lütfen tekrar deneyin.');
         }
       },
       (error) => {
@@ -320,7 +322,7 @@ export default function ProductListScreen({ navigation, route }) {
         setIsListening(false);
         
         if (error !== 'İzin verilmedi' && error !== 'Desteklenmiyor') {
-          Alert.alert(
+          alert.show(
             'Ses Tanıma Hatası',
             'Ses tanıma sırasında bir hata oluştu. Lütfen tekrar deneyin.',
             [{ text: 'Tamam' }]
@@ -537,6 +539,7 @@ export default function ProductListScreen({ navigation, route }) {
         }}
         message="Favorilere eklemek için lütfen giriş yapın"
       />
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

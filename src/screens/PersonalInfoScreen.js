@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { userAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 // Adres tipi ikonları
 const getAddressIcon = (addressType) => {
@@ -37,6 +38,7 @@ const getAddressIconBg = (addressType, isDefault) => {
 };
 
 export default function PersonalInfoScreen({ navigation }) {
+  const alert = useAlert();
   const [name, setName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [email, setEmail] = useState('');
@@ -204,7 +206,7 @@ export default function PersonalInfoScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Kullanıcı bilgileri yüklenemedi:', error);
-      Alert.alert('Hata', 'Bilgiler yüklenirken bir hata oluştu.');
+      alert.show('Hata', 'Bilgiler yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -235,12 +237,12 @@ export default function PersonalInfoScreen({ navigation }) {
   const handleSave = async () => {
     // Validasyon
     if (!name.trim()) {
-      Alert.alert('Hata', 'Lütfen adınızı girin');
+      alert.show('Hata', 'Lütfen adınızı girin');
       return;
     }
 
     if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Hata', 'Lütfen geçerli bir e-posta adresi girin');
+      alert.show('Hata', 'Lütfen geçerli bir e-posta adresi girin');
       return;
     }
 
@@ -280,12 +282,12 @@ export default function PersonalInfoScreen({ navigation }) {
         // Local storage'a kaydedildi, API hatası kullanıcıya gösterilmez
       }
 
-      Alert.alert('Başarılı', 'Bilgileriniz güncellendi', [
+      alert.show('Başarılı', 'Bilgileriniz güncellendi', [
         { text: 'Tamam', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
       console.error('Bilgiler kaydedilemedi:', error);
-      Alert.alert('Hata', 'Bilgiler kaydedilirken bir hata oluştu.');
+      alert.show('Hata', 'Bilgiler kaydedilirken bir hata oluştu.');
     } finally {
       setSaving(false);
     }
@@ -293,7 +295,7 @@ export default function PersonalInfoScreen({ navigation }) {
 
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    alert.show(
       'Hesabı Sil',
       'Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       [
@@ -309,7 +311,7 @@ export default function PersonalInfoScreen({ navigation }) {
                 routes: [{ name: 'Login' }],
               });
             } catch (error) {
-              Alert.alert('Hata', 'Hesap silinirken bir hata oluştu.');
+              alert.show('Hata', 'Hesap silinirken bir hata oluştu.');
             }
           },
         },
@@ -557,6 +559,7 @@ export default function PersonalInfoScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

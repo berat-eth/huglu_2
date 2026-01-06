@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { ordersAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 function OrderTrackingScreen({ navigation }) {
+  const alert = useAlert();
   const [selectedTab, setSelectedTab] = useState('active'); // 'active' or 'past'
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState([]);
@@ -265,7 +267,7 @@ function OrderTrackingScreen({ navigation }) {
       navigation.navigate('OrderDetail', { orderId });
     } else {
       // Sadece iptal edilmiş siparişler için bilgi göster
-      Alert.alert(
+      alert.show(
         'Bilgi',
         'İptal edilmiş siparişlerin detayları görüntülenemez.',
         [{ text: 'Tamam' }]
@@ -491,6 +493,7 @@ function OrderTrackingScreen({ navigation }) {
           )}
         </ScrollView>
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

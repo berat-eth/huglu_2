@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProductCard from '../components/ProductCard';
 import { COLORS } from '../constants/colors';
 import { wishlistAPI, userLevelAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 const CATEGORIES = ['Tümü', 'Çadırlar', 'Botlar', 'Çantalar', 'Kıyafetler'];
 
 export default function WishlistScreen({ navigation }) {
+  const alert = useAlert();
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -33,7 +35,7 @@ export default function WishlistScreen({ navigation }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.navigate('Login');
         return;
       }
@@ -106,7 +108,7 @@ export default function WishlistScreen({ navigation }) {
       }
     } catch (error) {
       console.error('❌ Favorilerden çıkarma hatası:', error.message);
-      Alert.alert('Hata', 'Ürün favorilerden çıkarılırken bir hata oluştu');
+      alert.show('Hata', 'Ürün favorilerden çıkarılırken bir hata oluştu');
     }
   };
 
@@ -126,7 +128,7 @@ export default function WishlistScreen({ navigation }) {
         // Paylaşım başarılı - EXP kazandır
         try {
           await userLevelAPI.addSocialShareExp(userId, 'general', 'wishlist', 'wishlist');
-          Alert.alert('Tebrikler! 🎉', 'İstek listenizi paylaştığınız için +50 EXP kazandınız!');
+          alert.show('Tebrikler! 🎉', 'İstek listenizi paylaştığınız için +50 EXP kazandınız!');
         } catch (expError) {
           console.log('EXP eklenemedi:', expError.message);
           // Paylaşım başarılı oldu, sadece EXP eklenemedi
@@ -134,12 +136,12 @@ export default function WishlistScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Paylaşım hatası:', error);
-      Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
+      alert.show('Hata', 'Paylaşım sırasında bir hata oluştu');
     }
   };
 
   const clearAllWishlist = () => {
-    Alert.alert(
+    alert.show(
       'Tümünü Temizle',
       'Tüm favori ürünleri silmek istediğinizden emin misiniz?',
       [
@@ -159,7 +161,7 @@ export default function WishlistScreen({ navigation }) {
               setWishlistItems([]);
             } catch (error) {
               console.error('Favoriler temizleme hatası:', error);
-              Alert.alert('Hata', 'Favoriler temizlenirken bir hata oluştu');
+              alert.show('Hata', 'Favoriler temizlenirken bir hata oluştu');
             }
           }
         },
@@ -297,6 +299,7 @@ export default function WishlistScreen({ navigation }) {
       ) : (
         <EmptyWishlist />
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

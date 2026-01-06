@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { liveSupportAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function ChatHistoryScreen({ navigation }) {
+  const alert = useAlert();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,7 +95,7 @@ export default function ChatHistoryScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Destek talepleri yükleme hatası:', error);
-      Alert.alert('Hata', 'Destek talepleri yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      alert.show('Hata', 'Destek talepleri yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
       setChats([]);
     } finally {
       setLoading(false);
@@ -296,6 +298,7 @@ export default function ChatHistoryScreen({ navigation }) {
         <Ionicons name="add" size={24} color={COLORS.white} />
         <Text style={styles.fabText}>Yeni Talep</Text>
       </TouchableOpacity>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

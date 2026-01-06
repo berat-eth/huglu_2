@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
+import { useAlert } from '../hooks/useAlert';
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const alert = useAlert();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -14,12 +16,12 @@ export default function ForgotPasswordScreen({ navigation }) {
   const handleResetPassword = async () => {
     // Validasyon
     if (!email.trim()) {
-      Alert.alert('Hata', 'Lütfen e-posta adresinizi girin');
+      alert.show('Hata', 'Lütfen e-posta adresinizi girin');
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi girin');
+      alert.show('Hata', 'Geçerli bir e-posta adresi girin');
       return;
     }
 
@@ -30,14 +32,14 @@ export default function ForgotPasswordScreen({ navigation }) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       setEmailSent(true);
-      Alert.alert(
+      alert.show(
         'E-posta Gönderildi',
         'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.',
         [{ text: 'Tamam' }]
       );
     } catch (error) {
       console.error('Şifre sıfırlama hatası:', error);
-      Alert.alert('Hata', 'Şifre sıfırlama bağlantısı gönderilemedi. Lütfen tekrar deneyin.');
+      alert.show('Hata', 'Şifre sıfırlama bağlantısı gönderilemedi. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -131,6 +133,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

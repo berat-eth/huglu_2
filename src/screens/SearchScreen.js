@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ScrollView, Modal, Alert, Image, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ScrollView, Modal, Image, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarCodeScanner } from 'expo-barcode-scanner';
@@ -12,6 +12,7 @@ import { getCategoryIcon, getIoniconName } from '../utils/categoryIcons';
 import voiceRecognitionService from '../services/voiceRecognition';
 import analytics from '../services/analytics';
 import safeLog from '../utils/safeLogger';
+import { useAlert } from '../hooks/useAlert';
 
 const RECENT_SEARCHES = ['Çadır', 'Kamp Ekipmanı', 'Trekking Bot', 'Sırt Çantası'];
 
@@ -26,6 +27,7 @@ const POPULAR_SEARCHES = [
 
 
 export default function SearchScreen({ navigation }) {
+  const alert = useAlert();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -269,7 +271,7 @@ export default function SearchScreen({ navigation }) {
         if (transcript && transcript.trim().length > 0) {
           handleSearch(transcript.trim());
         } else {
-          Alert.alert('Uyarı', 'Ses tanınamadı. Lütfen tekrar deneyin.');
+          alert.show('Uyarı', 'Ses tanınamadı. Lütfen tekrar deneyin.');
         }
       },
       (error) => {
@@ -279,7 +281,7 @@ export default function SearchScreen({ navigation }) {
         
         // Sadece kullanıcı hataları için alert göster
         if (error === 'İzin verilmedi') {
-          Alert.alert(
+          alert.show(
             'Mikrofon İzni',
             'Sesli arama kullanmak için mikrofon iznine ihtiyacımız var.',
             [{ text: 'Tamam' }]
@@ -298,11 +300,11 @@ export default function SearchScreen({ navigation }) {
 
   const openBarcodeScanner = () => {
     if (hasPermission === null) {
-      Alert.alert('İzin Bekleniyor', 'Kamera izni kontrol ediliyor...');
+      alert.show('İzin Bekleniyor', 'Kamera izni kontrol ediliyor...');
       return;
     }
     if (hasPermission === false) {
-      Alert.alert('İzin Gerekli', 'Barkod okutmak için kamera izni gereklidir.', [
+      alert.show('İzin Gerekli', 'Barkod okutmak için kamera izni gereklidir.', [
         { text: 'Tamam' }
       ]);
       return;
@@ -327,14 +329,14 @@ export default function SearchScreen({ navigation }) {
         // Ürün bulundu, detay sayfasına git
         navigation.navigate('ProductDetail', { product });
       } else {
-        Alert.alert('Ürün Bulunamadı', `Barkod: ${data}\n\nBu barkoda ait ürün bulunamadı.`, [
+        alert.show('Ürün Bulunamadı', `Barkod: ${data}\n\nBu barkoda ait ürün bulunamadı.`, [
           { text: 'Tekrar Dene', onPress: () => openBarcodeScanner() },
           { text: 'Tamam' }
         ]);
       }
     } catch (error) {
       console.error('Barkod arama hatası:', error);
-      Alert.alert('Hata', 'Barkod aranırken bir hata oluştu.', [
+      alert.show('Hata', 'Barkod aranırken bir hata oluştu.', [
         { text: 'Tekrar Dene', onPress: () => openBarcodeScanner() },
         { text: 'Tamam' }
       ]);
@@ -407,7 +409,7 @@ export default function SearchScreen({ navigation }) {
             return;
           }
           if (response.errorMessage) {
-            Alert.alert('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
+            alert.show('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
             return;
           }
           if (response.assets && response.assets.length > 0) {
@@ -419,7 +421,7 @@ export default function SearchScreen({ navigation }) {
       );
     } catch (error) {
       console.error('❌ Galeri seçme hatası:', error);
-      Alert.alert('Hata', 'Görsel seçilirken bir hata oluştu. Lütfen tekrar deneyin.');
+      alert.show('Hata', 'Görsel seçilirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
@@ -472,7 +474,7 @@ export default function SearchScreen({ navigation }) {
             return;
           }
           if (response.errorMessage) {
-            Alert.alert('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
+            alert.show('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
             return;
           }
           if (response.assets && response.assets.length > 0) {
@@ -484,13 +486,13 @@ export default function SearchScreen({ navigation }) {
       );
     } catch (error) {
       console.error('❌ Kamera hatası:', error);
-      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu. Lütfen tekrar deneyin.');
+      alert.show('Hata', 'Fotoğraf çekilirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
   const performImageSearch = async (imageUri, category = null) => {
     if (!imageUri) {
-      Alert.alert('Hata', 'Görsel URI bulunamadı.');
+      alert.show('Hata', 'Görsel URI bulunamadı.');
       return;
     }
 
@@ -527,14 +529,14 @@ export default function SearchScreen({ navigation }) {
         setSearchResults(products);
         
         if (products.length === 0) {
-          Alert.alert(
+          alert.show(
             'Sonuç Bulunamadı',
             'Görsele benzer ürün bulunamadı. Farklı bir görsel deneyin veya metin araması yapın.',
             [{ text: 'Tamam' }]
           );
         }
       } else {
-        Alert.alert('Hata', response?.data?.message || 'Görsel araması başarısız oldu.');
+        alert.show('Hata', response?.data?.message || 'Görsel araması başarısız oldu.');
         setSearchResults([]);
       }
     } catch (error) {
@@ -544,7 +546,7 @@ export default function SearchScreen({ navigation }) {
         response: error.response?.data,
         status: error.response?.status,
       });
-      Alert.alert(
+      alert.show(
         'Hata',
         error.message || 'Görsel araması yapılırken bir hata oluştu. Lütfen tekrar deneyin.',
         [{ text: 'Tamam' }]
@@ -672,7 +674,7 @@ export default function SearchScreen({ navigation }) {
                     return;
                   }
                   if (response.errorMessage) {
-                    Alert.alert('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
+                    alert.show('Hata', response.errorMessage || 'Görsel seçilirken bir hata oluştu.');
                     return;
                   }
                   if (response.assets && response.assets.length > 0) {
@@ -697,7 +699,7 @@ export default function SearchScreen({ navigation }) {
                     return;
                   }
                   if (response.errorMessage) {
-                    Alert.alert('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
+                    alert.show('Hata', response.errorMessage || 'Fotoğraf çekilirken bir hata oluştu.');
                     return;
                   }
                   if (response.assets && response.assets.length > 0) {
@@ -994,6 +996,7 @@ export default function SearchScreen({ navigation }) {
           )}
         </View>
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

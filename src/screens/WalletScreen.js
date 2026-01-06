@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import { walletAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function WalletScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(0);
   const [points, setPoints] = useState(0);
@@ -33,14 +35,14 @@ export default function WalletScreen({ navigation }) {
       const response = await walletAPI.rechargeRequest(userId, amount, 'credit_card');
       
       if (response.data?.success) {
-        Alert.alert('Başarılı', `₺${amount} yükleme talebiniz alındı.`);
+        alert.show('Başarılı', `₺${amount} yükleme talebiniz alındı.`);
         loadWalletData(); // Verileri yenile
       } else {
-        Alert.alert('Hata', response.data?.message || 'Yükleme talebi oluşturulamadı');
+        alert.show('Hata', response.data?.message || 'Yükleme talebi oluşturulamadı');
       }
     } catch (error) {
       console.error('Yükleme hatası:', error);
-      Alert.alert('Hata', 'Yükleme işlemi sırasında bir hata oluştu');
+      alert.show('Hata', 'Yükleme işlemi sırasında bir hata oluştu');
     }
   };
 
@@ -51,7 +53,7 @@ export default function WalletScreen({ navigation }) {
       const storedUserName = await AsyncStorage.getItem('userName');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.navigate('Login');
         return;
       }
@@ -141,7 +143,7 @@ export default function WalletScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Cüzdan verileri yükleme hatası:', error);
-      Alert.alert('Hata', 'Cüzdan bilgileri yüklenirken bir hata oluştu');
+      alert.show('Hata', 'Cüzdan bilgileri yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -277,7 +279,7 @@ export default function WalletScreen({ navigation }) {
                     style={styles.copyButton}
                     onPress={() => {
                       // IBAN kopyalama fonksiyonu
-                      Alert.alert('Kopyalandı', 'IBAN numarası panoya kopyalandı');
+                      alert.show('Kopyalandı', 'IBAN numarası panoya kopyalandı');
                     }}
                   >
                     <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
@@ -497,6 +499,7 @@ export default function WalletScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

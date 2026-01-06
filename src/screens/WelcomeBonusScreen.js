@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { welcomeBonusAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function WelcomeBonusScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [eligible, setEligible] = useState(false);
@@ -72,17 +74,17 @@ export default function WelcomeBonusScreen({ navigation }) {
       const response = await welcomeBonusAPI.claimWelcomeBonus(userId);
       if (response.data?.success) {
         setClaimed(true);
-        Alert.alert(
+        alert.show(
           'Tebrikler! 🎉',
           `Hoş geldin bonusunuz hesabınıza eklendi!\n${bonusAmount} TL hediye çeki kazandınız.`,
           [{ text: 'Tamam', onPress: () => navigation.goBack() }]
         );
       } else {
-        Alert.alert('Hata', response.data?.message || 'Bonus alınamadı');
+        alert.show('Hata', response.data?.message || 'Bonus alınamadı');
       }
     } catch (error) {
       console.error('Bonus alma hatası:', error);
-      Alert.alert('Hata', 'Bonus alınırken bir hata oluştu');
+      alert.show('Hata', 'Bonus alınırken bir hata oluştu');
     }
   };
 
@@ -170,7 +172,7 @@ export default function WelcomeBonusScreen({ navigation }) {
                       style={styles.copyButton}
                       onPress={() => {
                         // Clipboard.setString(pkg.coupon);
-                        Alert.alert('Kopyalandı', `Kupon kodu: ${pkg.coupon}`);
+                        alert.show('Kopyalandı', `Kupon kodu: ${pkg.coupon}`);
                       }}
                     >
                       <Ionicons name="copy" size={16} color={COLORS.primary} />
@@ -203,6 +205,7 @@ export default function WelcomeBonusScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

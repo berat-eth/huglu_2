@@ -100,17 +100,17 @@ export default function DailyRewardScreen({ navigation }) {
         setCanClaim(false);
         setStreak(prev => prev + 1);
         const reward = todayReward || { type: 'exp', amount: 50 };
-        Alert.alert(
+        alert.show(
           'Tebrikler! 🎉',
           `Günlük ödülünüzü kazandınız!\n${reward.type === 'coupon' ? `%${reward.amount || 10} İndirim Kuponu` : `+${reward.amount || 50} EXP`}`,
           [{ text: 'Tamam', onPress: () => loadDailyRewardData() }]
         );
       } else {
-        Alert.alert('Hata', response.data?.message || 'Ödül alınamadı');
+        alert.show('Hata', response.data?.message || 'Ödül alınamadı');
       }
     } catch (error) {
       console.error('Ödül alma hatası:', error);
-      Alert.alert('Hata', 'Ödül alınırken bir hata oluştu');
+      alert.show('Hata', 'Ödül alınırken bir hata oluştu');
     }
   };
 
@@ -248,6 +248,7 @@ export default function DailyRewardScreen({ navigation }) {
           </Text>
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

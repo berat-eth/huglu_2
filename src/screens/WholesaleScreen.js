@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Linking,
   KeyboardAvoidingView,
@@ -16,8 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import Input from '../components/Input';
 import { COLORS } from '../constants/colors';
 import { wholesaleAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function WholesaleScreen({ navigation }) {
+  const alert = useAlert();
   const [companyName, setCompanyName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
@@ -36,19 +37,19 @@ export default function WholesaleScreen({ navigation }) {
   const handleSubmit = async () => {
     // Validasyon
     if (!companyName || !contactPerson || !email || !phone || !businessType) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      alert.show('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi girin');
+      alert.show('Hata', 'Geçerli bir e-posta adresi girin');
       return;
     }
 
     // Telefon formatı kontrolü (basit)
     const phoneRegex = /^[\d\s\-\+\(\)]+$/;
     if (!phoneRegex.test(phone) || phone.length < 10) {
-      Alert.alert('Hata', 'Geçerli bir telefon numarası girin');
+      alert.show('Hata', 'Geçerli bir telefon numarası girin');
       return;
     }
 
@@ -78,7 +79,7 @@ export default function WholesaleScreen({ navigation }) {
         // Durum sayfasına yönlendir
         navigation.replace('WholesaleStatus', { applicationData });
       } else {
-        Alert.alert('Hata', response.data?.message || 'Başvuru gönderilemedi');
+        alert.show('Hata', response.data?.message || 'Başvuru gönderilemedi');
       }
     } catch (error) {
       console.error('Wholesale application error:', error);
@@ -86,7 +87,7 @@ export default function WholesaleScreen({ navigation }) {
         error.response?.data?.message ||
         error.message ||
         'Başvuru gönderilemedi. Lütfen tekrar deneyin.';
-      Alert.alert('Hata', errorMessage);
+      alert.show('Hata', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -290,6 +291,7 @@ export default function WholesaleScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

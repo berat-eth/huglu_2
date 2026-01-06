@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { notificationsAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 // Bildirim tipine göre ikon ve renk belirleme
 const getNotificationStyle = (type) => {
@@ -51,6 +52,7 @@ const getTimeAgo = (dateString) => {
 };
 
 export default function NotificationsScreen({ navigation }) {
+  const alert = useAlert();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,7 +70,7 @@ export default function NotificationsScreen({ navigation }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.navigate('Login');
         return;
       }
@@ -134,7 +136,7 @@ export default function NotificationsScreen({ navigation }) {
       }
     } catch (error) {
       console.error('❌ Tüm bildirimler okundu işaretlenemedi:', error.message);
-      Alert.alert('Hata', 'Bildirimler okundu işaretlenemedi');
+      alert.show('Hata', 'Bildirimler okundu işaretlenemedi');
     }
   };
 
@@ -279,6 +281,7 @@ export default function NotificationsScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

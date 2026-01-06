@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { returnRequestsAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 const STATUS_CONFIG = {
   pending: {
@@ -35,6 +36,7 @@ const STATUS_CONFIG = {
 };
 
 export default function ReturnRequestsListScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [returnRequests, setReturnRequests] = useState([]);
@@ -50,7 +52,7 @@ export default function ReturnRequestsListScreen({ navigation }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.goBack();
         return;
       }
@@ -89,7 +91,7 @@ export default function ReturnRequestsListScreen({ navigation }) {
   };
 
   const handleCancelRequest = (requestId) => {
-    Alert.alert(
+    alert.show(
       'İade Talebini İptal Et',
       'Bu iade talebini iptal etmek istediğinizden emin misiniz?',
       [
@@ -101,14 +103,14 @@ export default function ReturnRequestsListScreen({ navigation }) {
             try {
               const response = await returnRequestsAPI.cancel(requestId, userId);
               if (response.data?.success) {
-                Alert.alert('Başarılı', 'İade talebi iptal edildi');
+                alert.show('Başarılı', 'İade talebi iptal edildi');
                 loadReturnRequests();
               } else {
-                Alert.alert('Hata', response.data?.message || 'İade talebi iptal edilemedi');
+                alert.show('Hata', response.data?.message || 'İade talebi iptal edilemedi');
               }
             } catch (error) {
               console.error('İade talebi iptal hatası:', error);
-              Alert.alert('Hata', error.response?.data?.message || 'İade talebi iptal edilemedi');
+              alert.show('Hata', error.response?.data?.message || 'İade talebi iptal edilemedi');
             }
           },
         },
@@ -240,6 +242,7 @@ export default function ReturnRequestsListScreen({ navigation }) {
       ) : (
         <EmptyState />
       )}
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

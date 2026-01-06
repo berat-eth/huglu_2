@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Animated,
   Dimensions,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Magnetometer } from 'expo-sensors';
 import * as Location from 'expo-location';
 import { COLORS } from '../constants/colors';
+import { useAlert } from '../hooks/useAlert';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -27,6 +27,7 @@ const HEADING_FONT_SIZE = isSmallScreen ? 52 : isMediumScreen ? 58 : 64;
 const DIRECTION_FONT_SIZE = isSmallScreen ? 16 : 18;
 
 export default function CompassScreen({ navigation }) {
+  const alert = useAlert();
   const [heading, setHeading] = useState(0);
   const [direction, setDirection] = useState('KUZEY');
   const [coordinates, setCoordinates] = useState(null);
@@ -182,7 +183,7 @@ export default function CompassScreen({ navigation }) {
 
   const handleCalibrate = () => {
     setIsCalibrating(true);
-    Alert.alert(
+    alert.show(
       'Pusula Kalibrasyonu',
       'Doğru kalibrasyon için:\n\n' +
       '1. Metal objelerden uzaklaşın\n' +
@@ -206,7 +207,7 @@ export default function CompassScreen({ navigation }) {
               if (countdown <= 0) {
                 clearInterval(interval);
                 setIsCalibrating(false);
-                Alert.alert('✅ Başarılı', 'Pusula kalibre edildi!\n\nEn iyi sonuç için metal objelerden uzak durun.');
+                alert.show('✅ Başarılı', 'Pusula kalibre edildi!\n\nEn iyi sonuç için metal objelerden uzak durun.');
               }
             }, 1000);
           },
@@ -217,14 +218,14 @@ export default function CompassScreen({ navigation }) {
 
   const toggleLockHeading = () => {
     setHeadingLocked(!headingLocked);
-    Alert.alert(
+    alert.show(
       headingLocked ? 'Kilit Açıldı' : 'Kilit Kapatıldı',
       headingLocked ? 'Pusula tekrar hareket edecek' : 'Mevcut yön kilitlendi'
     );
   };
 
   const showTips = () => {
-    Alert.alert(
+    alert.show(
       '💡 Doğruluk İpuçları',
       '• Metal objelerden (telefon kılıfı, mıknatıs, elektronik cihazlar) uzak durun\n\n' +
       '• Cihazı düz tutun\n\n' +
@@ -407,6 +408,7 @@ export default function CompassScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
       </View>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

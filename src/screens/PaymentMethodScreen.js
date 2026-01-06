@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,8 +8,10 @@ import Input from '../components/Input';
 import { COLORS } from '../constants/colors';
 import { cartAPI, walletAPI } from '../services/api';
 import { isNFCAvailable, readContactlessCard, processContactlessPayment } from '../services/nfcPayment';
+import { useAlert } from '../hooks/useAlert';
 
 export default function PaymentMethodScreen({ navigation, route }) {
+  const alert = useAlert();
   const [selectedPayment, setSelectedPayment] = useState('new_card');
   const [loading, setLoading] = useState(true);
   const [cartTotal, setCartTotal] = useState(0);
@@ -80,7 +82,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
       const storedUserId = await AsyncStorage.getItem('userId');
       
       if (!storedUserId) {
-        Alert.alert('Hata', 'Lütfen giriş yapın');
+        alert.show('Hata', 'Lütfen giriş yapın');
         navigation.navigate('Login');
         return;
       }
@@ -142,7 +144,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Ödeme verileri yükleme hatası:', error);
-      Alert.alert('Hata', 'Ödeme bilgileri yüklenirken bir hata oluştu');
+      alert.show('Hata', 'Ödeme bilgileri yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -152,7 +154,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
   const handleContactlessPayment = async () => {
     try {
       if (!nfcAvailable) {
-        Alert.alert(
+        alert.show(
           'NFC Desteklenmiyor',
           'Bu cihaz NFC özelliğini desteklemiyor. Lütfen kart bilgilerinizi manuel olarak girin.'
         );
@@ -174,7 +176,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
       setNfcModalVisible(false);
       setIsReadingCard(false);
 
-      Alert.alert(
+      alert.show(
         'Kart Okundu',
         'Kart bilgileriniz başarıyla okundu. CVV kodunu girmeniz gerekmektedir.',
         [{ text: 'Tamam' }]
@@ -184,7 +186,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
       setNfcModalVisible(false);
       setIsReadingCard(false);
       
-      Alert.alert(
+      alert.show(
         'Hata',
         error.message || 'Kart okunamadı. Lütfen tekrar deneyin veya kart bilgilerinizi manuel olarak girin.'
       );
@@ -427,7 +429,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
               if (walletBalance >= cartTotal) {
                 setSelectedPayment('wallet');
               } else {
-                Alert.alert('Yetersiz Bakiye', 'Cüzdan bakiyeniz bu ödeme için yeterli değil');
+                alert.show('Yetersiz Bakiye', 'Cüzdan bakiyeniz bu ödeme için yeterli değil');
               }
             }}
             disabled={walletBalance < cartTotal}
@@ -528,19 +530,19 @@ export default function PaymentMethodScreen({ navigation, route }) {
                 // Kart ile ödeme seçiliyse kart bilgilerini kontrol et
                 if (selectedPayment === 'new_card') {
                   if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
-                    Alert.alert('Hata', 'Lütfen geçerli bir kart numarası girin');
+                    alert.show('Hata', 'Lütfen geçerli bir kart numarası girin');
                     return;
                   }
                   if (!cardName || cardName.trim().length < 3) {
-                    Alert.alert('Hata', 'Lütfen kart üzerindeki ismi girin');
+                    alert.show('Hata', 'Lütfen kart üzerindeki ismi girin');
                     return;
                   }
                   if (!expiryDate || expiryDate.length < 5) {
-                    Alert.alert('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
+                    alert.show('Hata', 'Lütfen son kullanma tarihini girin (AA/YY)');
                     return;
                   }
                   if (!cvv || cvv.length < 3) {
-                    Alert.alert('Hata', 'Lütfen CVV kodunu girin');
+                    alert.show('Hata', 'Lütfen CVV kodunu girin');
                     return;
                   }
                 }
@@ -571,6 +573,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
           </>
         )}
       </SafeAreaView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

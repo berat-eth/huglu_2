@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { liveSupportAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAlert } from '../hooks/useAlert';
 
 export default function LiveChatScreen({ navigation, route }) {
+  const alert = useAlert();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -262,7 +264,7 @@ export default function LiveChatScreen({ navigation, route }) {
     
     if (!userId) {
       console.error('[LiveChat] userId bulunamadı');
-      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen uygulamayı yeniden başlatın.');
+      alert.show('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen uygulamayı yeniden başlatın.');
       return;
     }
     
@@ -324,7 +326,7 @@ export default function LiveChatScreen({ navigation, route }) {
         // Hata durumunda mesajı geri al
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         const errorMsg = responseData?.message || response?.statusText || 'Mesaj gönderilemedi. Lütfen tekrar deneyin.';
-        Alert.alert('Hata', errorMsg);
+        alert.show('Hata', errorMsg);
       }
     } catch (error) {
       console.error('[LiveChat] Mesaj gönderme hatası:', error);
@@ -349,7 +351,7 @@ export default function LiveChatScreen({ navigation, route }) {
         errorMessage = 'İnternet bağlantınızı kontrol edin.';
       }
       
-      Alert.alert('Hata', errorMessage);
+      alert.show('Hata', errorMessage);
     } finally {
       setSending(false);
     }
@@ -523,6 +525,7 @@ export default function LiveChatScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

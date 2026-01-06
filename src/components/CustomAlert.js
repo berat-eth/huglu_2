@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
 /**
  * Modern Custom Alert Component
  * Alert.alert yerine kullanılacak, güncel tasarıma uygun
+ * Dark mode desteği ile
  */
 export default function CustomAlert({ visible, onClose, title, message, buttons = [] }) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
@@ -69,7 +72,10 @@ export default function CustomAlert({ visible, onClose, title, message, buttons 
       <Animated.View 
         style={[
           styles.overlay,
-          { opacity: fadeAnim }
+          { 
+            opacity: fadeAnim,
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)'
+          }
         ]}
       >
         <TouchableOpacity 
@@ -83,6 +89,7 @@ export default function CustomAlert({ visible, onClose, title, message, buttons 
             {
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
+              backgroundColor: isDark ? COLORS.surfaceDark : COLORS.white,
             },
           ]}
         >
@@ -93,12 +100,12 @@ export default function CustomAlert({ visible, onClose, title, message, buttons 
 
           {/* Title */}
           {title && (
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, { color: isDark ? COLORS.white : COLORS.textMain }]}>{title}</Text>
           )}
 
           {/* Message */}
           {message && (
-            <Text style={styles.message}>{message}</Text>
+            <Text style={[styles.message, { color: isDark ? COLORS.gray400 : COLORS.gray700 }]}>{message}</Text>
           )}
 
           {/* Buttons */}
@@ -128,7 +135,8 @@ export default function CustomAlert({ visible, onClose, title, message, buttons 
                     style={[
                       styles.buttonText,
                       isPrimary && !isCancel && styles.primaryButtonText,
-                      isCancel && styles.cancelButtonText,
+                      isCancel && [styles.cancelButtonText, { color: isDark ? COLORS.gray400 : COLORS.gray700 }],
+                      !isPrimary && !isCancel && { color: isDark ? COLORS.white : COLORS.primary },
                     ]}
                   >
                     {button.text}
@@ -146,7 +154,6 @@ export default function CustomAlert({ visible, onClose, title, message, buttons 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -159,7 +166,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   container: {
-    backgroundColor: COLORS.white,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -182,13 +188,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: COLORS.textMain,
     textAlign: 'center',
     marginBottom: 12,
   },
   message: {
     fontSize: 15,
-    color: COLORS.gray700,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -223,14 +227,13 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
   },
   primaryButtonText: {
     color: COLORS.white,
     fontWeight: '700',
   },
   cancelButtonText: {
-    color: COLORS.gray700,
+    // Color will be set dynamically based on dark mode
   },
 });
 

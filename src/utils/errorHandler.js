@@ -1,5 +1,3 @@
-import { Alert } from 'react-native';
-
 /**
  * API hatalarını kontrol eder ve sunucu hatası olup olmadığını belirler
  * @param {Error} error - Axios veya diğer hata nesnesi
@@ -80,20 +78,16 @@ export const getErrorMessage = (error) => {
 };
 
 /**
- * Hata durumunda Alert gösterir
- * @param {Error} error - Hata nesnesi
- * @param {string} title - Alert başlığı (opsiyonel)
+ * Hata durumunda alert göstermek için kullanılacak yardımcı fonksiyon
+ * Component'lerde useAlert hook'u ile birlikte kullanılmalıdır
+ * 
+ * Kullanım örneği:
+ * const alert = useAlert();
+ * const message = getErrorMessage(error);
+ * alert.show('Hata', message);
+ * 
+ * @deprecated showErrorAlert kaldırıldı, her component kendi useAlert hook'unu kullanmalı
  */
-export const showErrorAlert = (error, title = 'Hata') => {
-  const message = getErrorMessage(error);
-  
-  Alert.alert(
-    title,
-    message,
-    [{ text: 'Tamam', style: 'default' }],
-    { cancelable: true }
-  );
-};
 
 /**
  * API çağrısını try-catch ile sarmalayıp hata yönetimi yapar
@@ -125,6 +119,5 @@ export const handleApiCall = async (apiCall, onServerError = null) => {
 export default {
   isServerError,
   getErrorMessage,
-  showErrorAlert,
   handleApiCall,
 };

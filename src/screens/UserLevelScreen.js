@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import { userLevelAPI } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAlert } from '../hooks/useAlert';
 
 export default function UserLevelScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [levelData, setLevelData] = useState(null);
@@ -112,7 +114,7 @@ export default function UserLevelScreen({ navigation }) {
     try {
       const userId = await AsyncStorage.getItem('userId');
       if (!userId || !levelData) {
-        Alert.alert('Hata', 'Kullanıcı bilgileri yüklenemedi');
+        alert.show('Hata', 'Kullanıcı bilgileri yüklenemedi');
         return;
       }
 
@@ -123,17 +125,17 @@ export default function UserLevelScreen({ navigation }) {
       const response = await userLevelAPI.claimRewards(userId, levelId);
       
       if (response.data?.success) {
-        Alert.alert(
+        alert.show(
           'Başarılı',
           `Ödüller başarıyla kullanıldı!\n\n${(response.data.rewards || []).join('\n')}`,
           [{ text: 'Tamam', onPress: () => loadUserLevel() }]
         );
       } else {
-        Alert.alert('Hata', response.data?.message || 'Ödüller kullanılamadı');
+        alert.show('Hata', response.data?.message || 'Ödüller kullanılamadı');
       }
     } catch (error) {
       console.error('Ödül kullanma hatası:', error);
-      Alert.alert('Hata', error.response?.data?.message || 'Ödüller kullanılırken bir hata oluştu');
+      alert.show('Hata', error.response?.data?.message || 'Ödüller kullanılırken bir hata oluştu');
     }
   };
 
@@ -285,7 +287,7 @@ export default function UserLevelScreen({ navigation }) {
               if (userId) {
                 const response = await userLevelAPI.addDailyLoginExp(userId);
                 if (response.data?.success) {
-                  Alert.alert('Başarılı', `Günlük giriş bonusu: +${response.data.expGained} EXP`);
+                  alert.show('Başarılı', `Günlük giriş bonusu: +${response.data.expGained} EXP`);
                   loadUserLevel();
                 }
               }
@@ -380,7 +382,7 @@ export default function UserLevelScreen({ navigation }) {
                 style={styles.viewHistoryButton}
                 onPress={() => {
                   // Tüm geçmişi göster (şimdilik aynı ekranda göster, ileride ayrı ekran eklenebilir)
-                  Alert.alert('Geçmiş', `${history.length} aktivite kaydı bulundu`);
+                  alert.show('Geçmiş', `${history.length} aktivite kaydı bulundu`);
                 }}
               >
                 <Text style={styles.viewHistoryText}>Tüm Geçmişi Görüntüle</Text>
@@ -405,6 +407,7 @@ export default function UserLevelScreen({ navigation }) {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

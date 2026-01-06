@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,8 +7,10 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import { COLORS } from '../constants/colors';
 import { authAPI, userLevelAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function SignUpScreen({ navigation, route }) {
+  const alert = useAlert();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -35,34 +37,34 @@ export default function SignUpScreen({ navigation, route }) {
   const handleSignUp = async () => {
     // Validasyon
     if (!fullName || !email || !dateOfBirth || !password || !confirmPassword) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      alert.show('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi girin');
+      alert.show('Hata', 'Geçerli bir e-posta adresi girin');
       return;
     }
 
     // Doğum tarihi formatı kontrolü
     const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
     if (!dateRegex.test(dateOfBirth)) {
-      Alert.alert('Hata', 'Doğum tarihi formatı GG/AA/YYYY olmalıdır (örn: 15/08/1994)');
+      alert.show('Hata', 'Doğum tarihi formatı GG/AA/YYYY olmalıdır (örn: 15/08/1994)');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
+      alert.show('Hata', 'Şifre en az 6 karakter olmalıdır');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor');
+      alert.show('Hata', 'Şifreler eşleşmiyor');
       return;
     }
 
     if (!agreeTerms) {
-      Alert.alert('Hata', 'Kullanım koşullarını kabul etmelisiniz');
+      alert.show('Hata', 'Kullanım koşullarını kabul etmelisiniz');
       return;
     }
 
@@ -116,16 +118,16 @@ export default function SignUpScreen({ navigation, route }) {
           ? 'Hesabınız oluşturuldu! Sizi davet eden arkadaşınız bonus EXP kazandı! 🎉'
           : 'Hesabınız oluşturuldu!';
         
-        Alert.alert('Başarılı', welcomeMessage, [
+        alert.show('Başarılı', welcomeMessage, [
           { text: 'Tamam', onPress: () => navigation.replace('Main') }
         ]);
       } else {
-        Alert.alert('Hata', response.data.message || 'Kayıt başarısız');
+        alert.show('Hata', response.data.message || 'Kayıt başarısız');
       }
     } catch (error) {
       console.error('❌ Register error:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Kayıt yapılamadı';
-      Alert.alert('Hata', errorMessage);
+      alert.show('Hata', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -255,6 +257,7 @@ export default function SignUpScreen({ navigation, route }) {
           </View>
         </View>
       </ScrollView>
+      <alert.AlertComponent />
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,8 +9,10 @@ import { COLORS } from '../constants/colors';
 import { userAPI } from '../services/api';
 import SuccessModal from '../components/SuccessModal';
 import ErrorModal from '../components/ErrorModal';
+import { useAlert } from '../hooks/useAlert';
 
 export default function TwoFactorAuthScreen({ navigation }) {
+  const alert = useAlert();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -51,7 +53,7 @@ export default function TwoFactorAuthScreen({ navigation }) {
     if (!twoFactorEnabled) {
       // 2FA'yı etkinleştirmek için telefon numarası gerekli
       if (!phoneNumber.trim()) {
-        Alert.alert('Telefon Numarası Gerekli', 'İki faktörlü doğrulamayı etkinleştirmek için telefon numaranızı girin');
+        alert.show('Telefon Numarası Gerekli', 'İki faktörlü doğrulamayı etkinleştirmek için telefon numaranızı girin');
         return;
       }
 
@@ -79,7 +81,7 @@ export default function TwoFactorAuthScreen({ navigation }) {
       }
     } else {
       // 2FA'yı devre dışı bırak
-      Alert.alert(
+      alert.show(
         'İki Faktörlü Doğrulamayı Devre Dışı Bırak',
         'İki faktörlü doğrulamayı devre dışı bırakmak istediğinize emin misiniz?',
         [
@@ -231,7 +233,7 @@ export default function TwoFactorAuthScreen({ navigation }) {
                 const userId = AsyncStorage.getItem('userId');
                 if (userId) {
                   userAPI.sendTwoFactorCode(userId, phoneNumber.trim());
-                  Alert.alert('Başarılı', 'Doğrulama kodu tekrar gönderildi');
+                  alert.show('Başarılı', 'Doğrulama kodu tekrar gönderildi');
                 }
               }}
             >
