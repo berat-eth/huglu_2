@@ -311,7 +311,12 @@ export default function TicimaxOrders() {
 
       // Kargo bilgilerini al
       const cargoTrackingNumber = selectedOrder.cargoTrackingNumber || ''
-      const cargoProviderName = selectedOrder.cargoProviderName || ''
+      // MNG Kargo'yu DHL E-commerce olarak değiştir
+      const cargoProviderName = selectedOrder.cargoProviderName === 'MNG Kargo' || 
+                                selectedOrder.cargoProviderName === 'mng kargo' || 
+                                selectedOrder.cargoProviderName?.toLowerCase() === 'mng kargo'
+                                ? 'DHL E-commerce'
+                                : (selectedOrder.cargoProviderName || '')
       const barcode = selectedOrder.barcode || ''
 
       // Backend'e istek gönder (blob response için doğrudan fetch)
@@ -954,7 +959,11 @@ export default function TicimaxOrders() {
                           <Truck className="w-4 h-4 text-slate-400" />
                           <div>
                             <label className="text-sm text-slate-600 dark:text-slate-400">Kargo Firması</label>
-                            <p className="text-slate-900 dark:text-slate-200 font-medium">{selectedOrder.cargoProviderName}</p>
+                            <p className="text-slate-900 dark:text-slate-200 font-medium">
+                              {selectedOrder.cargoProviderName === 'MNG Kargo' || selectedOrder.cargoProviderName === 'mng kargo' || selectedOrder.cargoProviderName?.toLowerCase() === 'mng kargo'
+                                ? 'DHL E-commerce'
+                                : selectedOrder.cargoProviderName}
+                            </p>
                           </div>
                         </div>
                       )}
