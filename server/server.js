@@ -3680,20 +3680,28 @@ app.post('/api/payments/process', async (req, res) => {
 
     } else {
       console.log('❌ Payment failed for order:', orderId);
+      console.log('🗑️ Deleting order due to payment failure - Order will not be created');
 
-      // Update order status
+      // Iyzico API'sinden başarısız yanıt geldi - Siparişi oluşturma (siparişi sil)
+      // Önce sipariş item'larını sil
       await poolWrapper.execute(
-        `UPDATE orders SET 
-         status = 'payment_failed', 
-         paymentStatus = 'failed'
-         WHERE id = ? AND tenantId = ?`,
+        'DELETE FROM order_items WHERE orderId = ? AND tenantId = ?',
         [orderId, req.tenant.id]
       );
+
+      // Sonra siparişi sil
+      await poolWrapper.execute(
+        'DELETE FROM orders WHERE id = ? AND tenantId = ?',
+        [orderId, req.tenant.id]
+      );
+
+      console.log('✅ Order deleted due to payment failure');
 
       res.status(400).json({
         success: false,
         error: paymentResult.error,
-        message: iyzicoService.translateErrorMessage(paymentResult.message)
+        message: iyzicoService.translateErrorMessage(paymentResult.message),
+        orderDeleted: true
       });
     }
 
@@ -3887,7 +3895,23 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
           </html>
         `);
       } else {
-        // 3D Secure tamamlama başarısız
+        // 3D Secure tamamlama başarısız - Siparişi sil
+        console.log('🗑️ Deleting order due to 3D Secure failure');
+        
+        // Önce sipariş item'larını sil
+        await poolWrapper.execute(
+          'DELETE FROM order_items WHERE orderId = ? AND tenantId = ?',
+          [orderId, tenantId]
+        );
+        
+        // Sonra siparişi sil
+        await poolWrapper.execute(
+          'DELETE FROM orders WHERE id = ? AND tenantId = ?',
+          [orderId, tenantId]
+        );
+        
+        console.log('✅ Order deleted due to 3D Secure failure');
+        
         throw new Error(completeResult.message || '3D Secure tamamlanamadı');
       }
     } catch (completeError) {
@@ -3928,6 +3952,34 @@ app.post('/api/payments/3ds-callback', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ 3D Secure callback error:', error);
+    
+    // Hata durumunda siparişi sil
+    try {
+      const callbackData = req.body || {};
+      const { conversationId } = callbackData;
+      if (conversationId) {
+        const orderIdMatch = conversationId.match(/order_(\d+)_/);
+        if (orderIdMatch) {
+          const errorOrderId = parseInt(orderIdMatch[1]);
+          const errorTenantId = req.tenant?.id || 1;
+          console.log('🗑️ Deleting order due to 3D Secure callback error');
+          // Önce sipariş item'larını sil
+          await poolWrapper.execute(
+            'DELETE FROM order_items WHERE orderId = ? AND tenantId = ?',
+            [errorOrderId, errorTenantId]
+          );
+          // Sonra siparişi sil
+          await poolWrapper.execute(
+            'DELETE FROM orders WHERE id = ? AND tenantId = ?',
+            [errorOrderId, errorTenantId]
+          );
+          console.log('✅ Order deleted due to 3D Secure callback error');
+        }
+      }
+    } catch (deleteError) {
+      console.error('❌ Error deleting order after callback error:', deleteError);
+    }
+    
     return res.status(500).send(`
       <!DOCTYPE html>
       <html>
