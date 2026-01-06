@@ -25880,12 +25880,20 @@ YARDIM EDEBİLECEĞİN KONULAR:
       [userId, tenantId, newBalance, newBalance]
     );
 
-    // İşlem kaydı oluştur
+    // İşlem kaydı oluştur (balance ve referenceId kolonları yok)
     await poolWrapper.execute(
       `INSERT INTO wallet_transactions 
-     (userId, tenantId, type, amount, balance, referenceId, description, createdAt) 
+     (userId, tenantId, type, amount, description, status, paymentMethod, createdAt) 
      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [userId, tenantId, type, amount, newBalance, referenceId, `Cüzdan ${type} - ${amount} TL`]
+      [
+        userId, 
+        tenantId, 
+        amount >= 0 ? 'credit' : 'debit', // Pozitif ise credit, negatif ise debit
+        Math.abs(amount), // Mutlak değer
+        `Cüzdan ${type} - ${amount} TL (Yeni bakiye: ${newBalance} TL)`, // Yeni bakiyeyi description'a ekle
+        'completed', // Status
+        type === 'card_recharge' ? 'card' : 'wallet' // Ödeme yöntemi
+      ]
     );
   }
 
