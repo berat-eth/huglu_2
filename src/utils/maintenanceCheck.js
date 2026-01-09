@@ -12,7 +12,8 @@ export const checkMaintenanceMode = async (platform = 'mobile') => {
     if (response.data?.success !== undefined) {
       // API yanıtı var
       const data = response.data.data || response.data;
-      const isMaintenanceMode = data.isMaintenanceMode || data.isMaintenance || false;
+      // Backend 'enabled' döndürüyor, ayrıca isMaintenanceMode ve isMaintenance de kontrol et
+      const isMaintenanceMode = data.enabled || data.isMaintenanceMode || data.isMaintenance || false;
       const message = data.message || '';
       const estimatedEndTime = data.estimatedEndTime || null;
       
