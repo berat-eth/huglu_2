@@ -1,15 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function WhatsAppButton() {
   const [isHovered, setIsHovered] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   
   // WhatsApp numaranızı buraya girin (ülke kodu ile birlikte, + işareti olmadan)
   const phoneNumber = '905321234567' // Örnek: 90 532 123 45 67
   const message = 'Merhaba, Huğlu Tekstil hakkında bilgi almak istiyorum.'
   
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+
+  if (!mounted) {
+    return null
+  }
 
   return (
     <a

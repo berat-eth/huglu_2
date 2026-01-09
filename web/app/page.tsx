@@ -6,6 +6,29 @@ import Image from 'next/image'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { productsApi } from '@/utils/api'
+import { 
+  Box, 
+  Container, 
+  Card, 
+  CardContent, 
+  Button, 
+  Typography, 
+  Chip, 
+  IconButton, 
+  LinearProgress,
+  Fade,
+  Zoom,
+  Slide,
+  Stack
+} from '@mui/material'
+import { 
+  ArrowForward, 
+  RequestQuote, 
+  ChevronLeft, 
+  ChevronRight, 
+  KeyboardArrowDown,
+  FiberManualRecord
+} from '@mui/icons-material'
 
 const Header = dynamic(() => import('@/components/Header'), { ssr: false })
 const Footer = dynamic(() => import('@/components/Footer'), { ssr: false })
@@ -325,32 +348,70 @@ export default function Home() {
       <Header />
 
       <main className="flex-grow relative">
-        {/* Hero Slider Section - Improved */}
+        {/* Hero Slider Section - Material UI Enhanced */}
         {!loadingSliders && slides.length > 0 && (
-          <section className="relative w-full h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900" style={{ height: '100vh', minHeight: '100vh' }}>
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.3),transparent_50%)] animate-pulse"></div>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(139,92,246,0.3),transparent_50%)]"></div>
-            </div>
+          <Box
+            component="section"
+            sx={{
+              position: 'relative',
+              width: '100%',
+              height: '100vh',
+              minHeight: '100vh',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #581c87 100%)',
+            }}
+          >
+            {/* Animated Background Effects */}
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.2,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'radial-gradient(circle at 50% 50%, rgba(59,130,246,0.3), transparent 50%)',
+                  animation: 'pulse 4s ease-in-out infinite',
+                },
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'radial-gradient(circle at 80% 20%, rgba(139,92,246,0.3), transparent 50%)',
+                },
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 0.2 },
+                  '50%': { opacity: 0.4 },
+                },
+              }}
+            />
 
+            {/* Slides */}
             {slides.map((slide, index) => (
-              <div
+              <Fade
                 key={slide.id}
-                className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-                  index === currentSlide 
-                    ? 'opacity-100 z-10' 
-                    : 'opacity-0 z-0 pointer-events-none'
-                }`}
+                in={index === currentSlide}
+                timeout={1000}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: index === currentSlide ? 10 : 0,
+                  pointerEvents: index === currentSlide ? 'auto' : 'none',
+                }}
               >
-                <div className="relative w-full h-full">
+                <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
                   {slide.imageUrl ? (
                     <Image
                       src={slide.imageUrl}
                       alt={`${slide.title} - ${slide.highlight} - Outdoor Giyim Toptan`}
                       fill
-                      className={`object-cover transition-all duration-[10000ms] ease-out ${
-                        index === currentSlide ? 'scale-100 brightness-90' : 'scale-110 brightness-50'
-                      }`}
+                      style={{
+                        objectFit: 'cover',
+                        transition: 'transform 10s ease-out, filter 1s ease-out',
+                        transform: index === currentSlide ? 'scale(1)' : 'scale(1.1)',
+                        filter: index === currentSlide ? 'brightness(0.9)' : 'brightness(0.5)',
+                      }}
                       priority={index === 0}
                       quality={90}
                       sizes="100vw"
@@ -364,126 +425,425 @@ export default function Home() {
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center">
-                      <span className="text-white/50 text-4xl">🎬</span>
-                    </div>
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #581c87 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: '3rem',
+                      }}
+                    >
+                      🎬
+                    </Box>
                   )}
                   
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-transparent"></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
+                  {/* Overlay Gradients */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)',
+                    }}
+                  />
                   
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="px-4 md:px-10 lg:px-20 w-full max-w-7xl">
-                      <div className={`transform transition-all duration-1000 delay-200 ${
-                        index === currentSlide 
-                          ? 'translate-y-0 opacity-100 scale-100' 
-                          : 'translate-y-12 opacity-0 scale-95'
-                      }`}>
-                        <div className="relative backdrop-blur-xl bg-white/10 rounded-3xl border border-white/20 p-8 md:p-12 shadow-2xl">
-                          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl opacity-30 blur-xl -z-10"></div>
-                          
-                          <div className="relative space-y-6">
-                            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg">
-                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-bold text-white tracking-wide">OUTDOOR GIYIM TOPTAN</span>
-                            </div>
+                  {/* Content */}
+                  <Container
+                    maxWidth="xl"
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 1,
+                    }}
+                  >
+                    <Zoom in={index === currentSlide} timeout={1000} style={{ transitionDelay: '200ms' }}>
+                      <Card
+                        sx={{
+                          position: 'relative',
+                          backdropFilter: 'blur(24px)',
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          borderRadius: 4,
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          p: { xs: 4, md: 6 },
+                          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                          maxWidth: '100%',
+                          width: '100%',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            inset: -4,
+                            background: 'linear-gradient(90deg, #2563eb, #9333ea, #ec4899)',
+                            borderRadius: 4,
+                            opacity: 0.3,
+                            filter: 'blur(20px)',
+                            zIndex: -1,
+                          },
+                        }}
+                      >
+                        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                          <Stack spacing={4}>
+                            {/* Badge */}
+                            <Slide direction="down" in={index === currentSlide} timeout={800}>
+                              <Chip
+                                icon={
+                                  <FiberManualRecord
+                                    sx={{
+                                      fontSize: 8,
+                                      color: '#60a5fa',
+                                      animation: 'pulse 2s ease-in-out infinite',
+                                      '@keyframes pulse': {
+                                        '0%, 100%': { opacity: 1 },
+                                        '50%': { opacity: 0.5 },
+                                      },
+                                    }}
+                                  />
+                                }
+                                label="OUTDOOR GİYİM TOPTAN"
+                                sx={{
+                                  alignSelf: 'flex-start',
+                                  background: 'rgba(255, 255, 255, 0.2)',
+                                  backdropFilter: 'blur(12px)',
+                                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                                  color: 'white',
+                                  fontWeight: 700,
+                                  fontSize: '0.875rem',
+                                  letterSpacing: '0.05em',
+                                  px: 2.5,
+                                  py: 1.25,
+                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                                }}
+                              />
+                            </Slide>
                             
-                            <div className="space-y-3">
-                              <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.1] tracking-tight">
-                                <span className="text-white drop-shadow-2xl">
-                                  {slide.title}
-                                </span>
-                                <br />
-                                <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            {/* Title */}
+                            <Slide direction="up" in={index === currentSlide} timeout={1000}>
+                              <Typography
+                                variant="h1"
+                                component="h2"
+                                sx={{
+                                  fontSize: { xs: '2.5rem', md: '3.5rem', lg: '4.5rem', xl: '5.5rem' },
+                                  fontWeight: 900,
+                                  lineHeight: 1.1,
+                                  color: 'white',
+                                  textShadow: '0 4px 6px rgba(0, 0, 0, 0.5)',
+                                  mb: 1,
+                                }}
+                              >
+                                {slide.title}
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: 'block',
+                                    background: 'linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                  }}
+                                >
                                   {slide.highlight}
-                                </span>
-                              </h2>
-                            </div>
+                                </Box>
+                              </Typography>
+                            </Slide>
                             
+                            {/* Description */}
                             {slide.description && (
-                              <p className="text-lg md:text-xl lg:text-2xl text-gray-100 max-w-3xl leading-relaxed font-medium drop-shadow-lg">
-                                {slide.description}
-                              </p>
+                              <Slide direction="up" in={index === currentSlide} timeout={1200}>
+                                <Typography
+                                  variant="h5"
+                                  sx={{
+                                    fontSize: { xs: '1.125rem', md: '1.25rem', lg: '1.5rem' },
+                                    color: 'rgba(255, 255, 255, 0.95)',
+                                    maxWidth: '48rem',
+                                    lineHeight: 1.75,
+                                    fontWeight: 500,
+                                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                                  }}
+                                >
+                                  {slide.description}
+                                </Typography>
+                              </Slide>
                             )}
                             
-                            <div className="flex flex-wrap items-center gap-4 pt-6">
-                              <Link 
-                                href="/urunler"
-                                className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl font-bold text-base overflow-hidden shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105"
+                            {/* Buttons */}
+                            <Slide direction="up" in={index === currentSlide} timeout={1400}>
+                              <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                sx={{ pt: 2 }}
                               >
-                                <span className="relative z-10">Ürünleri İncele</span>
-                                <span className="material-symbols-outlined text-xl relative z-10 group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-purple-700 to-pink-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              </Link>
-                              <Link 
-                                href="/teklif-al"
-                                className="group inline-flex items-center gap-3 px-8 py-4 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold text-base border-2 border-white/40 hover:bg-white/30 hover:border-white/60 transition-all duration-300 hover:scale-105 shadow-xl"
-                              >
-                                <span>Teklif Al</span>
-                                <span className="material-symbols-outlined text-xl">request_quote</span>
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                                <Button
+                                  component={Link}
+                                  href="/urunler"
+                                  variant="contained"
+                                  size="large"
+                                  endIcon={<ArrowForward />}
+                                  sx={{
+                                    background: 'linear-gradient(90deg, #2563eb, #9333ea, #ec4899)',
+                                    color: 'white',
+                                    px: 4,
+                                    py: 1.5,
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    borderRadius: 3,
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      background: 'linear-gradient(90deg, #1d4ed8, #7e22ce, #db2777)',
+                                      transform: 'scale(1.05)',
+                                      boxShadow: '0 20px 25px -5px rgba(59, 130, 246, 0.3), 0 10px 10px -5px rgba(59, 130, 246, 0.2)',
+                                    },
+                                  }}
+                                >
+                                  Ürünleri İncele
+                                </Button>
+                                <Button
+                                  component={Link}
+                                  href="/teklif-al"
+                                  variant="outlined"
+                                  size="large"
+                                  endIcon={<RequestQuote />}
+                                  sx={{
+                                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                                    borderWidth: 2,
+                                    color: 'white',
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    backdropFilter: 'blur(12px)',
+                                    px: 4,
+                                    py: 1.5,
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    borderRadius: 3,
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      borderColor: 'rgba(255, 255, 255, 0.6)',
+                                      background: 'rgba(255, 255, 255, 0.3)',
+                                      transform: 'scale(1.05)',
+                                    },
+                                  }}
+                                >
+                                  Teklif Al
+                                </Button>
+                              </Stack>
+                            </Slide>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </Zoom>
+                  </Container>
+                </Box>
+              </Fade>
             ))}
             
-            <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-3">
+            {/* Pagination Dots */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: { xs: 100, md: 128 },
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 20,
+                display: 'flex',
+                gap: 1.5,
+                alignItems: 'center',
+              }}
+            >
               {slides.map((_, index) => (
-                <button
+                <IconButton
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`relative rounded-full transition-all duration-500 ${
-                    index === currentSlide
-                      ? 'bg-white w-12 h-3 shadow-lg shadow-white/50'
-                      : 'bg-white/30 hover:bg-white/50 w-3 h-3 backdrop-blur-sm'
-                  }`}
+                  sx={{
+                    p: 0,
+                    minWidth: index === currentSlide ? 48 : 12,
+                    height: 12,
+                    borderRadius: '9999px',
+                    background: index === currentSlide
+                      ? 'white'
+                      : 'rgba(255, 255, 255, 0.3)',
+                    backdropFilter: 'blur(8px)',
+                    transition: 'all 0.5s ease',
+                    boxShadow: index === currentSlide
+                      ? '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(255, 255, 255, 0.5)'
+                      : 'none',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }}
                   aria-label={`Slide ${index + 1}'e geç`}
                 >
                   {index === currentSlide && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(90deg, #60a5fa, #a78bfa)',
+                        borderRadius: '9999px',
+                        animation: 'pulse 2s ease-in-out infinite',
+                        '@keyframes pulse': {
+                          '0%, 100%': { opacity: 1 },
+                          '50%': { opacity: 0.7 },
+                        },
+                      }}
+                    />
                   )}
-                </button>
+                </IconButton>
               ))}
-            </div>
+            </Box>
             
-            <button
+            {/* Navigation Buttons */}
+            <IconButton
               onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-              className="absolute left-6 top-1/2 -translate-y-1/2 z-20 group p-4 bg-white/10 backdrop-blur-xl rounded-2xl text-white border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 hover:scale-110 shadow-xl"
+              sx={{
+                position: 'absolute',
+                left: { xs: 2, md: 6 },
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 20,
+                p: 2,
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                  transform: 'translateY(-50%) scale(1.1)',
+                },
+              }}
               aria-label="Önceki slide"
             >
-              <span className="material-symbols-outlined text-3xl group-hover:-translate-x-1 transition-transform">chevron_left</span>
-            </button>
-            <button
+              <ChevronLeft sx={{ fontSize: '2rem' }} />
+            </IconButton>
+            <IconButton
               onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-              className="absolute right-6 top-1/2 -translate-y-1/2 z-20 group p-4 bg-white/10 backdrop-blur-xl rounded-2xl text-white border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 hover:scale-110 shadow-xl"
+              sx={{
+                position: 'absolute',
+                right: { xs: 2, md: 6 },
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 20,
+                p: 2,
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                  transform: 'translateY(-50%) scale(1.1)',
+                },
+              }}
               aria-label="Sonraki slide"
             >
-              <span className="material-symbols-outlined text-3xl group-hover:translate-x-1 transition-transform">chevron_right</span>
-            </button>
+              <ChevronRight sx={{ fontSize: '2rem' }} />
+            </IconButton>
             
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20 z-20">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-5000 ease-linear"
-                style={{ width: `${((currentSlide + 1) / slides.length) * 100}%` }}
-              ></div>
-            </div>
+            {/* Progress Bar */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 4,
+                background: 'rgba(0, 0, 0, 0.2)',
+                zIndex: 20,
+              }}
+            >
+              <LinearProgress
+                variant="determinate"
+                value={((currentSlide + 1) / slides.length) * 100}
+                sx={{
+                  height: '100%',
+                  background: 'transparent',
+                  '& .MuiLinearProgress-bar': {
+                    background: 'linear-gradient(90deg, #3b82f6, #9333ea, #ec4899)',
+                    transition: 'width 5s linear',
+                  },
+                }}
+              />
+            </Box>
             
-            <button
+            {/* Scroll Down Button */}
+            <IconButton
               onClick={handleScrollDown}
-              className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex flex-col items-center gap-2 group cursor-pointer hover:scale-110 transition-transform duration-300"
+              sx={{
+                position: 'absolute',
+                bottom: { xs: 2, md: 8 },
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 30,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                color: 'rgba(255, 255, 255, 0.8)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  color: 'white',
+                  transform: 'translateX(-50%) scale(1.1)',
+                },
+              }}
               aria-label="Aşağı kaydır"
             >
-              <span className="text-white/80 text-sm font-semibold mb-2 group-hover:text-white transition-colors">Aşağı Kaydır</span>
-              <div className="w-10 h-16 rounded-full border-2 border-white/40 backdrop-blur-sm flex items-start justify-center p-2 group-hover:border-white/60 transition-colors">
-                <span className="material-symbols-outlined text-white text-2xl animate-bounce">keyboard_arrow_down</span>
-              </div>
-            </button>
-          </section>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  mb: 0.5,
+                }}
+              >
+                Aşağı Kaydır
+              </Typography>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 64,
+                  borderRadius: '9999px',
+                  border: '2px solid rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(8px)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  pt: 1,
+                  transition: 'border-color 0.3s ease',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.6)',
+                  },
+                }}
+              >
+                <KeyboardArrowDown
+                  sx={{
+                    fontSize: '1.5rem',
+                    animation: 'bounce 2s infinite',
+                    '@keyframes bounce': {
+                      '0%, 100%': { transform: 'translateY(0)' },
+                      '50%': { transform: 'translateY(8px)' },
+                    },
+                  }}
+                />
+              </Box>
+            </IconButton>
+          </Box>
         )}
 
         {/* Stats Section - New */}
@@ -596,12 +956,12 @@ export default function Home() {
                 İhtiyacınıza uygun outdoor giyim çözümlerini keşfedin
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center max-w-7xl mx-auto">
               {categories.map((category, index) => (
                 <Link
                   key={index}
                   href={`/urunler?kategori=${category.slug}`}
-                  className="group relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100 dark:border-gray-700"
+                  className="group relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100 dark:border-gray-700 w-full max-w-sm"
                 >
                   <div className="relative h-48 overflow-hidden">
                     <Image
