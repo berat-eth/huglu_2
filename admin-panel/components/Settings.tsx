@@ -184,6 +184,27 @@ export default function Settings() {
         }
     }
 
+    // Kargo ayarlarını kaydet
+    const saveShippingSettings = async () => {
+        setShippingLoading(true)
+        setShippingMessage(null)
+        try {
+            const res = await api.post<ApiResponse<any>>('/admin/shipping/settings', {
+                freeShippingLimit: shippingSettings.freeShippingLimit,
+                shippingCost: shippingSettings.shippingCost
+            })
+            if (res?.success) {
+                setShippingMessage({ type: 'success', text: res.message || 'Kargo ayarları başarıyla kaydedildi' })
+            } else {
+                setShippingMessage({ type: 'error', text: res?.message || 'Kargo ayarları kaydedilemedi' })
+            }
+        } catch (e: any) {
+            setShippingMessage({ type: 'error', text: e?.message || 'Kargo ayarları kaydedilemedi' })
+        } finally {
+            setShippingLoading(false)
+        }
+    }
+
     useEffect(() => {
         const loadAiConfig = async () => {
             try {
