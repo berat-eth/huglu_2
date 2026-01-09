@@ -10,6 +10,10 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^7.3.7",
+    "@mui/material": "^7.3.7",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.294.0",
