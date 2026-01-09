@@ -115,7 +115,7 @@ export default function MaintenanceScreen({ navigation, route }) {
           <View style={styles.contactContainer}>
             <Text style={styles.contactText}>
               Acil durumlar için:{'\n'}
-              <Text style={styles.contactLink}>destek@huglu.com</Text>
+              <Text style={styles.contactLink}>destek@hugluoutdoor.com</Text>
             </Text>
           </View>
         </View>
