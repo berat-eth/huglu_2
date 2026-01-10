@@ -1,7 +1,9 @@
+// ✅ Önce path ve fs modüllerini yükle (environment variables için gerekli)
+const path = require('path');
+const fs = require('fs');
+
 const express = require('express');
 const cron = require('node-cron');
-const fs = require('fs');
-const path = require('path');
 // ✅ PRODUCTION: Logging helper - Production'da sadece error/warning göster
 const LOG_LEVEL = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'error' : 'info');
 const logger = {
