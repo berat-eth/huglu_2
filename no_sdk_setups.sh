@@ -484,9 +484,32 @@ show_system_status() {
     check_port_display() {
         local port=$1
         local service=$2
+        local pm2_name=$3  # PM2 servis adı (opsiyonel)
+        
+        # Önce port dinleniyor mu kontrol et
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
             local process=$(lsof -Pi :$port -sTCP:LISTEN | tail -1 | awk '{print $1}')
             echo -e "${GREEN} Port $port: $service ($process)${NC}"
+        elif [ -n "$pm2_name" ]; then
+            # PM2 servisi var mı kontrol et
+            if pm2 describe "$pm2_name" &>/dev/null; then
+                # PM2 servisi var - durumunu kontrol et
+                local pm2_status=$(pm2 jlist 2>/dev/null | grep -A 20 "\"name\":\"$pm2_name\"" | grep "\"status\"" | head -1 | sed 's/.*"status":"\([^"]*\)".*/\1/')
+                if [ -z "$pm2_status" ]; then
+                    # Alternatif yöntem: pm2 list kullan
+                    pm2_status=$(pm2 list 2>/dev/null | grep "$pm2_name" | awk '{print $10}' | head -1)
+                fi
+                
+                if [ "$pm2_status" = "online" ] || [ "$pm2_status" = "launching" ]; then
+                    echo -e "${YELLOW} Port $port: $service (PM2: $pm2_status - Port henüz dinlenmiyor olabilir)${NC}"
+                elif [ -n "$pm2_status" ]; then
+                    echo -e "${RED} Port $port: $service (PM2: $pm2_status)${NC}"
+                else
+                    echo -e "${YELLOW} Port $port: $service (PM2: Çalışıyor - Port kontrol edilemedi)${NC}"
+                fi
+            else
+                echo -e "${RED} Port $port: $service (Kullanımda Değil)${NC}"
+            fi
         else
             echo -e "${RED} Port $port: $service (Kullanımda Değil)${NC}"
         fi
@@ -494,10 +517,10 @@ show_system_status() {
     
     check_port_display 80 "Nginx"
     check_port_display 443 "Nginx SSL"
-    check_port_display $MAIN_PORT "Main Site"
-    check_port_display $API_PORT "API"
-    check_port_display $ADMIN_PORT "Admin"
-    check_port_display $AI_PORT "AI Service"
+    check_port_display $MAIN_PORT "Main Site" "$MAIN_PM2_NAME"
+    check_port_display $API_PORT "API" "$API_PM2_NAME"
+    check_port_display $ADMIN_PORT "Admin" "$ADMIN_PM2_NAME"
+    check_port_display $AI_PORT "AI Service" "$AI_PM2_NAME"
     check_port_display $REDIS_PORT "Redis"
     
     echo ""
