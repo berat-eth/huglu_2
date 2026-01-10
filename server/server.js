@@ -12578,46 +12578,54 @@ app.get('/api/admin/invoices/:id/download', authenticateAdmin, async (req, res) 
       return res.status(404).json({ success: false, message: 'Invoice file not found' });
     }
 
-    // Dosya yolunu normalize et - /uploads/invoices/... formatını düzelt
+    // ✅ Dosya yolunu normalize et - önce /root/data/uploads/invoices kontrol et
     let filePath = rows[0].filePath;
+    const fileName = path.basename(rows[0].filePath);
     
-    // Eğer /uploads/invoices/... formatındaysa, başındaki / karakterini kaldır
-    if (filePath.startsWith('/uploads/')) {
-      filePath = filePath.substring(1); // İlk / karakterini kaldır
-    }
-    
-    // __dirname ile birleştir (artık göreli yol olarak işlenecek)
-    filePath = path.join(__dirname, filePath);
-    
-    // Dosya yoksa alternatif yolları dene
-    if (!fs.existsSync(filePath)) {
-      // Alternatif 1: uploads/invoices klasöründen dosya adı ile
-      const fileName = path.basename(rows[0].filePath);
-      const altPath1 = path.join(__dirname, 'uploads', 'invoices', fileName);
-      if (fs.existsSync(altPath1)) {
-        filePath = altPath1;
-      } else {
-        // Alternatif 2: Orijinal filePath'i mutlak yol olarak dene
-        const altPath2 = rows[0].filePath;
-        if (fs.existsSync(altPath2)) {
-          filePath = altPath2;
+    // Önce /root/data/uploads/invoices yolunu kontrol et
+    const dataInvoicePath = path.join(invoicesDir, fileName);
+    if (fs.existsSync(dataInvoicePath)) {
+      filePath = dataInvoicePath;
+    } else {
+      // Eğer /uploads/invoices/... formatındaysa, başındaki / karakterini kaldır
+      if (filePath.startsWith('/uploads/')) {
+        filePath = filePath.substring(1); // İlk / karakterini kaldır
+      }
+      
+      // __dirname ile birleştir (artık göreli yol olarak işlenecek)
+      filePath = path.join(__dirname, filePath);
+      
+      // Dosya yoksa alternatif yolları dene
+      if (!fs.existsSync(filePath)) {
+        // Alternatif 1: uploads/invoices klasöründen dosya adı ile
+        const altPath1 = path.join(__dirname, 'uploads', 'invoices', fileName);
+        if (fs.existsSync(altPath1)) {
+          filePath = altPath1;
         } else {
-          console.error(' Invoice file not found at any path:', {
-            original: rows[0].filePath,
-            normalized: filePath,
-            tried1: altPath1,
-            tried2: altPath2,
-            __dirname: __dirname
-          });
-      return res.status(404).json({ success: false, message: 'Invoice file not found' });
+          // Alternatif 2: Orijinal filePath'i mutlak yol olarak dene
+          const altPath2 = rows[0].filePath;
+          if (fs.existsSync(altPath2)) {
+            filePath = altPath2;
+          } else {
+            console.error(' Invoice file not found at any path:', {
+              original: rows[0].filePath,
+              dataPath: dataInvoicePath,
+              normalized: filePath,
+              tried1: altPath1,
+              tried2: altPath2,
+              invoicesDir: invoicesDir,
+              __dirname: __dirname
+            });
+            return res.status(404).json({ success: false, message: 'Invoice file not found' });
+          }
         }
       }
     }
 
-    const fileName = rows[0].fileName || 'invoice.pdf';
+    const displayFileName = rows[0].fileName || 'invoice.pdf';
     // RFC 5987 formatında dosya adını encode et (Türkçe ve özel karakterler için)
-    const safeFileName = fileName.replace(/[^\x20-\x7E]/g, ''); // ASCII olmayan karakterleri temizle
-    const encodedFileName = encodeURIComponent(fileName);
+    const safeFileName = displayFileName.replace(/[^\x20-\x7E]/g, ''); // ASCII olmayan karakterleri temizle
+    const encodedFileName = encodeURIComponent(displayFileName);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
     res.sendFile(filePath);
@@ -12665,46 +12673,54 @@ app.get('/api/invoices/share/:token/download', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Invoice file not found' });
     }
 
-    // Dosya yolunu normalize et - /uploads/invoices/... formatını düzelt
+    // ✅ Dosya yolunu normalize et - önce /root/data/uploads/invoices kontrol et
     let filePath = rows[0].filePath;
+    const fileName = path.basename(rows[0].filePath);
     
-    // Eğer /uploads/invoices/... formatındaysa, başındaki / karakterini kaldır
-    if (filePath.startsWith('/uploads/')) {
-      filePath = filePath.substring(1); // İlk / karakterini kaldır
-    }
-    
-    // __dirname ile birleştir (artık göreli yol olarak işlenecek)
-    filePath = path.join(__dirname, filePath);
-    
-    // Dosya yoksa alternatif yolları dene
-    if (!fs.existsSync(filePath)) {
-      // Alternatif 1: uploads/invoices klasöründen dosya adı ile
-      const fileName = path.basename(rows[0].filePath);
-      const altPath1 = path.join(__dirname, 'uploads', 'invoices', fileName);
-      if (fs.existsSync(altPath1)) {
-        filePath = altPath1;
-      } else {
-        // Alternatif 2: Orijinal filePath'i mutlak yol olarak dene
-        const altPath2 = rows[0].filePath;
-        if (fs.existsSync(altPath2)) {
-          filePath = altPath2;
+    // Önce /root/data/uploads/invoices yolunu kontrol et
+    const dataInvoicePath = path.join(invoicesDir, fileName);
+    if (fs.existsSync(dataInvoicePath)) {
+      filePath = dataInvoicePath;
+    } else {
+      // Eğer /uploads/invoices/... formatındaysa, başındaki / karakterini kaldır
+      if (filePath.startsWith('/uploads/')) {
+        filePath = filePath.substring(1); // İlk / karakterini kaldır
+      }
+      
+      // __dirname ile birleştir (artık göreli yol olarak işlenecek)
+      filePath = path.join(__dirname, filePath);
+      
+      // Dosya yoksa alternatif yolları dene
+      if (!fs.existsSync(filePath)) {
+        // Alternatif 1: uploads/invoices klasöründen dosya adı ile
+        const altPath1 = path.join(__dirname, 'uploads', 'invoices', fileName);
+        if (fs.existsSync(altPath1)) {
+          filePath = altPath1;
         } else {
-          console.error(' Invoice file not found at any path:', {
-            original: rows[0].filePath,
-            normalized: filePath,
-            tried1: altPath1,
-            tried2: altPath2,
-            __dirname: __dirname
-          });
-      return res.status(404).json({ success: false, message: 'Invoice file not found' });
+          // Alternatif 2: Orijinal filePath'i mutlak yol olarak dene
+          const altPath2 = rows[0].filePath;
+          if (fs.existsSync(altPath2)) {
+            filePath = altPath2;
+          } else {
+            console.error(' Invoice file not found at any path:', {
+              original: rows[0].filePath,
+              dataPath: dataInvoicePath,
+              normalized: filePath,
+              tried1: altPath1,
+              tried2: altPath2,
+              invoicesDir: invoicesDir,
+              __dirname: __dirname
+            });
+            return res.status(404).json({ success: false, message: 'Invoice file not found' });
+          }
         }
       }
     }
 
-    const fileName = rows[0].fileName || 'invoice.pdf';
+    const displayFileName = rows[0].fileName || 'invoice.pdf';
     // RFC 5987 formatında dosya adını encode et (Türkçe ve özel karakterler için)
-    const safeFileName = fileName.replace(/[^\x20-\x7E]/g, ''); // ASCII olmayan karakterleri temizle
-    const encodedFileName = encodeURIComponent(fileName);
+    const safeFileName = displayFileName.replace(/[^\x20-\x7E]/g, ''); // ASCII olmayan karakterleri temizle
+    const encodedFileName = encodeURIComponent(displayFileName);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
     res.sendFile(filePath);
