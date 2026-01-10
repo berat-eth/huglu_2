@@ -1,5 +1,7 @@
 const express = require('express');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 // ✅ PRODUCTION: Logging helper - Production'da sadece error/warning göster
 const LOG_LEVEL = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'error' : 'info');
 const logger = {
@@ -117,8 +119,6 @@ const helmet = require('helmet');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
 const ftp = require('basic-ftp');
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 const { OAuth2Client } = require('google-auth-library');
 const compression = require('compression');
