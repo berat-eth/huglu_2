@@ -14,8 +14,10 @@ class UserSpecificDataLogger {
   }
 
   ensureDataDirectory() {
+    // ✅ Klasör zaten server.js'de oluşturuldu, sadece kontrol et
     if (!fs.existsSync(this.dataDir)) {
       fs.mkdirSync(this.dataDir, { recursive: true });
+      console.log('✅ UserSpecificDataLogger: Data directory created:', this.dataDir);
     }
   }
 

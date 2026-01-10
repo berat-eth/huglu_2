@@ -24,8 +24,10 @@ class ReportingEngine {
   }
 
   ensureReportsDirectory() {
+    // ✅ Klasör zaten server.js'de oluşturuldu, sadece kontrol et
     if (!fs.existsSync(this.reportsDir)) {
       fs.mkdirSync(this.reportsDir, { recursive: true });
+      console.log('✅ ReportingEngine: Reports directory created:', this.reportsDir);
     }
   }
 

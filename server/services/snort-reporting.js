@@ -15,8 +15,10 @@ class SnortReportingService {
   }
 
   ensureReportsDir() {
+    // ✅ Klasör zaten server.js'de oluşturuldu, sadece kontrol et
     if (!fs.existsSync(this.reportsDir)) {
       fs.mkdirSync(this.reportsDir, { recursive: true });
+      console.log('✅ SnortReportingService: Reports directory created:', this.reportsDir);
     }
   }
 

@@ -20,8 +20,10 @@ class UserDataLogger {
   }
 
   ensureDataDirectory() {
+    // ✅ Klasör zaten server.js'de oluşturuldu, sadece kontrol et
     if (!fs.existsSync(this.dataDir)) {
       fs.mkdirSync(this.dataDir, { recursive: true });
+      console.log('✅ UserDataLogger: Data directory created:', this.dataDir);
     }
   }
 

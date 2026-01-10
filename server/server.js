@@ -34,10 +34,56 @@ const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
 const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
 const ENV_FILE = process.env.ENV_FILE || path.join(DATA_DIR, '.env');
 
+// ✅ Tüm data klasör yapısını otomatik oluştur
+function ensureDataDirectories() {
+  try {
+    const directories = [
+      // Uploads klasörleri
+      path.join(UPLOADS_DIR, 'reviews'),
+      path.join(UPLOADS_DIR, 'community'),
+      path.join(UPLOADS_DIR, 'invoices'),
+      path.join(UPLOADS_DIR, 'reports'),
+      // Data klasörleri
+      path.join(DATA_STORAGE_DIR, 'users'),
+      path.join(DATA_STORAGE_DIR, 'archives', 'live-support'),
+      path.join(DATA_STORAGE_DIR, 'snort-reports'),
+    ];
+
+    directories.forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        logger.log('✅ Directory created:', dir);
+      }
+    });
+
+    // İzinleri ayarla
+    try {
+      if (fs.existsSync(DATA_DIR)) {
+        fs.chmodSync(DATA_DIR, 0o755);
+        if (fs.existsSync(UPLOADS_DIR)) {
+          fs.chmodSync(UPLOADS_DIR, 0o755);
+        }
+        if (fs.existsSync(DATA_STORAGE_DIR)) {
+          fs.chmodSync(DATA_STORAGE_DIR, 0o755);
+        }
+      }
+    } catch (permError) {
+      logger.warn('⚠️ Could not set directory permissions:', permError.message);
+    }
+
+    logger.log('✅ All data directories ensured');
+  } catch (error) {
+    logger.error('❌ Error creating data directories:', error);
+    // Kritik değil, devam et
+  }
+}
+
+// Klasörleri oluştur
+ensureDataDirectories();
+
 // Load environment variables from .env file
 // Önce /root/data/.env'i kontrol et, yoksa fallback olarak ../.env kullan
 try {
-  const fs = require('fs');
   if (fs.existsSync(ENV_FILE)) {
     require('dotenv').config({ path: ENV_FILE });
     logger.log('✅ Environment variables loaded from:', ENV_FILE);
@@ -717,41 +763,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 5000
 // XML gövdeleri için text parser (text/xml, application/xml)
 app.use(express.text({ type: ['text/xml', 'application/xml'], limit: '20mb' }));
 
-// ✅ Dosya yükleme için uploads klasörünü oluştur (/root/data/uploads)
+// ✅ Dosya yükleme için uploads klasörleri (zaten ensureDataDirectories() tarafından oluşturuldu)
 // Reviews uploads directory
 const uploadsDir = path.join(UPLOADS_DIR, 'reviews');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  logger.log('✅ Uploads directory created:', uploadsDir);
-}
 
 // Community posts uploads directory
 const communityUploadsDir = path.join(UPLOADS_DIR, 'community');
-if (!fs.existsSync(communityUploadsDir)) {
-  fs.mkdirSync(communityUploadsDir, { recursive: true });
-  logger.log('✅ Community uploads directory created:', communityUploadsDir);
-}
 
-// Invoices PDF yükleme için uploads klasörünü oluştur
+// Invoices PDF yükleme için uploads klasörü
 const invoicesDir = path.join(UPLOADS_DIR, 'invoices');
-if (!fs.existsSync(invoicesDir)) {
-  try {
-    fs.mkdirSync(invoicesDir, { recursive: true });
-    logger.log('✅ Invoices uploads directory created:', invoicesDir);
-  } catch (error) {
-    logger.error('❌ Error creating invoices directory:', error);
-    throw error;
-  }
-} else {
-  logger.log('✅ Invoices uploads directory already exists:', invoicesDir);
-}
 
 // Reports directory
 const reportsDir = path.join(UPLOADS_DIR, 'reports');
-if (!fs.existsSync(reportsDir)) {
-  fs.mkdirSync(reportsDir, { recursive: true });
-  logger.log('✅ Reports directory created:', reportsDir);
-}
 
 // Dizin yazma izinlerini kontrol et
 try {
