@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ========================================
-# Huglu + AI Service Full Stack Deployment Script
+# Huglu Full Stack Deployment Script
 # SDK Tools Disabled - Only Project Dependencies
 # Debian 11 Bullseye Optimized
 # Interactive Menu System
@@ -42,11 +42,6 @@ ADMIN_DIR="/root/huglu_2/admin-panel"
 ADMIN_PORT=3001
 ADMIN_PM2_NAME="admin-panel"
 
-# AI/ML Service
-AI_DIR="/root/huglu_2/ml-service"
-AI_PORT=8001
-AI_PM2_NAME="ml-service"
-
 # Redis
 REDIS_PORT=6379
 REDIS_MAXMEMORY="256mb"
@@ -58,7 +53,6 @@ ERRORS=0
 WARNINGS=0
 SKIP_ADMIN=false
 SKIP_MAIN=false
-SKIP_AI=false
 
 # --------------------------
 # Root Check
@@ -84,7 +78,7 @@ print_menu() {
     echo ""
     echo -e "${YELLOW}Ana Menü:${NC}"
     echo -e "  ${CYAN}1)${NC} Tam Kurulum (Tüm Servisler)"
-    echo -e "  ${CYAN}2)${NC} Sadece Temel Servisleri Kur (Web, API, Admin, AI)"
+    echo -e "  ${CYAN}2)${NC} Sadece Temel Servisleri Kur (Web, API, Admin)"
     echo -e "  ${CYAN}3)${NC} Tüm Servisleri Yeniden Başlat"
     echo -e "  ${CYAN}4)${NC} Sistem Durumunu Görüntüle"
     echo -e "  ${CYAN}5)${NC} Yazılım Güncellemelerini Dağıt (Deploy)"
@@ -133,7 +127,7 @@ restart_all_services() {
     
     echo -e "${YELLOW}Hangi servisleri yeniden başlatmak istiyorsunuz?${NC}"
     echo ""
-    echo -e "  ${CYAN}1)${NC} Sadece PM2 Servisleri (Web, API, Admin, AI)"
+    echo -e "  ${CYAN}1)${NC} Sadece PM2 Servisleri (Web, API, Admin)"
     echo -e "  ${CYAN}2)${NC} Sadece Sistem Servisleri (Nginx, Redis)"
     echo -e "  ${CYAN}3)${NC} TÜM SERVİSLER (PM2 + Sistem)"
     echo -e "  ${CYAN}4)${NC} İptal"
@@ -159,11 +153,6 @@ restart_all_services() {
             if pm2 describe $ADMIN_PM2_NAME &>/dev/null; then
                 echo -e "${YELLOW}Yeniden başlatılıyor: $ADMIN_PM2_NAME${NC}"
                 pm2 restart $ADMIN_PM2_NAME
-            fi
-            
-            if pm2 describe $AI_PM2_NAME &>/dev/null; then
-                echo -e "${YELLOW}Yeniden başlatılıyor: $AI_PM2_NAME${NC}"
-                pm2 restart $AI_PM2_NAME
             fi
             
             echo ""
@@ -217,11 +206,6 @@ restart_all_services() {
             if pm2 describe $ADMIN_PM2_NAME &>/dev/null; then
                 echo -e "${YELLOW}Yeniden başlatılıyor: $ADMIN_PM2_NAME${NC}"
                 pm2 restart $ADMIN_PM2_NAME
-            fi
-            
-            if pm2 describe $AI_PM2_NAME &>/dev/null; then
-                echo -e "${YELLOW}Yeniden başlatılıyor: $AI_PM2_NAME${NC}"
-                pm2 restart $AI_PM2_NAME
             fi
             
             echo ""
@@ -419,22 +403,6 @@ deploy_updates() {
         echo -e "${YELLOW}Admin dizini bulunamadı, atlandı.${NC}"
     fi
 
-    echo ""
-    echo -e "${BLUE}AI servisi güncelleniyor...${NC}"
-    if [ -d "$AI_DIR" ]; then
-        cd $AI_DIR
-        if [ -f "requirements.txt" ]; then
-            pip3 install -r requirements.txt
-        fi
-        if pm2 describe $AI_PM2_NAME &>/dev/null; then
-            pm2 restart $AI_PM2_NAME || pm2 start ecosystem.config.js
-        else
-            pm2 start ecosystem.config.js
-        fi
-    else
-        echo -e "${YELLOW}AI servis dizini bulunamadı, atlandı.${NC}"
-    fi
-
     pm2 save
     echo ""
     echo -e "${BLUE}Nginx yeniden yükleniyor...${NC}"
@@ -515,7 +483,6 @@ show_system_status() {
     check_port_display $MAIN_PORT "Main Site" "$MAIN_PM2_NAME"
     check_port_display $API_PORT "API" "$API_PM2_NAME"
     check_port_display $ADMIN_PORT "Admin" "$ADMIN_PM2_NAME"
-    check_port_display $AI_PORT "AI Service" "$AI_PM2_NAME"
     check_port_display $REDIS_PORT "Redis"
     
     echo ""
@@ -530,7 +497,6 @@ show_system_status() {
     echo -e "${BLUE}════════════════════════════════════════${NC}"
     echo -e "${GREEN}Internal Services:${NC}"
     echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "  ${CYAN}AI/ML Service:${NC} http://localhost:${AI_PORT}"
     echo -e "  ${CYAN}Redis:${NC} localhost:${REDIS_PORT}"
     echo ""
 }
@@ -543,7 +509,6 @@ cleanup_and_fix() {
     pm2 delete $MAIN_PM2_NAME 2>/dev/null || true
     pm2 delete $API_PM2_NAME 2>/dev/null || true
     pm2 delete $ADMIN_PM2_NAME 2>/dev/null || true
-    pm2 delete $AI_PM2_NAME 2>/dev/null || true
 
     rm -f /etc/nginx/sites-enabled/$MAIN_DOMAIN
     rm -f /etc/nginx/sites-enabled/$API_DOMAIN
@@ -766,9 +731,6 @@ install_api() {
                 echo "REDIS_HOST=127.0.0.1" >> /root/data/.env
                 echo "REDIS_PORT=${REDIS_PORT}" >> /root/data/.env
             fi
-            if ! grep -q "AI_SERVICE_URL" /root/data/.env; then
-                echo "AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}" >> /root/data/.env
-            fi
         else
             # ✅ /root/data/.env dosyasını oluştur
             cat > /root/data/.env << ENVEOF
@@ -779,7 +741,6 @@ UPLOADS_DIR=/root/data/uploads
 ENV_FILE=/root/data/.env
 REDIS_HOST=127.0.0.1
 REDIS_PORT=${REDIS_PORT}
-AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}
 ENVEOF
             chmod 600 /root/data/.env
             echo -e "${YELLOW}⚠️  /root/data/.env dosyası oluşturuldu. Lütfen yapılandırın!${NC}"
@@ -809,51 +770,6 @@ install_admin() {
         echo -e "${GREEN}✅ Admin panel başarıyla kuruldu${NC}"
     else
         SKIP_ADMIN=true
-    fi
-}
-
-install_ai_service() {
-    echo -e "${BLUE}[7/7] AI/ML Servisi kuruluyor...${NC}"
-    if [ -d "$AI_DIR" ]; then
-        cd $AI_DIR
-        
-        # Check port availability
-        check_port_usage $AI_PORT "AI Service" || return 1
-        
-        python3 -m pip install --upgrade pip
-        
-        if [ -f "requirements.txt" ]; then
-            pip3 install -r requirements.txt
-            
-            if [ -f "main.py" ]; then
-                mkdir -p logs
-                
-                cat > ecosystem.config.js << EOF
-module.exports = {
-  apps: [{
-    name: '${AI_PM2_NAME}',
-    script: 'python3',
-    args: 'main.py',
-    cwd: '${AI_DIR}',
-    interpreter: 'none',
-    env: {
-      PORT: ${AI_PORT},
-      REDIS_HOST: '127.0.0.1',
-      REDIS_PORT: ${REDIS_PORT},
-      PYTHONUNBUFFERED: '1'
-    }
-  }]
-};
-EOF
-                
-                pm2 start ecosystem.config.js
-                pm2 save
-                
-                echo -e "${GREEN} AI/ML Servisi başarıyla kuruldu${NC}"
-            fi
-        fi
-    else
-        SKIP_AI=true
     fi
 }
 
@@ -986,7 +902,6 @@ full_installation() {
     install_main_site
     install_api
     install_admin
-    install_ai_service
     configure_nginx
     install_ssl
     configure_firewall
@@ -1013,7 +928,6 @@ core_installation() {
     install_main_site
     install_api
     install_admin
-    install_ai_service
     configure_nginx
     install_ssl
     configure_firewall
