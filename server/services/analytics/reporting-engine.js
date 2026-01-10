@@ -10,7 +10,16 @@ const XLSX = require('xlsx');
 class ReportingEngine {
   constructor(poolWrapper) {
     this.pool = poolWrapper;
-    this.reportsDir = path.join(__dirname, '../../uploads/reports');
+    // ✅ DATA_DIR: Ana veri dizini (proje dışında)
+    const DATA_DIR = process.env.DATA_DIR || '/root/data';
+    const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
+    // ✅ /root/data/uploads/reports kullan
+    this.reportsDir = path.join(UPLOADS_DIR, 'reports');
+    // Fallback: eski yolu da kontrol et
+    const fallbackReportsDir = path.join(__dirname, '../../uploads/reports');
+    if (!fs.existsSync(this.reportsDir) && fs.existsSync(fallbackReportsDir)) {
+      this.reportsDir = fallbackReportsDir;
+    }
     this.ensureReportsDirectory();
   }
 

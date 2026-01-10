@@ -28,12 +28,27 @@ const logger = {
   }
 };
 
-// Load environment variables from envai file
+// ✅ DATA_DIR: Ana veri dizini (proje dışında)
+const DATA_DIR = process.env.DATA_DIR || '/root/data';
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
+const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
+const ENV_FILE = process.env.ENV_FILE || path.join(DATA_DIR, '.env');
+
+// Load environment variables from .env file
+// Önce /root/data/.env'i kontrol et, yoksa fallback olarak ../.env kullan
 try {
-  require('dotenv').config({ path: '../.env' });
-  logger.log('✅ Environment variables loaded from envai file');
+  const fs = require('fs');
+  if (fs.existsSync(ENV_FILE)) {
+    require('dotenv').config({ path: ENV_FILE });
+    logger.log('✅ Environment variables loaded from:', ENV_FILE);
+  } else if (fs.existsSync('../.env')) {
+    require('dotenv').config({ path: '../.env' });
+    logger.log('✅ Environment variables loaded from fallback: ../.env');
+  } else {
+    logger.warn('⚠️ No .env file found, using defaults');
+  }
 } catch (error) {
-  logger.warn('⚠️ Could not load envai file, using defaults:', error.message);
+  logger.warn('⚠️ Could not load .env file, using defaults:', error.message);
 }
 const cors = require('cors');
 const mysql = require('mysql2/promise');
@@ -702,22 +717,23 @@ app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 5000
 // XML gövdeleri için text parser (text/xml, application/xml)
 app.use(express.text({ type: ['text/xml', 'application/xml'], limit: '20mb' }));
 
-// Dosya yükleme için uploads klasörünü oluştur
-const uploadsDir = path.join(__dirname, 'uploads', 'reviews');
+// ✅ Dosya yükleme için uploads klasörünü oluştur (/root/data/uploads)
+// Reviews uploads directory
+const uploadsDir = path.join(UPLOADS_DIR, 'reviews');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   logger.log('✅ Uploads directory created:', uploadsDir);
 }
 
 // Community posts uploads directory
-const communityUploadsDir = path.join(__dirname, 'uploads', 'community');
+const communityUploadsDir = path.join(UPLOADS_DIR, 'community');
 if (!fs.existsSync(communityUploadsDir)) {
   fs.mkdirSync(communityUploadsDir, { recursive: true });
   logger.log('✅ Community uploads directory created:', communityUploadsDir);
 }
 
 // Invoices PDF yükleme için uploads klasörünü oluştur
-const invoicesDir = path.join(__dirname, 'uploads', 'invoices');
+const invoicesDir = path.join(UPLOADS_DIR, 'invoices');
 if (!fs.existsSync(invoicesDir)) {
   try {
     fs.mkdirSync(invoicesDir, { recursive: true });
@@ -728,6 +744,13 @@ if (!fs.existsSync(invoicesDir)) {
   }
 } else {
   logger.log('✅ Invoices uploads directory already exists:', invoicesDir);
+}
+
+// Reports directory
+const reportsDir = path.join(UPLOADS_DIR, 'reports');
+if (!fs.existsSync(reportsDir)) {
+  fs.mkdirSync(reportsDir, { recursive: true });
+  logger.log('✅ Reports directory created:', reportsDir);
 }
 
 // Dizin yazma izinlerini kontrol et
@@ -914,11 +937,11 @@ const invoiceUpload = multer({
   fileFilter: invoiceFileFilter
 });
 
-// Statik dosya servisi (yüklenen dosyaları erişilebilir yap)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Public klasörü için static serving (resized images için)
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+// ✅ Statik dosya servisi (yüklenen dosyaları erişilebilir yap)
+// Önce /root/data/uploads'i servis et, yoksa fallback olarak eski yolu kullan
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Fallback
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // Fallback
 
 // ✅ OPTIMIZASYON: Tenant cache middleware with enhanced Redis helpers
 const tenantCache = require('./middleware/tenantCache');
@@ -8211,13 +8234,16 @@ app.post('/api/admin/wallets/transfer', authenticateAdmin, async (req, res) => {
 // Admin - Visitor IPs endpoint (live-views'dan türetilmiş)
 app.get('/api/admin/visitor-ips', authenticateAdmin, async (req, res) => {
   try {
-    // live-views JSON dosyasından oku
-    const filePath = path.join(__dirname, 'data', 'user-activities.json');
-    if (!fs.existsSync(filePath)) {
+    // ✅ live-views JSON dosyasından oku (/root/data/data/user-activities.json)
+    const filePath = path.join(DATA_STORAGE_DIR, 'user-activities.json');
+    // Fallback: eski yolu da kontrol et
+    const fallbackPath = path.join(__dirname, 'data', 'user-activities.json');
+    const actualPath = fs.existsSync(filePath) ? filePath : fallbackPath;
+    if (!fs.existsSync(actualPath)) {
       return res.json({ success: true, data: [] });
     }
     
-    const raw = fs.readFileSync(filePath, 'utf-8');
+    const raw = fs.readFileSync(actualPath, 'utf-8');
     const json = JSON.parse(raw);
     const activities = json.activities || json || [];
     
@@ -12484,7 +12510,18 @@ app.delete('/api/admin/invoices/:id', authenticateAdmin, async (req, res) => {
 
     if (invoice.length > 0 && invoice[0].filePath) {
       try {
-        const filePath = path.join(__dirname, invoice[0].filePath);
+        // ✅ Invoice dosya yolunu düzelt (/uploads/invoices/... -> /root/data/uploads/invoices/...)
+        let filePath = invoice[0].filePath;
+        // Eğer /uploads/ ile başlıyorsa, UPLOADS_DIR kullan
+        if (filePath.startsWith('/uploads/')) {
+          const relativePath = filePath.replace('/uploads/', '');
+          filePath = path.join(UPLOADS_DIR, relativePath);
+        } else if (filePath.startsWith('uploads/')) {
+          filePath = path.join(UPLOADS_DIR, filePath.replace('uploads/', ''));
+        } else {
+          // Fallback: eski yolu kullan
+          filePath = path.join(__dirname, filePath);
+        }
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }

@@ -4,7 +4,13 @@ const path = require('path');
 
 class SnortReportingService {
   constructor() {
-    this.reportsDir = path.join(__dirname, '../data/snort-reports');
+    // ✅ DATA_DIR: Ana veri dizini (proje dışında)
+    const DATA_DIR = process.env.DATA_DIR || '/root/data';
+    const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
+    // ✅ /root/data/data/snort-reports kullan, fallback olarak eski yolu da kontrol et
+    const newReportsDir = path.join(DATA_STORAGE_DIR, 'snort-reports');
+    const fallbackReportsDir = path.join(__dirname, '../data/snort-reports');
+    this.reportsDir = fs.existsSync(path.dirname(newReportsDir)) ? newReportsDir : fallbackReportsDir;
     this.ensureReportsDir();
   }
 

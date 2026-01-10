@@ -3,7 +3,13 @@ const path = require('path');
 
 class UserSpecificDataLogger {
   constructor() {
-    this.dataDir = path.join(__dirname, '../data/users');
+    // ✅ DATA_DIR: Ana veri dizini (proje dışında)
+    const DATA_DIR = process.env.DATA_DIR || '/root/data';
+    const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
+    // ✅ /root/data/data/users kullan, fallback olarak eski yolu da kontrol et
+    const newDataDir = path.join(DATA_STORAGE_DIR, 'users');
+    const fallbackDataDir = path.join(__dirname, '../data/users');
+    this.dataDir = fs.existsSync(path.dirname(newDataDir)) ? newDataDir : fallbackDataDir;
     this.ensureDataDirectory();
   }
 

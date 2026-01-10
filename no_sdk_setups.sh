@@ -264,6 +264,62 @@ restart_all_services() {
 }
 
 # --------------------------
+# Migrate Existing Data to /root/data
+# --------------------------
+migrate_existing_data() {
+    echo -e "${BLUE}Mevcut veriler /root/data'ya taşınıyor...${NC}"
+    
+    # /root/data klasör yapısını oluştur
+    mkdir -p /root/data/uploads/{community,invoices,reports,reviews}
+    mkdir -p /root/data/data/{users,archives/live-support,snort-reports}
+    chmod -R 755 /root/data/uploads
+    chmod -R 755 /root/data/data
+    chown -R root:root /root/data
+    
+    # Mevcut uploads klasörünü taşı
+    if [ -d "$API_DIR/uploads" ] && [ "$(ls -A $API_DIR/uploads 2>/dev/null)" ]; then
+        echo -e "${YELLOW}Uploads klasörü taşınıyor...${NC}"
+        if [ -z "$(ls -A /root/data/uploads 2>/dev/null)" ]; then
+            cp -r "$API_DIR/uploads/"* /root/data/uploads/ 2>/dev/null || true
+            echo -e "${GREEN}✅ Uploads klasörü taşındı${NC}"
+        else
+            echo -e "${YELLOW}⚠️  /root/data/uploads zaten dolu, atlandı${NC}"
+        fi
+    fi
+    
+    # Mevcut data klasörünü taşı
+    if [ -d "$API_DIR/data" ] && [ "$(ls -A $API_DIR/data 2>/dev/null)" ]; then
+        echo -e "${YELLOW}Data klasörü taşınıyor...${NC}"
+        if [ -z "$(ls -A /root/data/data 2>/dev/null)" ]; then
+            cp -r "$API_DIR/data/"* /root/data/data/ 2>/dev/null || true
+            echo -e "${GREEN}✅ Data klasörü taşındı${NC}"
+        else
+            echo -e "${YELLOW}⚠️  /root/data/data zaten dolu, atlandı${NC}"
+        fi
+    fi
+    
+    # Mevcut .env dosyasını taşı
+    if [ -f "$API_DIR/.env" ] && [ ! -f "/root/data/.env" ]; then
+        echo -e "${YELLOW}.env dosyası taşınıyor...${NC}"
+        cp "$API_DIR/.env" "/root/data/.env"
+        chmod 600 /root/data/.env
+        
+        # Environment variable'ları ekle
+        if ! grep -q "DATA_DIR" /root/data/.env; then
+            echo "" >> /root/data/.env
+            echo "DATA_DIR=/root/data" >> /root/data/.env
+            echo "UPLOADS_DIR=/root/data/uploads" >> /root/data/.env
+            echo "ENV_FILE=/root/data/.env" >> /root/data/.env
+        fi
+        
+        echo -e "${GREEN}✅ .env dosyası taşındı${NC}"
+    fi
+    
+    echo -e "${GREEN}✅ Veri taşıma işlemi tamamlandı${NC}"
+    echo -e "${CYAN}📁 Veriler: /root/data${NC}"
+}
+
+# --------------------------
 # Deploy Latest Updates (Pull, Build, Restart)
 # --------------------------
 deploy_updates() {
@@ -276,6 +332,35 @@ deploy_updates() {
     fi
 
     cd /root/huglu_2
+
+    # ✅ /root/data dizinini koruma altına al
+    echo -e "${YELLOW}Veri dizini korunuyor (/root/data)...${NC}"
+    if [ ! -d "/root/data" ]; then
+        mkdir -p /root/data/uploads/{community,invoices,reports,reviews}
+        mkdir -p /root/data/data/{users,archives/live-support,snort-reports}
+        chmod -R 755 /root/data/uploads
+        chmod -R 755 /root/data/data
+        chown -R root:root /root/data
+        echo -e "${GREEN}✅ /root/data dizini oluşturuldu${NC}"
+    fi
+    
+    # .env dosyasını kontrol et ve migrate et
+    if [ ! -f "/root/data/.env" ] && [ -f "$API_DIR/.env" ]; then
+        echo -e "${YELLOW}⚠️  .env dosyası /root/data/.env'e taşınıyor...${NC}"
+        cp "$API_DIR/.env" "/root/data/.env"
+        chmod 600 /root/data/.env
+    fi
+    
+    # Mevcut verileri migrate et (ilk deployment için)
+    if [ -d "$API_DIR/uploads" ] && [ -z "$(ls -A /root/data/uploads 2>/dev/null)" ]; then
+        echo -e "${YELLOW}⚠️  Mevcut uploads klasörü /root/data/uploads'e taşınıyor...${NC}"
+        cp -r "$API_DIR/uploads/"* /root/data/uploads/ 2>/dev/null || true
+    fi
+    
+    if [ -d "$API_DIR/data" ] && [ -z "$(ls -A /root/data/data 2>/dev/null)" ]; then
+        echo -e "${YELLOW}⚠️  Mevcut data klasörü /root/data/data'ya taşınıyor...${NC}"
+        cp -r "$API_DIR/data/"* /root/data/data/ 2>/dev/null || true
+    fi
 
     echo -e "${BLUE}Son değişiklikler çekiliyor...${NC}"
     if git pull --rebase --autostash origin main; then
@@ -357,6 +442,7 @@ deploy_updates() {
 
     echo ""
     echo -e "${GREEN}Güncellemeler dağıtıldı ve servisler yeniden başlatıldı.${NC}"
+    echo -e "${CYAN}📁 Veriler korundu: /root/data${NC}"
 }
 
 # --------------------------
@@ -634,27 +720,59 @@ install_api() {
         # Check port availability
         check_port_usage $API_PORT "API" || return 1
         
-        if [ -f ".env" ]; then
-            if ! grep -q "REDIS_HOST" .env; then
-                echo "" >> .env
-                echo "REDIS_HOST=127.0.0.1" >> .env
-                echo "REDIS_PORT=${REDIS_PORT}" >> .env
+        # ✅ /root/data klasör yapısını oluştur
+        echo -e "${YELLOW}Veri dizini yapısı oluşturuluyor...${NC}"
+        mkdir -p /root/data/uploads/{community,invoices,reports,reviews}
+        mkdir -p /root/data/data/{users,archives/live-support,snort-reports}
+        chmod -R 755 /root/data/uploads
+        chmod -R 755 /root/data/data
+        chown -R root:root /root/data
+        echo -e "${GREEN}✅ /root/data klasör yapısı oluşturuldu${NC}"
+        
+        # ✅ .env dosyasını /root/data/.env'e taşı veya kopyala
+        if [ -f ".env" ] && [ ! -f "/root/data/.env" ]; then
+            echo -e "${YELLOW}Mevcut .env dosyası /root/data/.env'e kopyalanıyor...${NC}"
+            cp .env /root/data/.env
+            chmod 600 /root/data/.env
+        fi
+        
+        # ✅ /root/data/.env dosyasını oluştur veya güncelle
+        if [ -f "/root/data/.env" ]; then
+            if ! grep -q "DATA_DIR" /root/data/.env; then
+                echo "" >> /root/data/.env
+                echo "DATA_DIR=/root/data" >> /root/data/.env
+                echo "UPLOADS_DIR=/root/data/uploads" >> /root/data/.env
+                echo "ENV_FILE=/root/data/.env" >> /root/data/.env
             fi
-            if ! grep -q "AI_SERVICE_URL" .env; then
-                echo "AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}" >> .env
+            if ! grep -q "REDIS_HOST" /root/data/.env; then
+                echo "REDIS_HOST=127.0.0.1" >> /root/data/.env
+                echo "REDIS_PORT=${REDIS_PORT}" >> /root/data/.env
+            fi
+            if ! grep -q "AI_SERVICE_URL" /root/data/.env; then
+                echo "AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}" >> /root/data/.env
             fi
         else
-            cat > .env << ENVEOF
+            # ✅ /root/data/.env dosyasını oluştur
+            cat > /root/data/.env << ENVEOF
+NODE_ENV=production
+PORT=${API_PORT}
+DATA_DIR=/root/data
+UPLOADS_DIR=/root/data/uploads
+ENV_FILE=/root/data/.env
 REDIS_HOST=127.0.0.1
 REDIS_PORT=${REDIS_PORT}
 AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}
 ENVEOF
+            chmod 600 /root/data/.env
+            echo -e "${YELLOW}⚠️  /root/data/.env dosyası oluşturuldu. Lütfen yapılandırın!${NC}"
         fi
         
         npm install --production
         pm2 start server.js --name $API_PM2_NAME --time
         pm2 save
         echo -e "${GREEN}✅ API başarıyla kuruldu${NC}"
+        echo -e "${CYAN}📁 Veriler: /root/data/uploads${NC}"
+        echo -e "${CYAN}⚙️  Config: /root/data/.env${NC}"
     fi
 }
 

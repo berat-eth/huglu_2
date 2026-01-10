@@ -1,7 +1,17 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
-require('dotenv').config({ path: '../.env' });
+
+// ✅ DATA_DIR: Ana veri dizini (proje dışında)
+const DATA_DIR = process.env.DATA_DIR || '/root/data';
+const ENV_FILE = process.env.ENV_FILE || path.join(DATA_DIR, '.env');
+// ✅ .env dosyasını yükle
+if (fsSync.existsSync(ENV_FILE)) {
+  require('dotenv').config({ path: ENV_FILE });
+} else if (fsSync.existsSync('../.env')) {
+  require('dotenv').config({ path: '../.env' });
+}
 
 // Database configuration
 const dbConfig = {
@@ -13,8 +23,11 @@ const dbConfig = {
   charset: 'utf8mb4'
 };
 
-// Arşiv klasörü yolu
-const ARCHIVE_DIR = path.join(__dirname, '../data/archives/live-support');
+// ✅ Arşiv klasörü yolu (/root/data/data/archives/live-support)
+const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
+const newArchiveDir = path.join(DATA_STORAGE_DIR, 'archives/live-support');
+const fallbackArchiveDir = path.join(__dirname, '../data/archives/live-support');
+const ARCHIVE_DIR = fsSync.existsSync(path.dirname(newArchiveDir)) ? newArchiveDir : fallbackArchiveDir;
 
 /**
  * Arşiv klasörünü oluştur

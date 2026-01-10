@@ -84,29 +84,39 @@ async function processImage(inputPath, outputPath, format) {
   }
 }
 
+// ✅ DATA_DIR: Ana veri dizini (proje dışında)
+const DATA_DIR = process.env.DATA_DIR || '/root/data';
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
+
 // Multer configuration for image uploads - user-specific folders
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     try {
       // Get userId from request body or params
       const userId = req.body?.userId || req.params?.userId || 'unknown';
-      const userDir = path.join(__dirname, '../uploads/community', `user_${userId}`);
+      // ✅ /root/data/uploads/community/user_${userId} kullan
+      const userDir = path.join(UPLOADS_DIR, 'community', `user_${userId}`);
+      // Fallback: eski yolu da kontrol et
+      const fallbackUserDir = path.join(__dirname, '../uploads/community', `user_${userId}`);
+      const actualUserDir = fs.existsSync(path.dirname(userDir)) ? userDir : fallbackUserDir;
       
       // Create user-specific directory
-      if (!fs.existsSync(userDir)) {
-        fs.mkdirSync(userDir, { recursive: true });
-        console.log(`✅ Created user directory: ${userDir}`);
+      if (!fs.existsSync(actualUserDir)) {
+        fs.mkdirSync(actualUserDir, { recursive: true });
+        console.log(`✅ Created user directory: ${actualUserDir}`);
       }
       
-      cb(null, userDir);
+      cb(null, actualUserDir);
     } catch (error) {
       console.error('Error creating upload directory:', error);
       // Fallback to general community directory
-      const uploadDir = path.join(__dirname, '../uploads/community');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      const uploadDir = path.join(UPLOADS_DIR, 'community');
+      const fallbackUploadDir = path.join(__dirname, '../uploads/community');
+      const actualUploadDir = fs.existsSync(uploadDir) ? uploadDir : fallbackUploadDir;
+      if (!fs.existsSync(actualUploadDir)) {
+        fs.mkdirSync(actualUploadDir, { recursive: true });
       }
-      cb(null, uploadDir);
+      cb(null, actualUploadDir);
     }
   },
   filename: (req, file, cb) => {
@@ -350,12 +360,15 @@ router.post('/posts', upload.single('image'), async (req, res) => {
         
         // Process image based on format
         const processedFileName = `post-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
-        const userDir = path.join(__dirname, '../uploads/community', `user_${userIdStr}`);
-        const processedFilePath = path.join(userDir, processedFileName);
+        // ✅ /root/data/uploads/community/user_${userIdStr} kullan
+        const userDir = path.join(UPLOADS_DIR, 'community', `user_${userIdStr}`);
+        const fallbackUserDir = path.join(__dirname, '../uploads/community', `user_${userIdStr}`);
+        const actualUserDir = fs.existsSync(path.dirname(userDir)) ? userDir : fallbackUserDir;
+        const processedFilePath = path.join(actualUserDir, processedFileName);
         
         // Ensure user directory exists
-        if (!fs.existsSync(userDir)) {
-          fs.mkdirSync(userDir, { recursive: true });
+        if (!fs.existsSync(actualUserDir)) {
+          fs.mkdirSync(actualUserDir, { recursive: true });
         }
         
         // Resize and optimize image

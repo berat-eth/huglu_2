@@ -3,7 +3,12 @@ const path = require('path');
 
 class UserDataLogger {
   constructor() {
-    this.dataDir = path.join(__dirname, '../data');
+    // ✅ DATA_DIR: Ana veri dizini (proje dışında)
+    const DATA_DIR = process.env.DATA_DIR || '/root/data';
+    const DATA_STORAGE_DIR = path.join(DATA_DIR, 'data');
+    // ✅ /root/data/data kullan, fallback olarak eski yolu da kontrol et
+    const fallbackDataDir = path.join(__dirname, '../data');
+    this.dataDir = fs.existsSync(DATA_STORAGE_DIR) ? DATA_STORAGE_DIR : fallbackDataDir;
     this.usersFile = path.join(this.dataDir, 'users.json');
     this.activitiesFile = path.join(this.dataDir, 'user-activities.json');
     
