@@ -16,7 +16,7 @@ interface BackupItem {
   fileType: string
 }
 
-const BACKUP_PASSWORD = 'Hk@145362..'
+const BACKUP_PASSWORD = '190566'
 
 export default function Backup() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
