@@ -493,26 +493,14 @@ show_system_status() {
         elif [ -n "$pm2_name" ]; then
             # PM2 servisi var mı kontrol et
             if pm2 describe "$pm2_name" &>/dev/null; then
-                # PM2 servisi var - JSON'dan durumunu al
-                local pm2_info=$(pm2 jlist 2>/dev/null | grep -A 50 "\"name\":\"$pm2_name\"" | head -50)
-                if [ -n "$pm2_info" ]; then
-                    local pm2_status=$(echo "$pm2_info" | grep "\"status\"" | head -1 | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
-                    local pm2_pid=$(echo "$pm2_info" | grep "\"pid\"" | head -1 | sed -n 's/.*"pid":\([0-9]*\).*/\1/p')
-                    
-                    if [ "$pm2_status" = "online" ] || [ "$pm2_status" = "launching" ]; then
-                        if [ -n "$pm2_pid" ] && [ "$pm2_pid" != "0" ]; then
-                            echo -e "${GREEN} Port $port: $service (PM2: $pm2_status, PID: $pm2_pid)${NC}"
-                        else
-                            echo -e "${YELLOW} Port $port: $service (PM2: $pm2_status - Başlatılıyor)${NC}"
-                        fi
-                    elif [ -n "$pm2_status" ]; then
-                        echo -e "${RED} Port $port: $service (PM2: $pm2_status)${NC}"
-                    else
-                        echo -e "${YELLOW} Port $port: $service (PM2: Çalışıyor)${NC}"
-                    fi
+                # PM2 servisi var - PID kontrolü yap
+                local pm2_pid=$(pm2 pid "$pm2_name" 2>/dev/null)
+                if [ -n "$pm2_pid" ] && [ "$pm2_pid" != "0" ] && [ "$pm2_pid" != "N/A" ]; then
+                    # PM2 servisi çalışıyor - port henüz dinlenmiyor olabilir veya başka bir sorun var
+                    echo -e "${YELLOW} Port $port: $service (PM2: Çalışıyor, PID: $pm2_pid - Port henüz dinlenmiyor olabilir)${NC}"
                 else
-                    # PM2 servisi var ama bilgi alınamadı - basit kontrol
-                    echo -e "${YELLOW} Port $port: $service (PM2: Çalışıyor)${NC}"
+                    # PM2 servisi var ama PID yok - muhtemelen durdurulmuş
+                    echo -e "${RED} Port $port: $service (PM2: Durdurulmuş)${NC}"
                 fi
             else
                 echo -e "${RED} Port $port: $service (Kullanımda Değil)${NC}"
