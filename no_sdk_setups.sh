@@ -361,7 +361,13 @@ deploy_updates() {
     if [ -d "$MAIN_DIR" ]; then
         cd $MAIN_DIR
         npm install
-        npm audit fix || npm audit fix --force || true
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force 2>/dev/null || true
+        fi
         npm run build
         if pm2 describe $MAIN_PM2_NAME &>/dev/null; then
             pm2 restart $MAIN_PM2_NAME || pm2 start ecosystem.config.js
@@ -377,7 +383,13 @@ deploy_updates() {
     if [ -d "$API_DIR" ]; then
         cd $API_DIR
         npm install --production
-        npm audit fix --production || npm audit fix --force --production || true
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix --production 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --production --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force --production 2>/dev/null || true
+        fi
         if pm2 describe $API_PM2_NAME &>/dev/null; then
             pm2 restart $API_PM2_NAME || pm2 start server.js --name $API_PM2_NAME --time
         else
@@ -392,7 +404,13 @@ deploy_updates() {
     if [ -d "$ADMIN_DIR" ]; then
         cd $ADMIN_DIR
         npm install
-        npm audit fix || npm audit fix --force || true
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force 2>/dev/null || true
+        fi
         npm run build
         if pm2 describe $ADMIN_PM2_NAME &>/dev/null; then
             pm2 restart $ADMIN_PM2_NAME || PORT=$ADMIN_PORT pm2 start npm --name "$ADMIN_PM2_NAME" -- start
@@ -661,6 +679,13 @@ install_main_site() {
         check_port_usage $MAIN_PORT "Main Site" || return 1
         
         npm install
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force 2>/dev/null || true
+        fi
         npm run build
         
         cat > ecosystem.config.js << EOF
@@ -747,6 +772,13 @@ ENVEOF
         fi
         
         npm install --production
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix --production 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --production --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force --production 2>/dev/null || true
+        fi
         pm2 start server.js --name $API_PM2_NAME --time
         pm2 save
         echo -e "${GREEN}✅ API başarıyla kuruldu${NC}"
@@ -764,6 +796,13 @@ install_admin() {
         check_port_usage $ADMIN_PORT "Admin Panel" || return 1
         
         npm install
+        echo -e "${YELLOW}Güvenlik açıkları kontrol ediliyor ve düzeltiliyor...${NC}"
+        npm audit fix 2>/dev/null || true
+        # Eğer hala açıklar varsa force ile düzelt
+        if npm audit --audit-level=moderate 2>/dev/null | grep -q "found"; then
+            echo -e "${YELLOW}Kritik açıklar için zorunlu düzeltme uygulanıyor...${NC}"
+            npm audit fix --force 2>/dev/null || true
+        fi
         npm run build
         PORT=$ADMIN_PORT pm2 start npm --name "$ADMIN_PM2_NAME" -- start
         pm2 save
