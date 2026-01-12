@@ -6,6 +6,7 @@ import { productsAPI, slidersAPI, storiesAPI, flashDealsAPI } from '../services/
 import { isServerError } from '../utils/errorHandler';
 import { checkMaintenanceMode } from '../utils/maintenanceCheck';
 import safeLog from '../utils/safeLogger';
+import { enforceDeviceSecurity } from '../utils/deviceSecurity';
 
 const { width, height } = Dimensions.get('window');
 
@@ -114,6 +115,20 @@ export default function SplashScreen({ navigation }) {
 
   const initializeApp = async () => {
     try {
+      // 0. GÜVENLİK: Cihaz güvenlik kontrolü
+      setLoadingText('Güvenlik kontrol ediliyor...');
+      try {
+        const deviceSecurity = await enforceDeviceSecurity();
+        if (deviceSecurity.shouldRestrict) {
+          safeLog.warn('⚠️ Device security warning:', deviceSecurity.issues);
+          // Production'da uygulamayı kısıtlayabilir veya kapatabilirsiniz
+          // Şimdilik sadece logluyoruz
+        }
+      } catch (securityError) {
+        safeLog.error('Device security check error:', securityError);
+        // Güvenlik kontrolü başarısız olsa bile uygulamaya devam et
+      }
+
       // 1. Bakım modu kontrolü
       setLoadingText('Sistem kontrol ediliyor...');
       const maintenanceStatus = await checkMaintenanceMode('mobile');

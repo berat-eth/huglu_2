@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from '../utils/secureStorage';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import SuccessModal from '../components/SuccessModal';
@@ -42,8 +42,8 @@ export default function LoginScreen({ navigation }) {
       if (response.data.success) {
         const userData = response.data.data;
         
-        // Kullanıcı bilgilerini kaydet (Backend token döndürmüyor, sadece user data)
-        await AsyncStorage.multiSet([
+        // GÜVENLİK: Kullanıcı bilgilerini SecureStorage'da kaydet (hassas veriler)
+        await secureStorage.multiSet([
           ['userId', userData.id?.toString() || ''],
           ['userName', userData.name || email.split('@')[0]],
           ['userEmail', userData.email || email],

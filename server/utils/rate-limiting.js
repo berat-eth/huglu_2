@@ -253,18 +253,19 @@ const createUnifiedAPILimiter = () => {
       const userId = getUserIdFromRequest(req);
       const isAuthenticated = !!userId;
       
-      // Guest kullanıcılar için daha yüksek limitler (aynı IP'den farklı kullanıcılar için)
+      // GÜVENLİK: DoS koruması için daha düşük limitler
+      // Guest kullanıcılar için limitler (aynı IP'den farklı kullanıcılar için)
       if (!isAuthenticated) {
-        // Guest: Mobil için 5000, Web için 3000 istek/15 dakika
+        // Guest: Mobil için 200, Web için 100 istek/15 dakika (DoS koruması için düşürüldü)
         return isMobile 
-          ? parseInt(process.env.UNIFIED_RATE_LIMIT_GUEST_MOBILE || '5000', 10)
-          : parseInt(process.env.UNIFIED_RATE_LIMIT_GUEST_WEB || '3000', 10);
+          ? parseInt(process.env.UNIFIED_RATE_LIMIT_GUEST_MOBILE || '200', 10)
+          : parseInt(process.env.UNIFIED_RATE_LIMIT_GUEST_WEB || '100', 10);
       }
       
-      // Authenticated kullanıcılar: Mobil için 10000, Web için 5000 istek/15 dakika
+      // Authenticated kullanıcılar: Mobil için 500, Web için 300 istek/15 dakika (DoS koruması için düşürüldü)
       return isMobile
-        ? parseInt(process.env.UNIFIED_RATE_LIMIT_AUTH_MOBILE || '10000', 10)
-        : parseInt(process.env.UNIFIED_RATE_LIMIT_AUTH_WEB || '5000', 10);
+        ? parseInt(process.env.UNIFIED_RATE_LIMIT_AUTH_MOBILE || '500', 10)
+        : parseInt(process.env.UNIFIED_RATE_LIMIT_AUTH_WEB || '300', 10);
     },
     standardHeaders: true,
     legacyHeaders: false,

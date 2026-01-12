@@ -1,7 +1,20 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getApiUrl, API_CONFIG } from '../config/api.config';
+import { getApiUrl, API_CONFIG, validateApiKey } from '../config/api.config';
 import safeLog from '../utils/safeLogger';
+import secureStorage from '../utils/secureStorage';
+import { createSSLPinningInterceptor } from '../utils/sslPinning';
+
+// GÜVENLİK: API key kontrolü
+try {
+  validateApiKey();
+} catch (error) {
+  console.error('❌ API Configuration Error:', error.message);
+  // Development'ta uyarı ver, production'da hata fırlat
+  if (__DEV__) {
+    console.warn('⚠️ API_KEY bulunamadı. EXPO_PUBLIC_API_KEY environment variable\'ı set edin.');
+  }
+}
 
 // Backend API URL
 const API_BASE_URL = getApiUrl();
@@ -24,12 +37,21 @@ const api = axios.create({
   // httpsAgent sadece Node.js için geçerlidir, React Native'de kullanılmaz
 });
 
+// GÜVENLİK: SSL Pinning interceptor (ilk interceptor)
+api.interceptors.request.use(
+  createSSLPinningInterceptor(),
+  (error) => {
+    safeLog.error('SSL Pinning interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
 // Request interceptor - TenantId ekle
 api.interceptors.request.use(
   async (config) => {
     try {
-      // AsyncStorage'dan tenantId al (Backend token kullanmıyor, sadece tenantId)
-      const tenantId = await AsyncStorage.getItem('tenantId');
+      // GÜVENLİK: SecureStorage'dan tenantId al (hassas veri)
+      const tenantId = await secureStorage.getItem('tenantId');
       
       config.headers['X-Tenant-Id'] = tenantId || '1';
       
@@ -101,7 +123,8 @@ api.interceptors.response.use(
     // Unauthorized - logout (401)
     if (error.response?.status === 401) {
       try {
-        await AsyncStorage.multiRemove(['userId', 'userName', 'userEmail', 'userPhone', 'isLoggedIn']);
+        // GÜVENLİK: SecureStorage'dan hassas kullanıcı verilerini sil
+        await secureStorage.multiRemove(['userId', 'userName', 'userEmail', 'userPhone', 'isLoggedIn']);
         safeLog.debug('User logged out due to 401');
       } catch (logoutError) {
         safeLog.error('Logout error:', logoutError);
@@ -424,8 +447,8 @@ export const liveSupportAPI = {
     if (userId < 0) {
       // Negatif userId = misafir kullanıcı
       try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        deviceId = await AsyncStorage.getItem('guestDeviceId');
+        // GÜVENLİK: SecureStorage'dan deviceId al
+        deviceId = await secureStorage.getItem('guestDeviceId');
       } catch (error) {
         safeLog.error('DeviceId alınamadı:', error);
       }

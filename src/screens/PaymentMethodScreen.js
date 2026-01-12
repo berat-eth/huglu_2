@@ -264,15 +264,8 @@ export default function PaymentMethodScreen({ navigation, route }) {
       
       console.log('✅ Kart bilgileri doğrulandı');
 
-      // Kart bilgilerini geçici olarak AsyncStorage'a kaydet
-      const cardData = {
-        cardNumber: cleanCardNumber,
-        cardName: cardName.trim(),
-        expiryDate: expiryDate,
-        cvv: cvv
-      };
-      await AsyncStorage.setItem('tempCardData', JSON.stringify(cardData));
-      console.log('💾 Kart bilgileri geçici olarak kaydedildi');
+      // GÜVENLİK: Kart bilgilerini cihazda saklama, direkt backend'e gönderilecek
+      // PCI-DSS uyumluluğu için kart bilgileri hiçbir şekilde cihazda saklanmamalı
 
       // Sepet verilerini çek
       console.log('🛒 Sepet verileri çekiliyor...');
@@ -292,7 +285,6 @@ export default function PaymentMethodScreen({ navigation, route }) {
           cartLength: Array.isArray(cartData) ? cartData.length : 'not array'
         });
         alert.show('Hata', 'Sepetinizde ürün bulunmuyor');
-        await AsyncStorage.removeItem('tempCardData');
         setProcessingPayment(false);
         return;
       }
@@ -381,7 +373,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
       
       if (!orderResponse.data?.success) {
         console.error('❌ ÖDEME HATASI: Sipariş oluşturulamadı:', orderResponse.data?.message);
-        await AsyncStorage.removeItem('tempCardData');
+        // GÜVENLİK: Kart bilgileri cihazda saklanmadı, temizleme gerekmez
         alert.show('Hata', orderResponse.data?.message || 'Sipariş oluşturulamadı');
         setProcessingPayment(false);
         return;
@@ -463,9 +455,8 @@ export default function PaymentMethodScreen({ navigation, route }) {
         paymentId: paymentResponse.data?.data?.paymentId
       });
 
-      // Kart bilgilerini AsyncStorage'dan sil (güvenlik)
-      await AsyncStorage.removeItem('tempCardData');
-      console.log('🗑️ Geçici kart bilgileri temizlendi');
+      // GÜVENLİK: Kart bilgileri zaten cihazda saklanmadı, temizleme gerekmez
+      console.log('✅ Ödeme işlemi tamamlandı');
 
       if (paymentResponse.data?.success) {
         // 3D Secure kontrolü
@@ -563,12 +554,7 @@ export default function PaymentMethodScreen({ navigation, route }) {
         stack: error.stack
       });
       
-      // Kart bilgilerini AsyncStorage'dan sil
-      try {
-        await AsyncStorage.removeItem('tempCardData');
-      } catch (e) {
-        console.error('AsyncStorage temizleme hatası:', e);
-      }
+      // GÜVENLİK: Kart bilgileri cihazda saklanmadı, temizleme gerekmez
 
       // Hata mesajını göster ve kullanıcı dostu hale getir
       let errorMessage = 'Ödeme işlemi sırasında bir hata oluştu';

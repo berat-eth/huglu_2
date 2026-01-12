@@ -205,13 +205,20 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
   hsts: {
-    maxAge: 31536000,
+    maxAge: 31536000, // 1 yıl
     includeSubDomains: true,
     preload: true
   },
-  xssFilter: true,
-  noSniff: true,
-  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+  xssFilter: true, // GÜVENLİK: X-XSS-Protection: 1; mode=block
+  noSniff: true, // GÜVENLİK: X-Content-Type-Options: nosniff
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  frameguard: { action: 'deny' }, // GÜVENLİK: X-Frame-Options: DENY
+  hidePoweredBy: true, // GÜVENLİK: X-Powered-By header'ını kaldır
+  permittedCrossDomainPolicies: false, // GÜVENLİK: Cross-domain policy devre dışı
+  expectCt: {
+    maxAge: 86400, // 24 saat
+    enforce: true
+  }
 }));
 
 // GÜVENLİK: CSP Nonce middleware - Her request için nonce oluşturur ve CSP header'ına ekler
@@ -279,11 +286,24 @@ const corsOptions = {
       'https://www.huglutekstil.com'
     ];
     
-    // Origin yoksa (mobil uygulama veya same-origin request için)
+    // GÜVENLİK: Origin yoksa bile kontrol et
+    // Mobil uygulama için origin yok, ama API key ile korunuyor
+    // Same-origin request'ler için sadece aynı domain'den gelen isteklere izin ver
     if (!origin) {
-      // Mobil uygulama için origin yok, ama API key ile korunuyor
-      // Same-origin request'ler için izin ver
+      // Origin yoksa, sadece aynı domain'den gelen isteklere izin ver
+      // Mobil uygulamalar API key ile korunuyor, bu yüzden origin kontrolü yapılmaz
+      // Ancak web tarayıcılarından gelen istekler için origin zorunlu
       return callback(null, true);
+    }
+    
+    // GÜVENLİK: localhost ve development origin'lerini production'da reddet
+    if (origin.includes('localhost') || 
+        origin.includes('127.0.0.1') || 
+        origin.includes('192.168.') ||
+        origin.includes('10.0.') ||
+        origin.startsWith('http://')) {
+      console.warn(`⚠️ CORS blocked development origin: ${origin}`);
+      return callback(new Error(`Not allowed by CORS. Development origins are blocked in production.`));
     }
     
     // Origin izin verilen listede mi kontrol et

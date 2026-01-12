@@ -1,5 +1,7 @@
 // API Configuration
-// Backend sunucunuzun IP adresini buraya yazın
+// GÜVENLİK: API key artık hardcoded değil, expo-constants ile environment variable'dan alınır
+
+import Constants from 'expo-constants';
 
 // Yerel ağ için (aynı WiFi'de)
 // Windows: ipconfig -> IPv4 Address
@@ -11,8 +13,13 @@ export const API_CONFIG = {
   // Production
   PRODUCTION: 'https://api.huglutekstil.com/api',
   
-  // API Key
-  API_KEY: 'huglu_1f3a9b6c2e8d4f0a7b1c3d5e9f2468ab1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f',
+  // GÜVENLİK: API Key artık environment variable'dan alınır
+  // Build zamanında EXPO_PUBLIC_API_KEY set edilmeli
+  // Fallback olarak app.config.js'deki extra.apiKey kullanılır
+  API_KEY: Constants.expoConfig?.extra?.apiKey || 
+           process.env.EXPO_PUBLIC_API_KEY || 
+           process.env.API_KEY || 
+           null, // API key yoksa null döner, uygulama hata verecek
   
   // Timeout
   TIMEOUT: 30000,
@@ -20,9 +27,17 @@ export const API_CONFIG = {
 
 // Aktif ortam seçimi
 export const getApiUrl = () => {
-  // Her zaman production URL kullan (backend production'da çalışıyor)
-  // Eğer local backend çalıştırıyorsan, LOCAL'i değiştir: 'http://192.168.1.101:3000/api'
-  return API_CONFIG.PRODUCTION;
+  // Environment variable'dan API URL al, yoksa production kullan
+  return Constants.expoConfig?.extra?.apiUrl || API_CONFIG.PRODUCTION;
+};
+
+// API key kontrolü
+export const validateApiKey = () => {
+  if (!API_CONFIG.API_KEY) {
+    console.error('❌ API_KEY bulunamadı! EXPO_PUBLIC_API_KEY environment variable\'ı set edilmeli.');
+    throw new Error('API_KEY configuration missing. Please set EXPO_PUBLIC_API_KEY environment variable.');
+  }
+  return true;
 };
 
 export default API_CONFIG;
