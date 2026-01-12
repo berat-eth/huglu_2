@@ -85,8 +85,16 @@ async function authenticateAdmin(req, res, next) {
       });
     }
     
-    // Check admin key against environment variable (with default fallback)
-    const validAdminKey = process.env.ADMIN_KEY || 'huglu-admin-2024-secure-key-CHANGE-THIS';
+    // GÜVENLİK: Admin key environment variable'dan alınmalı, fallback yok
+    const validAdminKey = process.env.ADMIN_KEY;
+    
+    if (!validAdminKey) {
+      console.error('❌ CRITICAL: ADMIN_KEY environment variable is not set');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Server configuration error' 
+      });
+    }
     
     if (adminKey !== validAdminKey) {
       console.warn(`⚠️ Invalid admin key attempt from IP: ${req.ip}`);
@@ -107,10 +115,28 @@ async function authenticateAdmin(req, res, next) {
   }
 }
 
-// Tenant authentication middleware
+// GÜVENLİK: Tenant authentication middleware - Query parametresinden tenant ID alma kaldırıldı
 async function authenticateTenant(req, res, next) {
   try {
-    const tenantId = req.headers['x-tenant-id'] || req.query.tenantId || 1;
+    // GÜVENLİK: Tenant ID sadece header'dan alınır, query parametresinden alınmaz
+    const tenantIdHeader = req.headers['x-tenant-id'] || req.headers['X-Tenant-Id'];
+    
+    // Tenant ID validation
+    if (!tenantIdHeader) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Tenant ID required in X-Tenant-Id header' 
+      });
+    }
+    
+    // Numeric ve pozitif kontrolü
+    const tenantId = parseInt(tenantIdHeader);
+    if (isNaN(tenantId) || tenantId <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid tenant ID format. Must be a positive number.' 
+      });
+    }
     
     // Get tenant info
     const [tenants] = await poolWrapper.execute(

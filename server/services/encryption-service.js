@@ -18,11 +18,14 @@ class EncryptionService {
     return crypto.randomBytes(this.ivLength);
   }
 
-  // Veriyi şifrele
+  // GÜVENLİK: Veriyi şifrele - createCipheriv kullanılıyor
   encrypt(data, key) {
     try {
       const iv = this.generateIV();
-      const cipher = crypto.createCipher(this.algorithm, key);
+      // GÜVENLİK: createCipher deprecated, createCipheriv kullanılıyor
+      // GCM mode için key Buffer olmalı
+      const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
+      const cipher = crypto.createCipheriv(this.algorithm, keyBuffer, iv);
       cipher.setAAD(Buffer.from('huglu-mobil-app', 'utf8')); // Additional authenticated data
       
       let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'base64');
@@ -45,12 +48,18 @@ class EncryptionService {
     }
   }
 
-  // Veriyi şifre çöz
+  // GÜVENLİK: Veriyi şifre çöz - createDecipheriv kullanılıyor
   decrypt(encryptedData, key) {
     try {
       const parsed = JSON.parse(Buffer.from(encryptedData, 'base64').toString('utf8'));
       
-      const decipher = crypto.createDecipher(this.algorithm, key);
+      // IV'yi base64'ten buffer'a çevir
+      const iv = Buffer.from(parsed.iv, 'base64');
+      
+      // GÜVENLİK: createDecipher deprecated, createDecipheriv kullanılıyor
+      // GCM mode için key Buffer olmalı
+      const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
+      const decipher = crypto.createDecipheriv(this.algorithm, keyBuffer, iv);
       decipher.setAAD(Buffer.from('huglu-mobil-app', 'utf8'));
       decipher.setAuthTag(Buffer.from(parsed.tag, 'base64'));
       
@@ -99,12 +108,15 @@ class EncryptionService {
     return crypto.createHash('sha256').update(dataString).digest('hex');
   }
 
-  // Şifreleme anahtarını al
+  // GÜVENLİK: Şifreleme anahtarını al - environment variable zorunlu
   getEncryptionKey() {
     const key = process.env.ENCRYPTION_KEY;
     if (!key) {
-      console.warn('⚠️ ENCRYPTION_KEY not set, using default key (NOT SECURE FOR PRODUCTION)');
-      return 'huglu-server-encryption-key-32-chars'; // 32 karakter - mobil ile aynı
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('❌ CRITICAL: ENCRYPTION_KEY environment variable is required in production');
+      }
+      console.warn('⚠️ ENCRYPTION_KEY not set (development mode)');
+      return null; // Development'ta null döndür, kullanıcı hata alsın
     }
     return key;
   }

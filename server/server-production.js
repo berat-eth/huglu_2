@@ -22,11 +22,25 @@ try {
   console.warn('⚠️ Could not load envai file, using defaults:', error.message);
 }
 
+// GÜVENLİK: Environment variable validation
+const { validateRequiredEnvVars, validateDatabaseConfig } = require('./utils/env-validation');
+try {
+  validateRequiredEnvVars();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+
 // Security utilities with environment-based configuration
 const SALT_ROUNDS = 12;
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY ? 
-  Buffer.from(process.env.ENCRYPTION_KEY, 'hex') : 
-  crypto.randomBytes(32);
+
+// GÜVENLİK: Encryption key environment variable'dan alınmalı, fallback yok
+const { getEnvVar } = require('./utils/env-validation');
+const encryptionKeyHex = getEnvVar('ENCRYPTION_KEY', null, true);
+if (!encryptionKeyHex || encryptionKeyHex.length < 64) {
+  throw new Error('❌ CRITICAL: ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+}
+const ENCRYPTION_KEY = Buffer.from(encryptionKeyHex, 'hex');
 const IV_LENGTH = 16;
 
 // Ensure logs directory exists
@@ -63,21 +77,23 @@ async function verifyPassword(password, hashedPassword) {
   }
 }
 
-// Data encryption for sensitive fields
+// GÜVENLİK: Data encryption for sensitive fields - createCipheriv kullanılıyor
 function encryptData(text) {
   try {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipher('aes-256-cbc', ENCRYPTION_KEY);
+    // GÜVENLİK: createCipher deprecated, createCipheriv kullanılıyor
+    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
+    // IV + encrypted data format: iv:encrypted
     return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
     console.error('❌ Error encrypting data:', error);
-    return text;
+    throw error; // GÜVENLİK: Şifreleme hatası durumunda plain text döndürme
   }
 }
 
-// Data decryption for sensitive fields
+// GÜVENLİK: Data decryption for sensitive fields - createDecipheriv kullanılıyor
 function decryptData(encryptedText) {
   try {
     if (!encryptedText || typeof encryptedText !== 'string') {
@@ -85,22 +101,32 @@ function decryptData(encryptedText) {
     }
     
     if (!encryptedText.includes(':')) {
+      // Eski format (IV yok), decrypt edilemez
+      console.warn('⚠️ Encrypted data missing IV, cannot decrypt');
       return encryptedText;
     }
     
     const textParts = encryptedText.split(':');
     if (textParts.length < 2) {
+      console.warn('⚠️ Invalid encrypted data format');
       return encryptedText;
     }
     
+    // IV ve encrypted data'yı ayır
+    const ivHex = textParts[0];
     const encryptedData = textParts.slice(1).join(':');
-    const decipher = crypto.createDecipher('aes-256-cbc', ENCRYPTION_KEY);
+    
+    // IV'yi hex'den buffer'a çevir
+    const iv = Buffer.from(ivHex, 'hex');
+    
+    // GÜVENLİK: createDecipher deprecated, createDecipheriv kullanılıyor
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (error) {
     console.error('❌ Error decrypting data:', error);
-    return encryptedText;
+    throw error; // GÜVENLİK: Decrypt hatası durumunda encrypted text döndürme
   }
 }
 
@@ -263,10 +289,8 @@ app.use('/api/orders', createCriticalLimiter());
 // Admin endpoint'leri - Rate limit kaldırıldı
 // app.use('/api/admin', createAdminLimiter());
 
-// 4. Global limiter (opsiyonel - environment variable ile kontrol edilebilir)
-if (process.env.DISABLE_SUSPICIOUS_IP_LIMITER !== 'true') {
-  app.use('/api', createSuspiciousIPLimiter());
-}
+// 4. Global limiter - GÜVENLİK: Bypass kaldırıldı, her zaman aktif
+app.use('/api', createSuspiciousIPLimiter());
 
 // 5. Genel rate limiting (fallback - en son)
 app.use('/api/', limiter);
@@ -277,7 +301,7 @@ app.use(compression());
 // GÜVENLİK: CORS configuration - Whitelist tabanlı güvenli CORS
 // KRİTİK: Production'da kesinlikle whitelist kullanılmalı
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: function (origin, callback, req) {
     // Production için izin verilen origin'ler
     const allowedOrigins = [
       'https://api.huglutekstil.com',
@@ -286,13 +310,28 @@ const corsOptions = {
       'https://www.huglutekstil.com'
     ];
     
-    // GÜVENLİK: Origin yoksa bile kontrol et
-    // Mobil uygulama için origin yok, ama API key ile korunuyor
-    // Same-origin request'ler için sadece aynı domain'den gelen isteklere izin ver
+    // GÜVENLİK: Origin yoksa API key kontrolü yap
+    // Production'da origin yoksa kesinlikle reddet (mobil uygulamalar API key ile korunuyor)
     if (!origin) {
-      // Origin yoksa, sadece aynı domain'den gelen isteklere izin ver
-      // Mobil uygulamalar API key ile korunuyor, bu yüzden origin kontrolü yapılmaz
-      // Ancak web tarayıcılarından gelen istekler için origin zorunlu
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      if (isProduction) {
+        // Production'da origin yoksa API key kontrolü yap
+        // req objesi CORS middleware'den gelir
+        const apiKey = req?.headers?.['x-api-key'] || req?.headers?.['X-API-Key'];
+        const validApiKey = process.env.API_KEY;
+        
+        if (!apiKey || !validApiKey || apiKey !== validApiKey) {
+          const clientIP = req?.ip || req?.connection?.remoteAddress || 'unknown';
+          console.warn(`⚠️ CORS blocked: No origin and invalid/missing API key from IP: ${clientIP}`);
+          return callback(new Error('Origin or valid API key required'));
+        }
+        
+        // API key geçerli, mobil uygulama isteği
+        return callback(null, true);
+      }
+      
+      // Development'ta origin yoksa izin ver (geliştirme için)
       return callback(null, true);
     }
     
@@ -323,7 +362,16 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   maxAge: 86400 // 24 saat preflight cache
 };
-app.use(cors(corsOptions));
+// GÜVENLİK: CORS middleware - req objesine erişim için wrapper
+app.use((req, res, next) => {
+  const corsOptionsWithReq = {
+    ...corsOptions,
+    origin: function (origin, callback) {
+      return corsOptions.origin(origin, callback, req);
+    }
+  };
+  cors(corsOptionsWithReq)(req, res, next);
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -351,13 +399,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database configuration from environment
+// GÜVENLİK: Database configuration - fallback değerleri kaldırıldı
+const dbConfigBase = validateDatabaseConfig();
 const dbConfig = {
-  host: process.env.DB_HOST || '92.113.22.70',
-  user: process.env.DB_USER || 'u987029066_mobil_app',
-  password: process.env.DB_PASSWORD || '38cdfD8218.',
-  database: process.env.DB_NAME || 'u987029066_berqt',
-  port: parseInt(process.env.DB_PORT) || 3306,
+  ...dbConfigBase,
   connectionLimit: 20,
   acquireTimeout: 60000,
   timeout: 60000,
@@ -553,15 +598,9 @@ app.get('/api/health', async (req, res) => {
 // We'll copy the relevant route handlers here
 // ... (All the existing routes from server.js would be included here)
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('❌ Unhandled error:', error);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    ...(process.env.NODE_ENV !== 'production' && { error: error.message })
-  });
-});
+// GÜVENLİK: Error handling middleware - error-handler.js utility kullanılıyor
+const { errorMiddleware } = require('./utils/error-handler');
+app.use(errorMiddleware);
 
 // 404 handler
 app.use('*', (req, res) => {

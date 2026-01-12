@@ -37,8 +37,12 @@ class APIEncryption {
     const key = crypto.randomBytes(this.keyLength);
     const iv = crypto.randomBytes(this.ivLength);
     
-    // Master key ile tenant key'i şifrele
-    const cipher = crypto.createCipher(this.algorithm, this.masterKey);
+    // GÜVENLİK: Master key ile tenant key'i şifrele - createCipheriv kullanılıyor
+    const masterKeyBuffer = Buffer.isBuffer(this.masterKey) 
+      ? this.masterKey 
+      : Buffer.from(this.masterKey, 'hex');
+    const cipher = crypto.createCipheriv(this.algorithm, masterKeyBuffer, iv);
+    cipher.setAAD(Buffer.from('huglu-api', 'utf8'));
     let encryptedKey = cipher.update(key, null, 'hex');
     encryptedKey += cipher.final('hex');
     
@@ -64,8 +68,13 @@ class APIEncryption {
       return this.generateTenantKey(tenantId);
     }
     
-    // Şifreli anahtarı çöz
-    const decipher = crypto.createDecipher(this.algorithm, this.masterKey);
+    // GÜVENLİK: Şifreli anahtarı çöz - createDecipheriv kullanılıyor
+    const iv = Buffer.from(encryptedKeyData.iv, 'hex');
+    const masterKeyBuffer = Buffer.isBuffer(this.masterKey) 
+      ? this.masterKey 
+      : Buffer.from(this.masterKey, 'hex');
+    const decipher = crypto.createDecipheriv(this.algorithm, masterKeyBuffer, iv);
+    decipher.setAAD(Buffer.from('huglu-api', 'utf8'));
     decipher.setAuthTag(Buffer.from(encryptedKeyData.tag, 'hex'));
     
     let decryptedKey = decipher.update(encryptedKeyData.key, 'hex', null);
@@ -77,11 +86,14 @@ class APIEncryption {
   /**
    * Veriyi şifrele
    */
+  // GÜVENLİK: Veriyi şifrele - createCipheriv kullanılıyor
   encryptData(data, tenantId = null) {
     try {
       const key = tenantId ? this.getTenantKey(tenantId) : this.masterKey;
       const iv = crypto.randomBytes(this.ivLength);
-      const cipher = crypto.createCipher(this.algorithm, key);
+      // GÜVENLİK: createCipher deprecated, createCipheriv kullanılıyor
+      const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
+      const cipher = crypto.createCipheriv(this.algorithm, keyBuffer, iv);
       cipher.setAAD(Buffer.from('huglu-api', 'utf8'));
       
       const dataString = typeof data === 'string' ? data : JSON.stringify(data);
@@ -105,10 +117,15 @@ class APIEncryption {
   /**
    * Şifreli veriyi çöz
    */
+  // GÜVENLİK: Şifreli veriyi çöz - createDecipheriv kullanılıyor
   decryptData(encryptedData, tenantId = null) {
     try {
       const key = tenantId ? this.getTenantKey(tenantId) : this.masterKey;
-      const decipher = crypto.createDecipher(this.algorithm, key);
+      // IV'yi hex'den buffer'a çevir
+      const iv = Buffer.from(encryptedData.iv, 'hex');
+      // GÜVENLİK: createDecipher deprecated, createDecipheriv kullanılıyor
+      const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
+      const decipher = crypto.createDecipheriv(this.algorithm, keyBuffer, iv);
       decipher.setAAD(Buffer.from('huglu-api', 'utf8'));
       decipher.setAuthTag(Buffer.from(encryptedData.tag, 'hex'));
       

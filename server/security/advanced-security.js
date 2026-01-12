@@ -43,11 +43,16 @@ class AdvancedSecurity {
   }
 
   /**
-   * Veri şifreleme
+   * GÜVENLİK: Veri şifreleme - createCipheriv kullanılıyor
    */
   encryptData(data) {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher('aes-256-gcm', this.encryptionKey);
+    // GÜVENLİK: createCipher deprecated, createCipheriv kullanılıyor
+    // GCM mode için key Buffer veya string olabilir
+    const keyBuffer = Buffer.isBuffer(this.encryptionKey) 
+      ? this.encryptionKey 
+      : Buffer.from(this.encryptionKey, 'hex');
+    const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
     cipher.setAAD(Buffer.from('huglu-api', 'utf8'));
     
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
@@ -63,10 +68,18 @@ class AdvancedSecurity {
   }
 
   /**
-   * Veri şifre çözme
+   * GÜVENLİK: Veri şifre çözme - createDecipheriv kullanılıyor
    */
   decryptData(encryptedData) {
-    const decipher = crypto.createDecipher('aes-256-gcm', this.encryptionKey);
+    // IV'yi hex'den buffer'a çevir
+    const iv = Buffer.from(encryptedData.iv, 'hex');
+    
+    // GÜVENLİK: createDecipher deprecated, createDecipheriv kullanılıyor
+    // GCM mode için key Buffer veya string olabilir
+    const keyBuffer = Buffer.isBuffer(this.encryptionKey) 
+      ? this.encryptionKey 
+      : Buffer.from(this.encryptionKey, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
     decipher.setAAD(Buffer.from('huglu-api', 'utf8'));
     decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
     

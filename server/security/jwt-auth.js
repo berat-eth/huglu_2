@@ -10,9 +10,20 @@ const { logError, createSafeErrorResponse } = require('../utils/error-handler');
 
 class JWTAuth {
   constructor() {
-    // GÜVENLİK: Secret'lar environment variable'lardan alınmalı
-    this.secret = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
-    this.refreshSecret = process.env.JWT_REFRESH_SECRET || crypto.randomBytes(64).toString('hex');
+    // GÜVENLİK: Secret'lar environment variable'lardan alınmalı, fallback yok
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+    
+    if (!jwtSecret) {
+      throw new Error('❌ CRITICAL: JWT_SECRET environment variable is required');
+    }
+    
+    if (!jwtRefreshSecret) {
+      throw new Error('❌ CRITICAL: JWT_REFRESH_SECRET environment variable is required');
+    }
+    
+    this.secret = jwtSecret;
+    this.refreshSecret = jwtRefreshSecret;
     
     // GÜVENLİK: Token expiration time'ları - Güvenli default'lar
     this.accessTokenExpiry = process.env.JWT_ACCESS_EXPIRY || '15m'; // 15 dakika
