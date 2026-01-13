@@ -10,6 +10,7 @@ import { getApiUrl } from '../config/api.config';
 import ErrorModal from '../components/ErrorModal';
 import SuccessModal from '../components/SuccessModal';
 import { Linking } from 'react-native';
+import { useAlert } from '../hooks/useAlert';
 
 // Google Maps logosunu gizlemek için custom style
 const hideGoogleLogoStyle = [
@@ -621,7 +622,7 @@ export default function OrderDetailScreen({ navigation, route }) {
         title="Kopyalandı"
         message="Takip numarası panoya kopyalandı"
       />
-      <alert.AlertComponent />
+      {alert.AlertComponent()}
     </SafeAreaView>
   );
 }

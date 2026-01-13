@@ -46,8 +46,7 @@ export function validateSSLConnection(url) {
     // Temel SSL kontrolü başarılı
     // Not: Gerçek certificate fingerprint kontrolü için native modül gerekir
     return {
-      isValid: true,
-      warning: 'Full SSL pinning requires native module. Basic validation passed.'
+      isValid: true
     };
   } catch (error) {
     return {
@@ -68,10 +67,6 @@ export function createSSLPinningInterceptor() {
 
       if (!validation.isValid) {
         throw new Error(`SSL Validation Failed: ${validation.error}`);
-      }
-
-      if (validation.warning && __DEV__) {
-        console.warn('⚠️ SSL Pinning Warning:', validation.warning);
       }
     }
 

@@ -15,7 +15,6 @@ const MENU_ITEMS = [
   { id: 3, icon: 'wallet-outline', title: 'Cüzdanım', screen: 'Wallet' },
   { id: 4, icon: 'receipt-outline', title: 'Faturalarım', screen: 'Invoices' },
   { id: 5, icon: 'location-outline', title: 'Teslimat Adresleri', screen: 'MyAddresses' },
-  { id: 6, icon: 'card-outline', title: 'Ödeme Yöntemleri', screen: 'PaymentMethod' },
   { id: 7, icon: 'return-down-back-outline', title: 'İade Taleplerim', screen: 'ReturnRequests' },
 ];
 

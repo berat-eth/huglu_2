@@ -5,8 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { gamificationAPI } from '../services/api';
+import { useAlert } from '../hooks/useAlert';
 
 export default function DailyRewardScreen({ navigation }) {
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [streak, setStreak] = useState(0);
@@ -248,7 +250,7 @@ export default function DailyRewardScreen({ navigation }) {
           </Text>
         </View>
       </ScrollView>
-      <alert.AlertComponent />
+      {alert.AlertComponent()}
     </SafeAreaView>
   );
 }

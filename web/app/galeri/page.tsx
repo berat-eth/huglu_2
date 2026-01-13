@@ -60,6 +60,7 @@ export default function Galeri() {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [showNoContentModal, setShowNoContentModal] = useState(true)
 
   const filteredImages = useMemo(() => {
     return selectedCategory === 'Tümü' 
@@ -145,127 +146,52 @@ export default function Galeri() {
             </p>
           </div>
 
-          {/* Modern Category Filter */}
-          <div className="flex flex-wrap justify-center gap-4 mb-16">
-            {categories.map((category) => (
+          {/* İçerik gizlendi - Modal gösterilecek */}
+        </div>
+      </main>
+
+      {/* İçerik Yok Modal */}
+      {showNoContentModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+          onClick={() => setShowNoContentModal(false)}
+        >
+          <div 
+            className="relative bg-white dark:bg-gray-800 rounded-3xl p-8 md:p-12 max-w-md w-full mx-4 shadow-2xl border-2 border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowNoContentModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              aria-label="Kapat"
+            >
+              <span className="material-symbols-outlined text-2xl">close</span>
+            </button>
+
+            {/* Modal Content */}
+            <div className="text-center">
+              <div className="mb-6 flex justify-center">
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+                  <span className="material-symbols-outlined text-white text-5xl">info</span>
+                </div>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-4">
+                İçerik Bulunamadı
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-6">
+                Şu anda bu sayfada içerik yok. Lütfen daha sonra tekrar deneyin.
+              </p>
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`group relative px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 overflow-hidden ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-2xl shadow-purple-500/50 scale-105'
-                    : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 hover:scale-105 hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-600'
-                }`}
+                onClick={() => setShowNoContentModal(false)}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
               >
-                {selectedCategory === category && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-purple-700 to-pink-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                )}
-                <span className="relative z-10">{category}</span>
-                {selectedCategory === category && (
-                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                )}
+                Tamam
               </button>
-            ))}
-          </div>
-
-          {/* Modern Masonry Gallery Grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square rounded-2xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredImages.map((image, index) => (
-                <div
-                  key={image.id}
-                  onClick={() => handleImageClick(image)}
-                  className={`group relative ${getAspectRatioClass(image.aspectRatio)} rounded-3xl overflow-hidden cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-blue-400 dark:hover:border-purple-500 hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] hover:-translate-y-2`}
-                  style={{
-                    animationDelay: `${index * 50}ms`,
-                  }}
-                >
-                  <Image
-                    src={image.src}
-                    alt={image.alt}
-                    fill
-                    className="object-cover group-hover:scale-125 transition-transform duration-700 ease-out"
-                    unoptimized
-                    loading="lazy"
-                  />
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                      {image.title && (
-                        <h3 className="text-white font-black text-xl mb-2 drop-shadow-lg">{image.title}</h3>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-gradient-to-r from-blue-500/80 to-purple-500/80 backdrop-blur-sm rounded-full text-white text-xs font-bold">
-                          {image.category}
-                        </span>
-                        <span className="material-symbols-outlined text-white/80 text-sm">zoom_in</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Category Badge */}
-                  <div className="absolute top-4 right-4 px-4 py-2 bg-black/60 backdrop-blur-xl rounded-full border border-white/20 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
-                    <span className="text-white text-xs font-bold">{image.category}</span>
-                  </div>
-
-                  {/* Glow Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/20 group-hover:via-purple-500/20 group-hover:to-pink-500/20 transition-all duration-500 blur-xl -z-10"></div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Stats Section */}
-          <div className="mt-20 grid md:grid-cols-3 gap-6">
-            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl p-8 border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
-              <div className="relative z-10 flex items-center gap-4 mb-4">
-                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:shadow-blue-500/50 transition-all duration-300">
-                  <span className="material-symbols-outlined text-white text-3xl">camera_enhance</span>
-                </div>
-                <h3 className="font-black text-gray-900 dark:text-white text-xl">Profesyonel Çekim</h3>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed relative z-10">
-                Tüm fotoğraflarımız profesyonel ekipmanlarla çekilmektedir
-              </p>
-            </div>
-            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl p-8 border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl"></div>
-              <div className="relative z-10 flex items-center gap-4 mb-4">
-                <div className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg shadow-purple-500/30 group-hover:scale-110 group-hover:shadow-purple-500/50 transition-all duration-300">
-                  <span className="material-symbols-outlined text-white text-3xl">update</span>
-                </div>
-                <h3 className="font-black text-gray-900 dark:text-white text-xl">Güncel İçerik</h3>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed relative z-10">
-                Galerimiz düzenli olarak yeni fotoğraflarla güncellenmektedir
-              </p>
-            </div>
-            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl p-8 border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-pink-400 dark:hover:border-pink-600 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl"></div>
-              <div className="relative z-10 flex items-center gap-4 mb-4">
-                <div className="p-4 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl shadow-lg shadow-pink-500/30 group-hover:scale-110 group-hover:shadow-pink-500/50 transition-all duration-300">
-                  <span className="material-symbols-outlined text-white text-3xl">visibility</span>
-                </div>
-                <h3 className="font-black text-gray-900 dark:text-white text-xl">360° Görünüm</h3>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed relative z-10">
-                Atölyemizi ve ürünlerimizi her açıdan görebilirsiniz
-              </p>
             </div>
           </div>
         </div>
-      </main>
+      )}
 
       {/* Modern Lightbox Modal */}
       {selectedImage && (
