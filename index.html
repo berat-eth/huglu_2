@@ -1260,6 +1260,19 @@
                 </div>
             </div>
                 </div>
+
+                <!-- Kargo Fişi Tasarımı Galerisi -->
+                <div class="gallery-section">
+                    <div class="gallery-category">
+                        <h3>Kargo Fişi Tasarımı</h3>
+                        <div class="gallery-grid">
+                            <div class="gallery-item">
+                                <img src="images/cargo/kargo-fisi-1.png" alt="Kargo Fişi Tasarımı - Ön Yüz" onerror="this.parentElement.innerHTML='<div class=\'gallery-placeholder\'></div><div class=\'gallery-item-caption\'>Kargo Fişi - Ön Yüz</div>'">
+                                <div class="gallery-item-caption">Kargo Fişi - Ön Yüz</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Trafik Raporu -->
@@ -1428,6 +1441,177 @@
                         <li>Kampanya ve indirimler düzenli olarak güncellenebilir</li>
                         <li>Yeni özellikler müşterilerden gelen geri bildirimlere göre eklenebilir</li>
                     </ul>
+                </div>
+            </div>
+
+            <!-- Sistem Mimarisi Diyagramı -->
+            <div class="section">
+                <h2 class="section-title">🏗️ Sistem Mimarisi ve Platform Entegrasyonu</h2>
+                <div class="feature-card" style="background: #fafafa; margin-bottom: 15px;">
+                    <p style="font-size: 13px; line-height: 1.7;">
+                        Aşağıdaki diyagram, Huğlu Outdoor platformunun tüm bileşenlerini ve bunların birbirleriyle nasıl entegre olduğunu göstermektedir. 
+                        Mobil Uygulama, Web Sitesi, Admin Panel ve Huğlu POS sistemlerinin merkezi API üzerinden nasıl iletişim kurduğunu ve 
+                        harici entegrasyonların (Trendyol, Hepsiburada, Ticimax) nasıl bağlandığını görebilirsiniz.
+                    </p>
+                </div>
+                
+                <!-- SVG Sistem Mimarisi Diyagramı -->
+                <div class="chart-container" style="background: #ffffff; padding: 30px;">
+                    <svg viewBox="0 0 1000 600" style="width: 100%; max-width: 1000px; height: auto; margin: 0 auto; display: block;">
+                        <!-- Definitions -->
+                        <defs>
+                            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                                <feOffset dx="2" dy="2" result="offsetblur"/>
+                                <feComponentTransfer>
+                                    <feFuncA type="linear" slope="0.3"/>
+                                </feComponentTransfer>
+                                <feMerge>
+                                    <feMergeNode/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                            
+                            <!-- Arrow marker -->
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+                            </marker>
+                        </defs>
+
+                        <!-- Background -->
+                        <rect width="1000" height="600" fill="#f9fafb" rx="8"/>
+                        
+                        <!-- Title -->
+                        <text x="500" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#1f2937">
+                            Huğlu Outdoor - Sistem Mimarisi
+                        </text>
+
+                        <!-- Central Backend API -->
+                        <g filter="url(#shadow)">
+                            <rect x="400" y="250" width="200" height="100" rx="8" fill="#10b981" stroke="#059669" stroke-width="2"/>
+                            <text x="500" y="285" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Backend API</text>
+                            <text x="500" y="305" text-anchor="middle" font-size="12" fill="white">(Node.js + Express)</text>
+                            <text x="500" y="325" text-anchor="middle" font-size="11" fill="#e0f2e9">MySQL Database</text>
+                            <text x="500" y="340" text-anchor="middle" font-size="11" fill="#e0f2e9">Redis Cache</text>
+                        </g>
+
+                        <!-- Mobil App (Top Left) -->
+                        <g filter="url(#shadow)">
+                            <rect x="50" y="80" width="180" height="90" rx="8" fill="#3b82f6" stroke="#2563eb" stroke-width="2"/>
+                            <text x="140" y="110" text-anchor="middle" font-size="14" font-weight="bold" fill="white">📱 Mobil Uygulama</text>
+                            <text x="140" y="130" text-anchor="middle" font-size="11" fill="#dbeafe">(React Native)</text>
+                            <text x="140" y="145" text-anchor="middle" font-size="10" fill="#dbeafe">iOS & Android</text>
+                            <text x="140" y="160" text-anchor="middle" font-size="10" fill="#dbeafe">Push Notifications</text>
+                        </g>
+
+                        <!-- Web Sitesi (Top Right) -->
+                        <g filter="url(#shadow)">
+                            <rect x="770" y="80" width="180" height="90" rx="8" fill="#06b6d4" stroke="#0891b2" stroke-width="2"/>
+                            <text x="860" y="110" text-anchor="middle" font-size="14" font-weight="bold" fill="white">🌐 Web Sitesi</text>
+                            <text x="860" y="130" text-anchor="middle" font-size="11" fill="#cffafe">(React)</text>
+                            <text x="860" y="145" text-anchor="middle" font-size="10" fill="#cffafe">Responsive Design</text>
+                            <text x="860" y="160" text-anchor="middle" font-size="10" fill="#cffafe">SEO Optimized</text>
+                        </g>
+
+                        <!-- Admin Panel (Bottom Left) -->
+                        <g filter="url(#shadow)">
+                            <rect x="50" y="430" width="180" height="90" rx="8" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+                            <text x="140" y="460" text-anchor="middle" font-size="14" font-weight="bold" fill="white">⚙️ Admin Panel</text>
+                            <text x="140" y="480" text-anchor="middle" font-size="11" fill="#fef3c7">(React)</text>
+                            <text x="140" y="495" text-anchor="middle" font-size="10" fill="#fef3c7">Dashboard</text>
+                            <text x="140" y="510" text-anchor="middle" font-size="10" fill="#fef3c7">Ürün & Sipariş Yönetimi</text>
+                        </g>
+
+                        <!-- Huğlu POS (Bottom Right) -->
+                        <g filter="url(#shadow)">
+                            <rect x="770" y="430" width="180" height="90" rx="8" fill="#8b5cf6" stroke="#7c3aed" stroke-width="2"/>
+                            <text x="860" y="460" text-anchor="middle" font-size="14" font-weight="bold" fill="white">🖥️ Huğlu POS</text>
+                            <text x="860" y="480" text-anchor="middle" font-size="11" fill="#ede9fe">(Electron)</text>
+                            <text x="860" y="495" text-anchor="middle" font-size="10" fill="#ede9fe">Fiziksel Mağaza</text>
+                            <text x="860" y="510" text-anchor="middle" font-size="10" fill="#ede9fe">Barkod & Yazıcı</text>
+                        </g>
+
+                        <!-- External Integrations (Right Side) -->
+                        <g filter="url(#shadow)">
+                            <rect x="280" y="50" width="140" height="60" rx="6" fill="#ef4444" stroke="#dc2626" stroke-width="2"/>
+                            <text x="350" y="75" text-anchor="middle" font-size="12" font-weight="bold" fill="white">🔗 Trendyol</text>
+                            <text x="350" y="92" text-anchor="middle" font-size="9" fill="#fee2e2">Marketplace API</text>
+                        </g>
+
+                        <g filter="url(#shadow)">
+                            <rect x="580" y="50" width="140" height="60" rx="6" fill="#f97316" stroke="#ea580c" stroke-width="2"/>
+                            <text x="650" y="75" text-anchor="middle" font-size="12" font-weight="bold" fill="white">🔗 Hepsiburada</text>
+                            <text x="650" y="92" text-anchor="middle" font-size="9" fill="#ffedd5">Marketplace API</text>
+                        </g>
+
+                        <g filter="url(#shadow)">
+                            <rect x="280" y="490" width="140" height="60" rx="6" fill="#14b8a6" stroke="#0d9488" stroke-width="2"/>
+                            <text x="350" y="515" text-anchor="middle" font-size="12" font-weight="bold" fill="white">🔗 Ticimax</text>
+                            <text x="350" y="532" text-anchor="middle" font-size="9" fill="#ccfbf1">E-commerce API</text>
+                        </g>
+
+                        <g filter="url(#shadow)">
+                            <rect x="580" y="490" width="140" height="60" rx="6" fill="#ec4899" stroke="#db2777" stroke-width="2"/>
+                            <text x="650" y="515" text-anchor="middle" font-size="12" font-weight="bold" fill="white">💳 Ödeme</text>
+                            <text x="650" y="532" text-anchor="middle" font-size="9" fill="#fce7f3">Payment Gateway</text>
+                        </g>
+
+                        <!-- Connection Lines -->
+                        <!-- Mobil App to Backend -->
+                        <line x1="230" y1="125" x2="400" y2="280" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        <line x1="400" y1="280" x2="230" y2="125" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- Web to Backend -->
+                        <line x1="770" y1="125" x2="600" y2="280" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        <line x1="600" y1="280" x2="770" y2="125" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- Admin to Backend -->
+                        <line x1="230" y1="475" x2="400" y2="330" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        <line x1="400" y1="330" x2="230" y2="475" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- POS to Backend -->
+                        <line x1="770" y1="475" x2="600" y2="330" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        <line x1="600" y1="330" x2="770" y2="475" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- External Integrations to Backend -->
+                        <line x1="350" y1="110" x2="450" y2="250" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="650" y1="110" x2="550" y2="250" stroke="#f97316" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="350" y1="490" x2="450" y2="350" stroke="#14b8a6" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="650" y1="490" x2="550" y2="350" stroke="#ec4899" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+
+                        <!-- Legend -->
+                        <g>
+                            <text x="20" y="580" font-size="11" fill="#6b7280" font-weight="bold">Açıklama:</text>
+                            <line x1="80" y1="575" x2="120" y2="575" stroke="#10b981" stroke-width="3"/>
+                            <text x="125" y="580" font-size="10" fill="#6b7280">İki yönlü veri akışı</text>
+                            
+                            <line x1="250" y1="575" x2="290" y2="575" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"/>
+                            <text x="295" y="580" font-size="10" fill="#6b7280">Harici entegrasyon</text>
+                        </g>
+                    </svg>
+                </div>
+                
+                
+                <!-- Veri Akışı Açıklaması -->
+                <div class="feature-card" style="margin-top: 20px; background: #fff9e6; border-left: 4px solid #f59e0b;">
+                    <h4 style="color: #f59e0b; margin-bottom: 15px;">🔄 Veri Akışı ve İletişim</h4>
+                    <div style="font-size: 13px; line-height: 1.8;">
+                        <p style="margin-bottom: 10px;">
+                            <strong>1. Kullanıcı İşlemleri:</strong> Mobil App veya Web → Backend API → Veritabanı → Response
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            <strong>2. Admin İşlemleri:</strong> Admin Panel → Backend API → Veritabanı → Tüm platformlara broadcast
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            <strong>3. POS İşlemleri:</strong> Huğlu POS → Backend API → Stok güncelleme → Tüm platformlara senkronizasyon
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            <strong>4. Marketplace Entegrasyonu:</strong> Trendyol/Hepsiburada/Ticimax → Backend API → Sipariş oluşturma → Admin bilgilendirme
+                        </p>
+                        <p>
+                            <strong>5. Real-time Güncellemeler:</strong> WebSocket bağlantısı ile tüm platformlar anlık olarak senkronize edilir
+                        </p>
+                    </div>
                 </div>
             </div>
 
