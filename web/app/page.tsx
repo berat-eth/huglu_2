@@ -80,7 +80,7 @@ const REFERENCES = [
 
 const STATS = [
   { label: 'Mutlu Müşteri', value: 100, suffix: '+', icon: 'groups', color: 'from-blue-500 to-blue-600' },
-  { label: 'Yıllık Deneyim', value: 100, suffix: '+', icon: 'calendar_today', color: 'from-purple-500 to-purple-600' },
+  { label: 'Yıllık Deneyim', value: 4, suffix: '+', icon: 'calendar_today', color: 'from-purple-500 to-purple-600' },
   { label: 'Tamamlanan Proje', value: 100, suffix: '+', icon: 'check_circle', color: 'from-pink-500 to-pink-600' },
   { label: 'Üretim Kapasitesi', value: 100, suffix: '+', icon: 'factory', color: 'from-orange-500 to-orange-600' }
 ]
