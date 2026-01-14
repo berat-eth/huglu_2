@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Huğlu Outdoor - Uygulama Raporu</title>
+    <title>Huğlu Outdoor Yıllık Sistem ve Büyüme Raporu</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -744,59 +744,13 @@
             table {
                 page-break-inside: avoid;
             }
-
-            /* Print butonunu gizle */
-            .print-button {
-                display: none !important;
-            }
-        }
-
-        /* Print Button Style */
-        .print-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-            transition: all 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .print-button:hover {
-            background: var(--primary-dark);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
-            transform: translateY(-2px);
-        }
-
-        .print-button:active {
-            transform: translateY(0);
         }
     </style>
 </head>
 <body>
-    <!-- Print Button -->
-    <button class="print-button" onclick="window.print()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 6 2 18 2 18 9"></polyline>
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-            <rect x="6" y="14" width="12" height="8"></rect>
-        </svg>
-        PDF Olarak Kaydet
-    </button>
-
     <div class="container">
         <div class="header">
-            <h1>Huğlu Outdoor - Uygulama Raporu</h1>
+            <h1>Huğlu Outdoor Yıllık Sistem ve Büyüme Raporu</h1>
             <p>Kapsamli E-Ticaret Platformu - Teknik Analiz ve Özellik Raporu</p>
             <p style="margin-top: 8px; font-size: 12px;">Rapor Tarihi: <span id="reportDate"></span></p>
         </div>
@@ -814,7 +768,7 @@
                     <ul style="font-size: 14px; line-height: 2; padding-left: 20px;">
                         <li><strong>Mobil Uygulama:</strong> Telefon ve tabletlerden kullanılabilen, kolay ve hızlı bir alışveriş deneyimi sunar. <a href="https://huglutekstil.com/mobil-uygulama" target="_blank" rel="noopener noreferrer">Mobil uygulama indirme sayfası https://huglutekstil.com/mobil-uygulama</a></li>
                         <li><strong>Web Sitesi:</strong> Bilgisayar üzerinden internet tarayıcısı ile erişilebilen, detaylı ürün inceleme imkanı sağlar. <a href="https://huglutekstil.com" target="_blank" rel="noopener noreferrer">huglutekstil.com</a></li>
-                        <li><strong>Yönetim Paneli:</strong> Şirket çalışanlarının ürünleri, siparişleri ve müşterileri yönetebileceği özel bir alan. <a href="https://admin.huglutekstil.com" target="_blank" rel="noopener noreferrer">admin.huglutekstil.com</a></li>
+                        <li><strong>Yönetim Paneli:</strong> Şirket çalışanlarının ürünleri, siparişleri ve müşterileri yönetebileceği özel bir alan. <a href="https://admin.huglutekstil.com" target="_blank" rel="noopener noreferrer">admin.huglutekstil.com Giriş Bilgileri (Berat@hugluoutdoor.com şifre 38cdfD8217..)</a></li>
                         <li><strong>Huğlu Pos:</strong> Fiziksel mağazalarda kullanılan, satış ve ödeme işlemlerini yönetebilen nokta satış sistemi.</li>
                     </ul>
                 </div>
@@ -845,42 +799,7 @@
                 </div>
             </div>
 
-            <!-- Genel İstatistikler -->
-            <div class="section">
-                <h2 class="section-title">Genel İstatistikler</h2>
-                <div class="feature-card" style="background: #fafafa; margin-bottom: 15px;">
-                    <p style="font-size: 13px; line-height: 1.7;">
-                        Aşağıdaki sayılar platformun ne kadar kapsamlı olduğunu gösterir. Her bir sayı, sistemin farklı bir bölümünü 
-                        temsil eder ve tüm bu bölümler birlikte çalışarak tam bir e-ticaret deneyimi sunar.
-                    </p>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>4</h3>
-                        <p>Platform (Mobil, Web, Admin, POS)</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>25</h3>
-                        <p>Tamamlanan Ekran</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>100%</h3>
-                        <p>UI Tamamlanma Oranı</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>89+</h3>
-                        <p>Admin Panel Bileşeni</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>21</h3>
-                        <p>API Route</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>31</h3>
-                        <p>Backend Servis</p>
-                    </div>
-                </div>
-            </div>
+           
 
             <!-- Platform Dağılımı Grafiği -->
             <div class="section">
@@ -959,50 +878,6 @@
                             <li>SMS servisleri</li>
                             <li>Email servisleri</li>
                         </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Hepsiburada Trendyol Ticimax Satış Raporları -->
-            <div class="section">
-                <h2 class="section-title">Hepsiburada Trendyol Ticimax Satış Raporları</h2>
-                <div class="feature-card" style="background: #fafafa; margin-bottom: 15px;">
-                    <p style="font-size: 13px; line-height: 1.7;">
-                        Platform, Hepsiburada, Trendyol ve Ticimax gibi popüler e-ticaret platformları ile entegre çalışarak 
-                        satış raporlarını otomatik olarak toplar ve analiz eder. Bu sayede tüm satış kanallarındaki performans 
-                        tek bir yerden takip edilebilir.
-                    </p>
-                </div>
-                
-                <div class="features-grid">
-                    <!-- Hepsiburada Pasta Grafiği -->
-                    <div class="feature-card" style="background: #fff9e6;">
-                        <h4 style="color: #f39c12; margin-bottom: 15px;">🟠 Hepsiburada Satış Dağılımı</h4>
-                        <div class="chart-container" style="margin-top: 10px;">
-                            <div class="chart-wrapper" style="height: 300px;">
-                                <canvas id="hepsiburadaSalesChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Trendyol Pasta Grafiği -->
-                    <div class="feature-card" style="background: #e6f3ff;">
-                        <h4 style="color: #4a90e2; margin-bottom: 15px;">🛒 Trendyol Satış Dağılımı</h4>
-                        <div class="chart-container" style="margin-top: 10px;">
-                            <div class="chart-wrapper" style="height: 300px;">
-                                <canvas id="trendyolSalesChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Ticimax Pasta Grafiği -->
-                    <div class="feature-card" style="background: #f0fff0;">
-                        <h4 style="color: #2ecc71; margin-bottom: 15px;">📊 Ticimax Satış Dağılımı</h4>
-                        <div class="chart-container" style="margin-top: 10px;">
-                            <div class="chart-wrapper" style="height: 300px;">
-                                <canvas id="ticimaxSalesChart"></canvas>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1264,10 +1139,19 @@
                 <!-- Kargo Fişi Tasarımı Galerisi -->
                 <div class="gallery-section">
                     <div class="gallery-category">
-                        <h3>Kargo Fişi Tasarımı</h3>
+                        <h3>Yeni Kargo Fişi Tasarımı</h3>
+                        
+                        <!-- Açıklama Metni -->
+                        <div class="feature-card" style="background: #f0f8ff; border-left: 4px solid #10b981; margin-bottom: 20px; padding: 15px;">
+                            <p style="font-size: 13px; line-height: 1.7; color: #1f2937; margin: 0;">
+                                <strong style="color: #10b981;"></strong> 
+                                Müşterilerimize daha kurumsal ve profesyonel bir imaj sunmak amacıyla özel olarak tasarlanmıştır.
+                            </p>
+                        </div>
+                        
                         <div class="gallery-grid">
                             <div class="gallery-item">
-                                <img src="images/cargo/kargo-fisi-1.png" alt="Kargo Fişi Tasarımı - Ön Yüz" onerror="this.parentElement.innerHTML='<div class=\'gallery-placeholder\'></div><div class=\'gallery-item-caption\'>Kargo Fişi - Ön Yüz</div>'">
+                                <img src="images/cargo/1.png" alt="Kargo Fişi Tasarımı - Ön Yüz" onerror="this.parentElement.innerHTML='<div class=\'gallery-placeholder\'></div><div class=\'gallery-item-caption\'>Kargo Fişi - Ön Yüz</div>'">
                                 <div class="gallery-item-caption">Kargo Fişi - Ön Yüz</div>
                             </div>
                         </div>
@@ -1933,11 +1817,26 @@
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 6,
+                    pointRadius: hepsiburadaMonthlySales.map((_, i) => i === 6 ? 12 : 6), // Temmuz vurgusu
                     pointHoverRadius: 8,
-                    pointBackgroundColor: '#f39c12',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
+                    pointBackgroundColor: hepsiburadaMonthlySales.map((_, i) => i === 6 ? '#e74c3c' : '#f39c12'), // Temmuz kırmızı
+                    pointBorderColor: hepsiburadaMonthlySales.map((_, i) => i === 6 ? '#c0392b' : '#fff'),
+                    pointBorderWidth: hepsiburadaMonthlySales.map((_, i) => i === 6 ? 3 : 2),
+                    segment: {
+                        borderColor: ctx => {
+                            // Temmuz'dan önceki ve sonraki çizgiyi vurgula
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return '#e74c3c';
+                            }
+                            return '#f39c12';
+                        },
+                        borderWidth: ctx => {
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return 4;
+                            }
+                            return 3;
+                        }
+                    }
                 }]
             },
             options: {
@@ -2029,153 +1928,6 @@
             }
         });
 
-        // Hepsiburada Satış Dağılımı Pasta Grafiği
-        const hepsiburadaSalesCtx = document.getElementById('hepsiburadaSalesChart').getContext('2d');
-        new Chart(hepsiburadaSalesCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Satış', 'Sepete Ekleme (Satış Olmayan)', 'Görüntülenme (Diğer)'],
-                datasets: [{
-                    data: [19, 62, 1688],
-                    backgroundColor: [
-                        '#f39c12',
-                        '#f7b84d',
-                        '#fdd085'
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 12,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.parsed.toLocaleString('tr-TR');
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.parsed / total) * 100).toFixed(2);
-                                label += ' (%' + percentage + ')';
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Trendyol Satış Dağılımı Pasta Grafiği
-        const trendyolSalesCtx = document.getElementById('trendyolSalesChart').getContext('2d');
-        new Chart(trendyolSalesCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Satış', 'Sepete Ekleme (Satış Olmayan)', 'Görüntülenme (Diğer)'],
-                datasets: [{
-                    data: [166, 883, 380086],
-                    backgroundColor: [
-                        '#4a90e2',
-                        '#87ceeb',
-                        '#b0d4f1'
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 12,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.parsed.toLocaleString('tr-TR');
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.parsed / total) * 100).toFixed(2);
-                                label += ' (%' + percentage + ')';
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Ticimax Satış Dağılımı Pasta Grafiği (Örnek veriler)
-        const ticimaxSalesCtx = document.getElementById('ticimaxSalesChart').getContext('2d');
-        new Chart(ticimaxSalesCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Satış', 'Sepete Ekleme', 'Görüntülenme'],
-                datasets: [{
-                    data: [45, 120, 850],
-                    backgroundColor: [
-                        '#2ecc71',
-                        '#58d68d',
-                        '#a8e6cf'
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 12,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.parsed.toLocaleString('tr-TR');
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.parsed / total) * 100).toFixed(2);
-                                label += ' (%' + percentage + ')';
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
         // Yıllık Satış Grafiği - 1 Ocak 2025'ten başlayan, Temmuz 27'den itibaren 3 katına çıkan satışlar
         const yearlySalesCtx = document.getElementById('yearlySalesChart').getContext('2d');
         
@@ -2249,7 +2001,7 @@
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 6,
+                    pointRadius: monthlySales.map((_, i) => i === 6 ? 12 : 6), // Temmuz vurgusu
                     pointHoverRadius: 8,
                     pointBackgroundColor: function(context) {
                         // Temmuz 2025'i farklı renkte göster (Temmuz 27 işareti)
@@ -2258,8 +2010,23 @@
                         }
                         return '#10b981'; // Yeşil - Diğer aylar
                     },
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
+                    pointBorderColor: monthlySales.map((_, i) => i === 6 ? '#c0392b' : '#fff'),
+                    pointBorderWidth: monthlySales.map((_, i) => i === 6 ? 3 : 2),
+                    segment: {
+                        borderColor: ctx => {
+                            // Temmuz'dan önceki ve sonraki çizgiyi vurgula
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return '#ef4444';
+                            }
+                            return '#10b981';
+                        },
+                        borderWidth: ctx => {
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return 4;
+                            }
+                            return 3;
+                        }
+                    }
                 }]
             },
             options: {
@@ -2406,11 +2173,26 @@
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 6,
+                    pointRadius: trendyolMonthlySales.map((_, i) => i === 6 ? 12 : 6), // Temmuz vurgusu
                     pointHoverRadius: 8,
-                    pointBackgroundColor: '#4a90e2',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
+                    pointBackgroundColor: trendyolMonthlySales.map((_, i) => i === 6 ? '#e74c3c' : '#4a90e2'), // Temmuz kırmızı
+                    pointBorderColor: trendyolMonthlySales.map((_, i) => i === 6 ? '#c0392b' : '#fff'),
+                    pointBorderWidth: trendyolMonthlySales.map((_, i) => i === 6 ? 3 : 2),
+                    segment: {
+                        borderColor: ctx => {
+                            // Temmuz'dan önceki ve sonraki çizgiyi vurgula
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return '#e74c3c';
+                            }
+                            return '#4a90e2';
+                        },
+                        borderWidth: ctx => {
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return 4;
+                            }
+                            return 3;
+                        }
+                    }
                 }]
             },
             options: {
@@ -2562,11 +2344,26 @@
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 6,
+                    pointRadius: ticimaxMonthlySales.map((_, i) => i === 6 ? 12 : 6), // Temmuz vurgusu
                     pointHoverRadius: 8,
-                    pointBackgroundColor: '#2ecc71',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
+                    pointBackgroundColor: ticimaxMonthlySales.map((_, i) => i === 6 ? '#e74c3c' : '#2ecc71'), // Temmuz kırmızı
+                    pointBorderColor: ticimaxMonthlySales.map((_, i) => i === 6 ? '#c0392b' : '#fff'),
+                    pointBorderWidth: ticimaxMonthlySales.map((_, i) => i === 6 ? 3 : 2),
+                    segment: {
+                        borderColor: ctx => {
+                            // Temmuz'dan önceki ve sonraki çizgiyi vurgula
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return '#e74c3c';
+                            }
+                            return '#2ecc71';
+                        },
+                        borderWidth: ctx => {
+                            if (ctx.p0DataIndex === 6 || ctx.p1DataIndex === 6) {
+                                return 4;
+                            }
+                            return 3;
+                        }
+                    }
                 }]
             },
             options: {

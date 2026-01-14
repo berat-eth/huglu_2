@@ -1046,7 +1046,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">Toptan Tedarik</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Butiklerden spor mağazalarına, işletmelerden kurumlara kadar geniş bir müşteri portföyüne hizmet veriyoruz. Kamp giyiminden termal içliğe kadar tüm ihtiyaçlarınızı karşılıyoruz.
+                    Butiklerden spor mağazalarına, işletmelerden kurumlara kadar geniş bir müşteri portföyüne hizmet veriyoruz. tüm ihtiyaçlarınızı karşılıyoruz.
                   </p>
                 </div>
               </div>
